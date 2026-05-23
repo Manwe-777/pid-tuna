@@ -1,0 +1,13 @@
+node_modules
+dist
+dev-dist
+.DS_Store
+*.log
+.vite
+reference
+*.tsbuildinfo
+
+# Tauri
+src-tauri/target
+src-tauri/gen
+
