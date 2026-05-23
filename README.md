@@ -21,7 +21,7 @@
 
 Browser-based Betaflight blackbox log analysis: time-series and spectra, PID terms, step response (via Wiener deconvolution), latency, GPS track, scorecard, and related diagnostics — load `.bbl`/`.bfl` directly with no heavyweight desktop stack.
 
-**PIDTuna** aims to be a simpler, lighter, easier-to-run alternative to [PIDToolbox](https://github.com/bw1129/PIDtoolbox), while staying **free and open source** under [GNU AGPL v3](LICENSE).
+**PIDTuna** aims to be a simpler, lighter, easier-to-run alternative to [PIDtoolbox](https://github.com/ianrmurphy/PIDtoolbox), while staying **free and open source** under [GNU AGPL v3](LICENSE).
 
 The app ships in three forms:
 
