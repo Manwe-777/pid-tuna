@@ -21,8 +21,10 @@ body {
   z-index: 10;
   display: flex;
   align-items: center;
-  height: 48px;
-  padding: 0 1.25rem;
+  justify-content: space-between;
+  gap: 0.75rem;
+  height: 64px;
+  padding: 0 1.5rem;
   background: #0d1117;
   border-bottom: 1px solid #1d242e;
 }
@@ -34,10 +36,34 @@ body {
   color: #e6e6e6;
 }
 
+.app-header__logo {
+  /* Wordmark is 2.8:1 aspect; 40px tall → ~112px wide, prominent in the 64px header. */
+  display: block;
+  height: 40px;
+  width: auto;
+}
+
+.app-header__version {
+  font-size: 0.78rem;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  color: #8a93a3;
+  text-decoration: none;
+  padding: 0.18rem 0.55rem;
+  border: 1px solid #1d242e;
+  border-radius: 999px;
+  transition: color 100ms ease, border-color 100ms ease;
+}
+
+.app-header__version:hover {
+  color: #c8ced9;
+  border-color: #2a323e;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
-  min-height: calc(100vh - 48px);
+  min-height: calc(100vh - 64px);
 }
 
 @media (max-width: 900px) {
@@ -56,10 +82,10 @@ body {
   border-right: 1px solid #1d242e;
   display: flex;
   flex-direction: column;
-  /* Stick under the global header (48px). */
+  /* Stick under the global header (64px). */
   position: sticky;
-  top: 48px;
-  height: calc(100vh - 48px);
+  top: 64px;
+  height: calc(100vh - 64px);
   overflow: hidden;
 }
 

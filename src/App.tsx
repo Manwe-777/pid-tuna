@@ -143,7 +143,20 @@ export function App() {
   return (
     <>
       <header className="app-header">
-        <span className="app-header__title">PIDTuna</span>
+        <img
+          src={`${import.meta.env.BASE_URL}pidtuna-wordmark.svg`}
+          alt="PIDTuna"
+          className="app-header__logo"
+        />
+        <a
+          className="app-header__version"
+          href={`https://github.com/Manwe-777/pid-tuna/releases/tag/v${__APP_VERSION__}`}
+          target="_blank"
+          rel="noreferrer noopener"
+          title="View this version's release notes"
+        >
+          v{__APP_VERSION__}
+        </a>
       </header>
       <div className="app-shell">
         <Sidebar

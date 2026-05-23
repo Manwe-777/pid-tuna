@@ -2306,8 +2306,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "pidanalyzer"
-version = "0.0.1"
+name = "pidtuna"
+version = "0.1.0"
 dependencies = [
  "log",
  "serde",

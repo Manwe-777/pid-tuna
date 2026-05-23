@@ -1,4 +1,23 @@
-# PIDTuna
+<p align="center">
+  <img src="public/pidtuna-wordmark.svg" alt="PIDTuna" width="320" />
+</p>
+
+<p align="center">
+  <img src="public/tunawaves.svg" alt="" width="520" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/Manwe-777/pid-tuna/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/Manwe-777/pid-tuna/ci.yml?branch=main&label=CI&style=flat-square"></a>
+  <a href="https://github.com/Manwe-777/pid-tuna/actions/workflows/pages.yml"><img alt="Pages deploy" src="https://img.shields.io/github/actions/workflow/status/Manwe-777/pid-tuna/pages.yml?branch=main&label=pages&style=flat-square"></a>
+  <a href="https://manwe-777.github.io/pid-tuna/"><img alt="Live demo" src="https://img.shields.io/badge/demo-manwe--777.github.io%2Fpid--tuna-6666ff?style=flat-square"></a>
+  <a href="https://github.com/Manwe-777/pid-tuna/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Manwe-777/pid-tuna?include_prereleases&style=flat-square&label=release"></a>
+  <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/github/license/Manwe-777/pid-tuna?style=flat-square"></a>
+  <a href="https://tauri.app/"><img alt="Built with Tauri 2" src="https://img.shields.io/badge/desktop-Tauri%202-24c8db?style=flat-square&logo=tauri&logoColor=white"></a>
+</p>
+
+<p align="center">
+  <strong>👉 <a href="https://manwe-777.github.io/pid-tuna/">Try it now at manwe-777.github.io/pid-tuna</a></strong> — no install, drop a <code>.bbl</code>/<code>.bfl</code> in and go.
+</p>
 
 Browser-based Betaflight blackbox log analysis: time-series and spectra, PID terms, step response (via Wiener deconvolution), latency, GPS track, scorecard, and related diagnostics — load `.bbl`/`.bfl` directly with no heavyweight desktop stack.
 
@@ -6,9 +25,9 @@ Browser-based Betaflight blackbox log analysis: time-series and spectra, PID ter
 
 The app ships in three forms:
 
-- **Web app** — `pnpm dev` for development, or any static host for production. Works fully client-side, no server.
-- **Installable PWA** — once you've loaded the production build (`pnpm preview` or any deploy), Chrome / Edge / Safari offer "Install" and the app then runs offline.
-- **Desktop app (Tauri 2)** — native installers for macOS (universal), Windows, and Linux.
+- **Hosted web app** — live at **<https://manwe-777.github.io/pid-tuna/>**. Auto-deploys on every push to `main`.
+- **Installable PWA** — load the hosted site (or any production build) and Chrome / Edge / Safari offer **Install** — the app then runs as a standalone window with full offline support.
+- **Desktop app (Tauri 2)** — native installers for macOS (universal), Windows, and Linux. Attached to each tagged GitHub Release.
 
 ---
 
@@ -118,6 +137,30 @@ If you just want a one-off build (e.g., to test the workflow before tagging, or 
 3. Click **Run workflow** → pick a branch → **Run workflow**.
 
 When the run finishes, scroll to the **Artifacts** section at the bottom of the run summary. Three artifacts (`pidtuna-macos-latest`, `pidtuna-ubuntu-22.04`, `pidtuna-windows-latest`) are downloadable for 14 days. No release is created.
+
+### Versioning
+
+PIDTuna follows [semver](https://semver.org/): `MAJOR.MINOR.PATCH`.
+
+- **MAJOR** — breaking changes (log-parsing schema, scorecard rubric, public DSP function signatures).
+- **MINOR** — new features, additive changes to the UI / DSP.
+- **PATCH** — bug fixes, internal cleanups, docs.
+
+The version is stored in `package.json` and consumed in three places automatically:
+
+- the web UI (visible in the top-right of the global header — click it to jump to that version's release notes)
+- the Tauri bundle (`tauri.conf.json` reads `../package.json`)
+- the Rust crate (`src-tauri/Cargo.toml` — bump in sync; CI verifies on tag pushes)
+
+To cut a release, bump all three and tag:
+
+```bash
+# package.json: 0.1.0 -> 0.2.0
+# src-tauri/Cargo.toml: 0.1.0 -> 0.2.0
+git commit -am "chore: release v0.2.0"
+git tag v0.2.0
+git push && git push --tags
+```
 
 ### Code signing (optional)
 

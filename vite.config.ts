@@ -1,6 +1,14 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// Read the app version from package.json at build time so the UI always
+// reflects the source of truth (Tauri reads the same field via tauri.conf.json).
+const pkg = JSON.parse(
+  readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf-8'),
+) as { version: string };
 
 // Tauri runs the desktop wrapper against this dev server (see src-tauri/tauri.conf.json
 // `devUrl`). Tauri's webview is picky about ports and HMR — keep the port pinned and
@@ -17,6 +25,9 @@ const basePath = env?.VITE_BASE_PATH ?? '/';
 
 export default defineConfig({
   base: basePath,
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [
     react(),
     VitePWA({
