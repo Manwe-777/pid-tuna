@@ -1,0 +1,66 @@
+name: Deploy to GitHub Pages
+
+# Builds the web app and publishes dist/ to GitHub Pages on every push to main.
+# Repo settings must have "Pages → Source" set to "GitHub Actions" for this to
+# take effect — the older "Deploy from a branch" mode won't run this workflow.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One Pages deploy at a time. Don't cancel an in-flight publish — let it finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+# GitHub Pages requires these tokens for the deploy-pages action.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build for Pages
+        # Project-page deploys live at <user>.github.io/<repo>/, so all asset
+        # URLs in the built bundle must be prefixed with /pid-tuna/.
+        env:
+          VITE_BASE_PATH: /pid-tuna/
+        run: pnpm build
+
+      # SPA fallback: copy index.html to 404.html so direct hits to any path
+      # below /pid-tuna/ still load the app rather than GitHub's default 404.
+      - name: SPA fallback
+        run: cp dist/index.html dist/404.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

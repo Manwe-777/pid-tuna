@@ -140,3 +140,24 @@ A separate `.github/workflows/ci.yml` runs on every push and pull request:
 - `pnpm build` (web bundle, validates PWA + Rollup)
 
 This is the cheap, fast check (Ubuntu only, no Rust compile). The heavier `build.yml` only runs on tag pushes and manual dispatches because compiling Rust across three OSes is slow and expensive.
+
+---
+
+## Hosted web build (GitHub Pages)
+
+Every push to `main` deploys the production web bundle to **<https://manwe-777.github.io/pid-tuna/>** via `.github/workflows/pages.yml`. The workflow builds with `VITE_BASE_PATH=/pid-tuna/` so all asset paths and the PWA manifest's `scope` / `start_url` correctly point under the project-page subpath.
+
+### One-time repo setup
+
+In the GitHub UI: **Settings → Pages → Source → "GitHub Actions"** (not "Deploy from a branch"). The workflow handles building and publishing — no `gh-pages` branch or `dist/` commits required.
+
+### Local preview at the same base path
+
+```bash
+VITE_BASE_PATH=/pid-tuna/ pnpm build
+pnpm preview
+```
+
+…then open `http://localhost:4173/pid-tuna/`. Useful when debugging the Pages build before pushing.
+
+The Pages build also copies `dist/index.html` to `dist/404.html` so direct hits to any subpath load the app rather than GitHub's default 404 page — relevant if you ever add client-side routing.

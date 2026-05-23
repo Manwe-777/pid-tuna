@@ -6,11 +6,17 @@ import { VitePWA } from 'vite-plugin-pwa';
 // `devUrl`). Tauri's webview is picky about ports and HMR — keep the port pinned and
 // don't HMR-watch the Rust source tree.
 // Set by `tauri dev` on mobile builds; undefined on desktop dev.
-const host =
-  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
-    ?.TAURI_DEV_HOST;
+const env = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+  .process?.env;
+const host = env?.TAURI_DEV_HOST;
+// Base public path. Default "/" works for local dev, `pnpm preview`, and the
+// Tauri wrappers (Tauri serves files from the protocol root). Override via
+// VITE_BASE_PATH for project-page deploys, e.g. "/pid-tuna/" for GitHub Pages
+// at Manwe-777.github.io/pid-tuna/.
+const basePath = env?.VITE_BASE_PATH ?? '/';
 
 export default defineConfig({
+  base: basePath,
   plugins: [
     react(),
     VitePWA({
