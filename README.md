@@ -1,14 +1,142 @@
 # PIDTuna
 
-Browser-based Betaflight blackbox log analysis: time-series and spectra, PID terms, step response, latency, GPS track, and related diagnostics — load `.bbl`/`.bfl` directly with no heavyweight desktop stack.
+Browser-based Betaflight blackbox log analysis: time-series and spectra, PID terms, step response (via Wiener deconvolution), latency, GPS track, scorecard, and related diagnostics — load `.bbl`/`.bfl` directly with no heavyweight desktop stack.
 
 **PIDTuna** aims to be a simpler, lighter, easier-to-run alternative to [PIDToolbox](https://github.com/bw1129/PIDtoolbox), while staying **free and open source** under [GNU AGPL v3](LICENSE).
 
-## Quick start
+The app ships in three forms:
+
+- **Web app** — `pnpm dev` for development, or any static host for production. Works fully client-side, no server.
+- **Installable PWA** — once you've loaded the production build (`pnpm preview` or any deploy), Chrome / Edge / Safari offer "Install" and the app then runs offline.
+- **Desktop app (Tauri 2)** — native installers for macOS (universal), Windows, and Linux.
+
+---
+
+## Quick start (web dev)
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Then open the URL Vite prints (default port `5173`). Use **build** / **preview** for production bundles (`pnpm build`, `pnpm preview`).
+Vite serves the app at `http://localhost:5173/` by default. The page reloads on file changes.
+
+Other web commands:
+
+```bash
+pnpm build       # type-check, then produce dist/ with PWA assets (service worker, manifest, icons)
+pnpm preview     # serve the production build locally on :4173
+pnpm typecheck   # TypeScript only, no build output
+```
+
+---
+
+## Desktop app (Tauri 2)
+
+The desktop wrapper packages the same web app into a native window. Prerequisites:
+
+- **Rust toolchain** — install from <https://rustup.rs/> (one-time, persistent across projects).
+- **Platform deps** — macOS needs Xcode Command Line Tools (`xcode-select --install`); Windows needs the C++ Build Tools or Visual Studio with the "Desktop development with C++" workload; Linux needs `libwebkit2gtk-4.0-dev`, `libappindicator3-dev`, `librsvg2-dev`, `patchelf`, and the usual `build-essential`.
+
+### Run the desktop app in dev mode
+
+```bash
+pnpm tauri:dev
+```
+
+Cargo compiles the Rust side (first run ~2 min; subsequent runs are seconds), Vite starts on `:5173`, then the Tauri window opens pointing at it. Hot reload from the web side works through the window — edit a `.tsx` / `.css` file and it reflects live. To open DevTools inside the Tauri window, press **⌘+⌥+I** on macOS or **Ctrl+Shift+I** on Linux/Windows.
+
+### Build a production installer locally
+
+```bash
+pnpm tauri:build
+```
+
+This runs `pnpm build` first (which produces `dist/`), then compiles Rust in `--release` mode and bundles installers. Outputs land in `src-tauri/target/release/bundle/`:
+
+| Platform | Default output(s) |
+|---|---|
+| macOS  | `bundle/dmg/PIDTuna_<version>_<arch>.dmg`, `bundle/macos/PIDTuna.app` |
+| Windows | `bundle/msi/PIDTuna_<version>_x64_en-US.msi`, `bundle/nsis/PIDTuna_<version>_x64-setup.exe` |
+| Linux  | `bundle/appimage/PIDTuna_<version>_amd64.AppImage`, `bundle/deb/...deb`, `bundle/rpm/...rpm` |
+
+For a macOS universal (Intel + Apple Silicon) binary:
+
+```bash
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+pnpm tauri:build -- --target universal-apple-darwin
+```
+
+The first `tauri:build` is slow (Cargo compiles ~600 crates). Subsequent rebuilds are incremental and take seconds. The Rust target directory (`src-tauri/target/`) is cached locally and ignored by git.
+
+> **Cross-compilation note:** Tauri doesn't reliably cross-compile installers. To build for all three OSes from one machine, use the GitHub Actions matrix (below) instead of doing it locally.
+
+### Testing changes
+
+PIDTuna has no automated test suite right now. To verify a change locally:
+
+1. **`pnpm typecheck`** — catches TypeScript errors.
+2. **`pnpm build`** — catches bundler errors (production-mode rollup).
+3. **`pnpm dev`** — load a `.bbl`/`.bfl` log via the sidebar's *Add log* button and exercise the relevant tab.
+4. **`pnpm tauri:dev`** — same end-to-end exercise, but inside the desktop window (catches WKWebView-specific issues that the browser misses, like the file-picker dialog path).
+
+If you've touched DSP code under `src/dsp/`, a sanity check on the algorithm output is usually fastest with a small Node harness (see how `test-wiener.mjs` is used during DSP iteration — write one, run it on `LOG00004.BFL`, delete it).
+
+---
+
+## Releases (automated cross-platform installers)
+
+The repo ships with a GitHub Actions workflow that builds **macOS-universal**, **Windows x64**, and **Linux x64** installers in parallel and attaches them to a GitHub Release.
+
+### Cutting a release
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+That tag push triggers `.github/workflows/build.yml` and, once the three platform builds finish (~10–15 min cold, faster with cache), you'll find a **draft GitHub Release** named `PIDTuna v0.1.0` on the Releases page with all the platform installers already uploaded:
+
+```
+PIDTuna_0.1.0_universal.dmg          (macOS universal)
+PIDTuna_0.1.0_universal.app.tar.gz   (macOS universal, .app bundle for auto-updater)
+PIDTuna_0.1.0_x64_en-US.msi          (Windows installer)
+PIDTuna_0.1.0_x64-setup.exe          (Windows NSIS installer)
+PIDTuna_0.1.0_amd64.AppImage         (Linux portable)
+PIDTuna_0.1.0_amd64.deb              (Debian / Ubuntu)
+PIDTuna-0.1.0-1.x86_64.rpm           (Fedora / RHEL)
+```
+
+Edit the release notes in the GitHub UI, then click **Publish release** to make it visible. Versions come from `package.json`, which `tauri.conf.json` reads via `"version": "../package.json"` — bump the version there before tagging.
+
+### Building installers without making a release
+
+If you just want a one-off build (e.g., to test the workflow before tagging, or to share a beta build privately), use the manual trigger:
+
+1. Go to the **Actions** tab on GitHub.
+2. Open **"Build desktop bundles"** in the left sidebar.
+3. Click **Run workflow** → pick a branch → **Run workflow**.
+
+When the run finishes, scroll to the **Artifacts** section at the bottom of the run summary. Three artifacts (`pidtuna-macos-latest`, `pidtuna-ubuntu-22.04`, `pidtuna-windows-latest`) are downloadable for 14 days. No release is created.
+
+### Code signing (optional)
+
+The released installers are **unsigned by default**. macOS will show "PIDTuna can't be opened because it is from an unidentified developer" — users right-click → **Open** to bypass. Windows shows a SmartScreen warning users can dismiss.
+
+To sign releases, add these repo secrets and `tauri-action` will pick them up automatically:
+
+- **macOS**: `APPLE_CERTIFICATE` (base64-encoded .p12), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (app-specific password), `APPLE_TEAM_ID`.
+- **Windows**: `WINDOWS_CERTIFICATE` (base64-encoded .pfx), `WINDOWS_CERTIFICATE_PASSWORD`.
+
+No code signing certificate? Skip this — the unsigned flow works, just with the OS warnings above.
+
+---
+
+## Continuous integration
+
+A separate `.github/workflows/ci.yml` runs on every push and pull request:
+
+- `pnpm typecheck`
+- `pnpm build` (web bundle, validates PWA + Rollup)
+
+This is the cheap, fast check (Ubuntu only, no Rust compile). The heavier `build.yml` only runs on tag pushes and manual dispatches because compiling Rust across three OSes is slow and expensive.
