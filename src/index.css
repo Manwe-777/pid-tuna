@@ -23,7 +23,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  height: 64px;
+  height: 80px;
   padding: 0 1.5rem;
   background: #0d1117;
   border-bottom: 1px solid #1d242e;
@@ -37,7 +37,7 @@ body {
 }
 
 .app-header__logo {
-  /* Wordmark is 2.8:1 aspect; 40px tall → ~112px wide, prominent in the 64px header. */
+  /* Wordmark is 2.8:1 aspect; 40px tall → ~112px wide, prominent in the 80px header. */
   display: block;
   height: 40px;
   width: auto;
@@ -70,23 +70,26 @@ body {
 /* FC → MSC button lives in the header, with a popover panel for the flow. */
 .fc-msc {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
 }
 
 .fc-msc__button {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.45rem;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
   background: #141b29;
   color: #c8ced9;
   border: 1px solid #2a3247;
-  border-radius: 6px;
-  padding: 0.35rem 0.7rem 0.35rem 0.55rem;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: border-color 120ms ease, color 120ms ease, background 120ms ease, opacity 120ms ease;
+  padding: 0;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease,
+    box-shadow 120ms ease, opacity 120ms ease;
 }
 
 .fc-msc__button:hover:not(:disabled) {
@@ -94,6 +97,11 @@ body {
   color: #ffffff;
   border-color: #6666ff;
   background: #1a2237;
+  box-shadow: 0 0 0 4px rgba(102, 102, 255, 0.12);
+}
+
+.fc-msc__button:active:not(:disabled) {
+  background: #232b46;
 }
 
 .fc-msc__button:disabled {
@@ -111,6 +119,22 @@ body {
 
 .fc-msc__button:hover:not(:disabled) .fc-msc__icon {
   color: #6666ff;
+}
+
+.fc-msc__label {
+  /* Small uppercase caption below the round button. */
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a93a3;
+  user-select: none;
+  pointer-events: none; /* click only the circle */
+  transition: color 120ms ease;
+}
+
+.fc-msc:hover .fc-msc__label {
+  color: #c8ced9;
 }
 
 .fc-msc__panel {
@@ -201,7 +225,7 @@ body {
 .app-shell {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
-  min-height: calc(100vh - 64px);
+  min-height: calc(100vh - 80px);
 }
 
 @media (max-width: 900px) {
@@ -220,10 +244,10 @@ body {
   border-right: 1px solid #1d242e;
   display: flex;
   flex-direction: column;
-  /* Stick under the global header (64px). */
+  /* Stick under the global header (80px). */
   position: sticky;
-  top: 64px;
-  height: calc(100vh - 64px);
+  top: 80px;
+  height: calc(100vh - 80px);
   overflow: hidden;
 }
 

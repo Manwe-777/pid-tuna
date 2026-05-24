@@ -129,11 +129,12 @@ export function FcMscButton() {
         className="fc-msc__button"
         onClick={onButtonClick}
         disabled={buttonDisabled}
+        aria-label="Connect FC over USB"
         title="Connect to a Betaflight FC over USB and switch it to mass-storage mode"
       >
         <UsbIcon className="fc-msc__icon" />
-        <span>Connect FC</span>
       </button>
+      <span className="fc-msc__label">Connect FC</span>
 
       {panelOpen && (
         <div className="fc-msc__panel" ref={panelRef}>
@@ -329,8 +330,8 @@ function UsbIcon({ className }: { className?: string }) {
     <svg
       className={className}
       viewBox="0 0 24 24"
-      width="16"
-      height="16"
+      width="22"
+      height="22"
       fill="none"
       aria-hidden="true"
     >
