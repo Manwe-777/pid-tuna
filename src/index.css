@@ -43,13 +43,20 @@ body {
   width: auto;
 }
 
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .app-header__version {
-  font-size: 0.78rem;
+  /* Smaller / lower-key now that the FC connect button sits next to it. */
+  font-size: 0.7rem;
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
   font-variant-numeric: tabular-nums;
-  color: #8a93a3;
+  color: #6c7383;
   text-decoration: none;
-  padding: 0.18rem 0.55rem;
+  padding: 0.12rem 0.45rem;
   border: 1px solid #1d242e;
   border-radius: 999px;
   transition: color 100ms ease, border-color 100ms ease;
@@ -58,6 +65,119 @@ body {
 .app-header__version:hover {
   color: #c8ced9;
   border-color: #2a323e;
+}
+
+/* FC → MSC button lives in the header, with a popover panel for the flow. */
+.fc-msc {
+  position: relative;
+}
+
+.fc-msc__button {
+  background: linear-gradient(180deg, #2c3754 0%, #1f2940 100%);
+  color: #e6e6e6;
+  border: 1px solid #3d4868;
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 100ms ease, background 100ms ease, opacity 100ms ease;
+}
+
+.fc-msc__button:hover:not(:disabled) {
+  border-color: #6666ff;
+  background: linear-gradient(180deg, #34406b 0%, #243154 100%);
+}
+
+.fc-msc__button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.fc-msc__panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 24rem;
+  max-width: calc(100vw - 2rem);
+  background: #11161f;
+  border: 1px solid #2a323e;
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+}
+
+.fc-msc__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #1d242e;
+}
+
+.fc-msc__panel-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #e6e6e6;
+}
+
+.fc-msc__close {
+  background: transparent;
+  border: none;
+  color: #8a93a3;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0 0.25rem;
+}
+
+.fc-msc__close:hover {
+  color: #e6e6e6;
+}
+
+.fc-msc__panel-body {
+  padding: 0.85rem 1rem 1rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.fc-msc__panel-body p {
+  margin: 0 0 0.6rem;
+}
+
+.fc-msc__steps {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.fc-msc__steps li {
+  margin: 0.25rem 0;
+}
+
+.fc-msc__actions {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fc-msc__primary {
+  background: #5060d0;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 0.45rem 1rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fc-msc__primary:hover {
+  background: #6070e8;
+}
+
+.fc-msc__error {
+  color: #ff8a8a;
 }
 
 .app-shell {
