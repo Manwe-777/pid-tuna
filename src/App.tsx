@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { GpsMapTrack } from './components/GpsMapTrack';
 import { LogDotPlot, type LogDot } from './components/LogDotPlot';
+import { FcMscButton } from './components/FcMscButton';
 import { Sidebar } from './components/Sidebar';
 import { SpectrogramPlot } from './components/SpectrogramPlot';
 import { ThrottleSpecPlot } from './components/ThrottleSpecPlot';
@@ -148,15 +149,18 @@ export function App() {
           alt="PIDTuna"
           className="app-header__logo"
         />
-        <a
-          className="app-header__version"
-          href={`https://github.com/Manwe-777/pid-tuna/releases/tag/v${__APP_VERSION__}`}
-          target="_blank"
-          rel="noreferrer noopener"
-          title="View this version's release notes"
-        >
-          v{__APP_VERSION__}
-        </a>
+        <div className="app-header__right">
+          <FcMscButton />
+          <a
+            className="app-header__version"
+            href={`https://github.com/Manwe-777/pid-tuna/releases/tag/v${__APP_VERSION__}`}
+            target="_blank"
+            rel="noreferrer noopener"
+            title="View this version's release notes"
+          >
+            v{__APP_VERSION__}
+          </a>
+        </div>
       </header>
       <div className="app-shell">
         <Sidebar
