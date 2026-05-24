@@ -73,26 +73,44 @@ body {
 }
 
 .fc-msc__button {
-  background: linear-gradient(180deg, #2c3754 0%, #1f2940 100%);
-  color: #e6e6e6;
-  border: 1px solid #3d4868;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #141b29;
+  color: #c8ced9;
+  border: 1px solid #2a3247;
   border-radius: 6px;
-  padding: 0.4rem 0.8rem;
+  padding: 0.35rem 0.7rem 0.35rem 0.55rem;
   font-family: inherit;
   font-size: 0.82rem;
   font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: border-color 100ms ease, background 100ms ease, opacity 100ms ease;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease, opacity 120ms ease;
 }
 
 .fc-msc__button:hover:not(:disabled) {
+  /* Brand indigo accent — picks up the wordmark / waves color. */
+  color: #ffffff;
   border-color: #6666ff;
-  background: linear-gradient(180deg, #34406b 0%, #243154 100%);
+  background: #1a2237;
 }
 
 .fc-msc__button:disabled {
   opacity: 0.55;
   cursor: progress;
+}
+
+.fc-msc__icon {
+  /* Inherits color via `currentColor`; faintly desaturated until hover so the
+     icon doesn't compete with the label, then jumps to brand indigo. */
+  color: #8a93a3;
+  flex-shrink: 0;
+  transition: color 120ms ease;
+}
+
+.fc-msc__button:hover:not(:disabled) .fc-msc__icon {
+  color: #6666ff;
 }
 
 .fc-msc__panel {

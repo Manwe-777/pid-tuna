@@ -131,7 +131,8 @@ export function FcMscButton() {
         disabled={buttonDisabled}
         title="Connect to a Betaflight FC over USB and switch it to mass-storage mode"
       >
-        Get logs from FC
+        <UsbIcon className="fc-msc__icon" />
+        <span>Connect FC</span>
       </button>
 
       {panelOpen && (
@@ -316,4 +317,33 @@ function PanelLayout({
 function isMacLike(): boolean {
   if (typeof navigator === 'undefined') return false;
   return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+}
+
+/**
+ * The official USB trident symbol — vertical cable with a circle at the top,
+ * a small triangle on one arm (data), and a square on the other (power).
+ * Recognizable at small sizes and themes via `currentColor`.
+ */
+function UsbIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* main vertical shaft */}
+      <path d="M12 21 L12 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      {/* cable-end circle */}
+      <circle cx="12" cy="3.5" r="1.6" fill="currentColor" />
+      {/* left arm + filled triangle */}
+      <path d="M12 13.5 L8.2 9.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M6.4 10.6 L8.2 7.6 L9.6 10.4 Z" fill="currentColor" />
+      {/* right arm + filled square */}
+      <path d="M12 11 L15.6 14.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <rect x="14.7" y="13.4" width="2.5" height="2.5" fill="currentColor" />
+    </svg>
+  );
 }
