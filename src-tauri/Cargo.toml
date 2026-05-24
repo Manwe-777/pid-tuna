@@ -25,3 +25,7 @@ tauri = { version = "2.11.2", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+# Cross-platform USB serial enumeration / I/O. Used by the FC → MSC command
+# set; not exposed as a general-purpose serial bridge — only the specific
+# operations we need (list / open / write / read / close) are surfaced.
+serialport = "4"

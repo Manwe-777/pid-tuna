@@ -23,7 +23,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  height: 64px;
+  height: 80px;
   padding: 0 1.5rem;
   background: #0d1117;
   border-bottom: 1px solid #1d242e;
@@ -37,19 +37,26 @@ body {
 }
 
 .app-header__logo {
-  /* Wordmark is 2.8:1 aspect; 40px tall → ~112px wide, prominent in the 64px header. */
+  /* Wordmark is 2.8:1 aspect; 40px tall → ~112px wide, prominent in the 80px header. */
   display: block;
   height: 40px;
   width: auto;
 }
 
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .app-header__version {
-  font-size: 0.78rem;
+  /* Smaller / lower-key now that the FC connect button sits next to it. */
+  font-size: 0.7rem;
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
   font-variant-numeric: tabular-nums;
-  color: #8a93a3;
+  color: #6c7383;
   text-decoration: none;
-  padding: 0.18rem 0.55rem;
+  padding: 0.12rem 0.45rem;
   border: 1px solid #1d242e;
   border-radius: 999px;
   transition: color 100ms ease, border-color 100ms ease;
@@ -60,10 +67,165 @@ body {
   border-color: #2a323e;
 }
 
+/* FC → MSC button lives in the header, with a popover panel for the flow. */
+.fc-msc {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.fc-msc__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #141b29;
+  color: #c8ced9;
+  border: 1px solid #2a3247;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease,
+    box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.fc-msc__button:hover:not(:disabled) {
+  /* Brand indigo accent — picks up the wordmark / waves color. */
+  color: #ffffff;
+  border-color: #6666ff;
+  background: #1a2237;
+  box-shadow: 0 0 0 4px rgba(102, 102, 255, 0.12);
+}
+
+.fc-msc__button:active:not(:disabled) {
+  background: #232b46;
+}
+
+.fc-msc__button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.fc-msc__icon {
+  /* Inherits color via `currentColor`; faintly desaturated until hover so the
+     icon doesn't compete with the label, then jumps to brand indigo. */
+  color: #8a93a3;
+  flex-shrink: 0;
+  transition: color 120ms ease;
+}
+
+.fc-msc__button:hover:not(:disabled) .fc-msc__icon {
+  color: #6666ff;
+}
+
+.fc-msc__label {
+  /* Small uppercase caption below the round button. */
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a93a3;
+  user-select: none;
+  pointer-events: none; /* click only the circle */
+  transition: color 120ms ease;
+}
+
+.fc-msc:hover .fc-msc__label {
+  color: #c8ced9;
+}
+
+.fc-msc__panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 24rem;
+  max-width: calc(100vw - 2rem);
+  background: #11161f;
+  border: 1px solid #2a323e;
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+}
+
+.fc-msc__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #1d242e;
+}
+
+.fc-msc__panel-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #e6e6e6;
+}
+
+.fc-msc__close {
+  background: transparent;
+  border: none;
+  color: #8a93a3;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0 0.25rem;
+}
+
+.fc-msc__close:hover {
+  color: #e6e6e6;
+}
+
+.fc-msc__panel-body {
+  padding: 0.85rem 1rem 1rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.fc-msc__panel-body p {
+  margin: 0 0 0.6rem;
+}
+
+.fc-msc__steps {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.fc-msc__steps li {
+  margin: 0.25rem 0;
+}
+
+.fc-msc__actions {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fc-msc__primary {
+  background: #5060d0;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 0.45rem 1rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fc-msc__primary:hover {
+  background: #6070e8;
+}
+
+.fc-msc__error {
+  color: #ff8a8a;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
-  min-height: calc(100vh - 64px);
+  min-height: calc(100vh - 80px);
 }
 
 @media (max-width: 900px) {
@@ -82,10 +244,10 @@ body {
   border-right: 1px solid #1d242e;
   display: flex;
   flex-direction: column;
-  /* Stick under the global header (64px). */
+  /* Stick under the global header (80px). */
   position: sticky;
-  top: 64px;
-  height: calc(100vh - 64px);
+  top: 80px;
+  height: calc(100vh - 80px);
   overflow: hidden;
 }
 
