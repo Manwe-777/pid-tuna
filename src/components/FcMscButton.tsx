@@ -53,16 +53,42 @@ export function FcMscButton() {
       setPhase({ kind: 'sending', portLabel: port.label });
 
       await port.write(buildMscRequest());
-      const response = await port.read(8, 2000);
-      const parsed = parseMscResponse(response);
 
-      if (!parsed.storageReady) {
-        setPhase({
-          kind: 'error',
-          message:
-            'FC accepted the request but reports no storage device — check that the SD card is inserted and Blackbox is set to write to it (or to onboard flash).',
-        });
-        return;
+      // The FC accepts the command and reboots into MSC fast enough that the
+      // USB device often vanishes mid-response. Three outcomes from `read`:
+      //
+      //   1. full valid response, storageReady=true  → unambiguous success
+      //   2. full valid response, storageReady=false → FC said "no storage,
+      //      didn't reboot" — show the user a real error
+      //   3. read timeout / partial / "device lost"   → FC almost certainly
+      //      rebooted into MSC mid-response. Treat as success — the alternative
+      //      (showing an error for a flow that actually worked) was worse.
+      //
+      // We only ever surface a failure if the FC explicitly told us "no".
+      let response: Uint8Array | null = null;
+      try {
+        response = await port.read(8, 1500);
+      } catch (readErr) {
+        console.warn(
+          '[MSC] no response after MSC request (FC likely rebooted before ACK):',
+          readErr,
+        );
+      }
+      if (response) {
+        try {
+          const parsed = parseMscResponse(response);
+          if (!parsed.storageReady) {
+            setPhase({
+              kind: 'error',
+              message:
+                'FC reports no storage device — check that the SD card is inserted and Blackbox is set to write to it (or to onboard flash).',
+            });
+            return;
+          }
+        } catch (parseErr) {
+          // Garbage / truncated response — FC was already mid-reboot.
+          console.warn('[MSC] could not parse response (truncated reboot):', parseErr);
+        }
       }
       setPhase({ kind: 'success', portLabel: port.label });
     } catch (err) {
