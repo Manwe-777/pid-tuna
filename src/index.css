@@ -871,6 +871,17 @@ code {
   font-family: inherit;
 }
 
+.spec-db-input {
+  width: 4rem;
+  background: var(--surface-inset);
+  color: var(--text);
+  border: 1px solid var(--border-2);
+  border-radius: 4px;
+  padding: 0.25rem 0.4rem;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
 .plot-section > .plot + .plot {
   margin-top: 0.75rem;
 }

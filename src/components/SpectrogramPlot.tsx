@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SpectrogramResult } from '../dsp/spectrogram';
+import { paintCrosshair, type PlotGeom } from './plotCrosshair';
 
 export interface SpectrogramPlotProps {
   data: SpectrogramResult;
   title?: string;
   /** dB floor used to scale the colormap. Default -80. */
   floorDb?: number;
+  /** dB ceiling used to scale the colormap. Default 0 (peak). PSD mode passes an
+   *  absolute value so the colour scale reads real power. */
+  ceilDb?: number;
   /** Optional max frequency to show (Hz). Defaults to Nyquist. */
   maxFreqHz?: number;
   /** Time (s) at which to draw a vertical cursor line over the heatmap. */
@@ -20,6 +24,7 @@ export function SpectrogramPlot({
   data,
   title,
   floorDb = DEFAULT_FLOOR_DB,
+  ceilDb = 0,
   maxFreqHz,
   cursorTime,
   height = 280,
@@ -27,6 +32,8 @@ export function SpectrogramPlot({
   const containerRef = useRef<HTMLDivElement>(null);
   const heatCanvasRef = useRef<HTMLCanvasElement>(null);
   const cursorCanvasRef = useRef<HTMLCanvasElement>(null);
+  const crosshairRef = useRef<HTMLCanvasElement>(null);
+  const geomRef = useRef<PlotGeom | null>(null);
   const [width, setWidth] = useState(800);
 
   useEffect(() => {
@@ -41,17 +48,22 @@ export function SpectrogramPlot({
   // Heatmap + axes: only re-render when the data or scale options change.
   useEffect(() => {
     const canvas = heatCanvasRef.current;
+    const crosshair = crosshairRef.current;
     if (!canvas) return;
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.max(1, width * dpr);
-    canvas.height = Math.max(1, height * dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    for (const c of [canvas, crosshair]) {
+      if (!c) continue;
+      c.width = Math.max(1, width * dpr);
+      c.height = Math.max(1, height * dpr);
+      c.style.width = `${width}px`;
+      c.style.height = `${height}px`;
+    }
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw(ctx, width, height, data, { title, floorDb, maxFreqHz });
-  }, [data, width, height, title, floorDb, maxFreqHz]);
+    geomRef.current = draw(ctx, width, height, data, { title, floorDb, ceilDb, maxFreqHz });
+    if (crosshair) paintCrosshair(crosshair, width, height, geomRef.current, null, null);
+  }, [data, width, height, title, floorDb, ceilDb, maxFreqHz]);
 
   // Cursor: separate canvas overlay so slider scrubbing doesn't redraw the heatmap.
   useEffect(() => {
@@ -82,13 +94,29 @@ export function SpectrogramPlot({
     ctx.stroke();
   }, [cursorTime, data, width, height]);
 
+  const onMove = (e: React.MouseEvent) => {
+    const crosshair = crosshairRef.current;
+    const canvas = heatCanvasRef.current;
+    if (!crosshair || !canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    paintCrosshair(crosshair, width, height, geomRef.current, e.clientX - rect.left, e.clientY - rect.top);
+  };
+  const onLeave = () => {
+    const crosshair = crosshairRef.current;
+    if (crosshair) paintCrosshair(crosshair, width, height, geomRef.current, null, null);
+  };
+
   return (
-    <div className="plot" ref={containerRef} style={{ position: 'relative' }}>
-      <canvas ref={heatCanvasRef} />
-      <canvas
-        ref={cursorCanvasRef}
-        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
-      />
+    <div
+      className="plot"
+      ref={containerRef}
+      style={{ position: 'relative', padding: 0 }}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+    >
+      <canvas ref={heatCanvasRef} style={{ display: 'block' }} />
+      <canvas ref={cursorCanvasRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+      <canvas ref={crosshairRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
     </div>
   );
 }
@@ -96,6 +124,7 @@ export function SpectrogramPlot({
 interface DrawOpts {
   title?: string;
   floorDb: number;
+  ceilDb: number;
   maxFreqHz?: number;
 }
 
@@ -105,7 +134,7 @@ function draw(
   height: number,
   data: SpectrogramResult,
   opts: DrawOpts,
-) {
+): PlotGeom | null {
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#0f141b';
   ctx.fillRect(0, 0, width, height);
@@ -120,7 +149,7 @@ function draw(
 
   const plotW = width - MARGIN.left - MARGIN.right;
   const plotH = height - MARGIN.top - MARGIN.bottom;
-  if (plotW <= 1 || plotH <= 1) return;
+  if (plotW <= 1 || plotH <= 1) return null;
 
   if (data.timeBins === 0 || data.freqBins === 0) {
     ctx.fillStyle = '#8a93a3';
@@ -128,7 +157,7 @@ function draw(
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('Not enough samples for spectrogram', MARGIN.left + plotW / 2, MARGIN.top + plotH / 2);
-    return;
+    return null;
   }
 
   // Determine displayed frequency range (cropped to maxFreqHz if specified).
@@ -143,7 +172,7 @@ function draw(
 
   // Build ImageData at native bin resolution (timeBins x visibleFreqBins).
   const img = new ImageData(data.timeBins, visibleFreqBins);
-  const range = -opts.floorDb;
+  const range = opts.ceilDb - opts.floorDb || 1;
   const px = img.data;
   for (let t = 0; t < data.timeBins; t++) {
     const rowBase = t * data.freqBins;
@@ -190,7 +219,21 @@ function draw(
     12,
     plotH,
     opts.floorDb,
+    opts.ceilDb,
   );
+
+  return {
+    left: MARGIN.left,
+    top: MARGIN.top,
+    plotW,
+    plotH,
+    xMin: tMin,
+    xMax: tMax,
+    yMin: 0,
+    yMax: displayedFMax,
+    fmtX: (v) => `${v.toFixed(2)} s`,
+    fmtY: (v) => `${v.toFixed(0)} Hz`,
+  };
 }
 
 function drawXAxis(
@@ -263,6 +306,7 @@ function drawColorbar(
   w: number,
   h: number,
   floorDb: number,
+  ceilDb: number,
 ) {
   const grad = ctx.createLinearGradient(0, y, 0, y + h);
   const stops = 8;
@@ -280,11 +324,10 @@ function drawColorbar(
   ctx.font = '11px -apple-system, system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  const labels = [0, -20, -40, -60, floorDb];
-  for (const db of labels) {
-    if (db < floorDb) continue;
-    const py = y + (-db / -floorDb) * h;
-    ctx.fillText(`${db} dB`, x + w + 4, py);
+  const range = ceilDb - floorDb || 1;
+  for (const db of niceTicks(floorDb, ceilDb, 5)) {
+    const py = y + (1 - (db - floorDb) / range) * h;
+    ctx.fillText(`${Math.round(db)} dB`, x + w + 4, py);
   }
 }
 
