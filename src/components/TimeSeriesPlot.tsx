@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import uPlot, { type AlignedData, type Options } from 'uplot';
 import 'uplot/dist/uPlot.min.css';
+import { PLOT_COLORS, useTheme } from '../theme';
 
 export interface PlotSeries {
   label: string;
@@ -82,6 +83,7 @@ export function TimeSeriesPlot({
 }: TimeSeriesPlotProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
+  const theme = useTheme();
 
   // Refs hold the latest prop values so callbacks (dblclick, Y-autofit, draw
   // hook) see them without forcing a plot rebuild when they change.
@@ -105,6 +107,7 @@ export function TimeSeriesPlot({
   const segmentStrokeDigest = fingerprintSegmentStrokeColors(segmentStrokeColors);
 
   // Structural signature — recreate the plot only when this string changes.
+  // `theme` is included so axis / grid chrome recolors when the user toggles.
   const structureKey = [
     title ?? '',
     yLabel ?? '',
@@ -112,6 +115,7 @@ export function TimeSeriesPlot({
     showLegend ? 'L' : '',
     height,
     series.length,
+    theme,
     segmentStrokeDigest,
     ...series.map((s) => `${s.label}|${s.stroke}|${s.width ?? 1}|${(s.dash ?? []).join(',')}`),
   ].join('§');
@@ -121,6 +125,7 @@ export function TimeSeriesPlot({
     if (!container) return;
 
     const data: AlignedData = [time, ...series.map((s) => s.values)] as AlignedData;
+    const chrome = PLOT_COLORS[theme];
 
     const hasSegmentStrokes =
       segmentStrokeColors != null &&
@@ -136,11 +141,11 @@ export function TimeSeriesPlot({
         // y left as uPlot default (auto)
       },
       axes: [
-        { stroke: '#9aa4b2', grid: { stroke: '#1d242e' }, ticks: { stroke: '#1d242e' } },
+        { stroke: chrome.axis, grid: { stroke: chrome.grid }, ticks: { stroke: chrome.grid } },
         {
-          stroke: '#9aa4b2',
-          grid: { stroke: '#1d242e' },
-          ticks: { stroke: '#1d242e' },
+          stroke: chrome.axis,
+          grid: { stroke: chrome.grid },
+          ticks: { stroke: chrome.grid },
           label: yLabel,
           labelSize: yLabel ? 28 : 0,
         },
