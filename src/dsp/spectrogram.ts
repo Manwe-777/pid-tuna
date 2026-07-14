@@ -6,13 +6,25 @@ interface FFTImpl {
   realTransform(out: number[] | Float64Array, data: ArrayLike<number>): void;
 }
 
+/**
+ * `magnitude` — amplitude spectrum in dB relative to the spectrogram's peak
+ * (0 dB = loudest bin, values flow downward). This is the classic view.
+ * `psd` — one-sided power-spectral-density in *absolute* dB (10·log10 of
+ * power/Hz), not peak-normalized, so the noise floor can be read directly and
+ * compared across logs / throttle / RPM. Callers should colour PSD heatmaps
+ * against the data's own min/max rather than assuming a 0 dB ceiling.
+ */
+export type SpectralValueMode = 'magnitude' | 'psd';
+
 export interface SpectrogramOptions {
   /** FFT window length (samples). Must be a power of two. Default 512. */
   windowSize?: number;
   /** Hop length (samples). Default = windowSize / 2 (50% overlap). */
   hopSize?: number;
-  /** Floor magnitudes below this in dB (relative to peak). Default -80. */
+  /** Floor magnitudes below this in dB. Default -80 (magnitude) / -200 (psd). */
   floorDb?: number;
+  /** Amplitude (default) vs power-spectral-density scaling. */
+  mode?: SpectralValueMode;
 }
 
 export interface SpectrogramResult {
@@ -20,12 +32,15 @@ export interface SpectrogramResult {
   times: Float32Array;
   /** Frequency of each bin, in Hz. Length = freqBins. */
   frequencies: Float32Array;
-  /** Magnitude in dB, indexed [t * freqBins + f]. Floored to floorDb. */
+  /** Values in dB, indexed [t * freqBins + f]. Magnitude mode: relative to peak,
+   *  floored to floorDb. PSD mode: absolute dB. */
   magnitudes: Float32Array;
   freqBins: number;
   timeBins: number;
-  /** Peak magnitude (in linear units) used as the 0 dB reference. */
+  /** Peak magnitude (in linear units) used as the 0 dB reference (magnitude mode). */
   peakMagnitude: number;
+  /** Which scaling was used. */
+  valueMode: SpectralValueMode;
 }
 
 const DEFAULT_WINDOW_SIZE = 512;
@@ -43,7 +58,8 @@ export function computeSpectrogram(
 ): SpectrogramResult {
   const windowSize = options.windowSize ?? DEFAULT_WINDOW_SIZE;
   const hopSize = options.hopSize ?? windowSize >> 1;
-  const floorDb = options.floorDb ?? DEFAULT_FLOOR_DB;
+  const mode: SpectralValueMode = options.mode ?? 'magnitude';
+  const floorDb = options.floorDb ?? (mode === 'psd' ? -200 : DEFAULT_FLOOR_DB);
 
   if ((windowSize & (windowSize - 1)) !== 0 || windowSize < 2) {
     throw new Error(`Spectrogram windowSize must be a power of two >= 2 (got ${windowSize})`);
@@ -61,6 +77,7 @@ export function computeSpectrogram(
       freqBins,
       timeBins: 0,
       peakMagnitude: 0,
+      valueMode: mode,
     };
   }
 
@@ -91,9 +108,27 @@ export function computeSpectrogram(
     }
   }
 
-  // Convert to dB relative to peak; floor at floorDb.
   const magnitudes = new Float32Array(linear.length);
-  if (peak > 0) {
+  if (mode === 'psd') {
+    // Absolute one-sided PSD in dB (power per Hz). `linear` holds raw |X|, so
+    // power = |X|^2 scaled by the window energy, doubled off the DC/Nyquist bins.
+    const hann = makeHannWindow(windowSize);
+    let winSqSum = 0;
+    for (let i = 0; i < windowSize; i++) winSqSum += hann[i]! * hann[i]!;
+    const psdNorm = 1 / (sampleRateHz * winSqSum);
+    const nyquistBin = windowSize >> 1;
+    for (let t = 0; t < timeBins; t++) {
+      const rowBase = t * freqBins;
+      for (let f = 0; f < freqBins; f++) {
+        const mag = linear[rowBase + f]!;
+        const factor = f === 0 || f === nyquistBin ? 1 : 2;
+        const power = mag * mag * psdNorm * factor;
+        const db = power > 0 ? 10 * Math.log10(power) : floorDb;
+        magnitudes[rowBase + f] = db < floorDb ? floorDb : db;
+      }
+    }
+  } else if (peak > 0) {
+    // Magnitude in dB relative to peak; floor at floorDb.
     const invPeak = 1 / peak;
     for (let i = 0; i < linear.length; i++) {
       const norm = linear[i]! * invPeak;
@@ -120,6 +155,7 @@ export function computeSpectrogram(
     freqBins,
     timeBins,
     peakMagnitude: peak,
+    valueMode: mode,
   };
 }
 
@@ -136,65 +172,89 @@ function nextPow2(n: number): number {
 }
 
 /* ------------------------------------------------------------------ */
-/* 2D throttle-vs-frequency spectrogram (port of PTthrSpec.m).         */
+/* 2D binned (domain-vs-frequency) spectrogram (port of PTthrSpec.m,   */
+/* generalized so the X domain can be throttle % or motor RPM).        */
 /* ------------------------------------------------------------------ */
 
-export interface ThrottleSpectrogramOptions {
-  /** Number of throttle bins (default 100 — 1% resolution). */
-  throttleBins?: number;
-  /** Segment length in seconds (default 0.2 ms ≈ 200 ms, matches PTthrSpec). */
+export interface BinnedSpectrogramOptions {
+  /** Number of domain (X) bins (default 100). */
+  bins?: number;
+  /** Lower domain edge (default 0). */
+  domainMin?: number;
+  /** Upper domain edge (default 100 — suits throttle %). */
+  domainMax?: number;
+  /** Domain smoothing window in domain units: segments within ±window of a bin
+   *  center contribute to that bin. Default = 6% of the domain span. */
+  domainWindow?: number;
+  /** Segment length in seconds (default 0.2 s, matches PTthrSpec). */
   segmentSec?: number;
-  /** Throttle-domain smoothing window (% units, default 6). Segments within this
-   *  range of each throttle bin contribute to that bin's spectrum. */
-  throttleWindow?: number;
-  /** dB floor (default -80). */
+  /** dB floor (default -80 magnitude / -200 psd). */
   floorDb?: number;
-  /** Throttle box-filter row count (default 8). */
+  /** Domain-axis box-filter row count (default 8). */
   smoothRows?: number;
   /** Frequency box-filter col count; default derived from segment length. */
   smoothCols?: number;
+  /** Amplitude (default) vs power-spectral-density scaling. */
+  mode?: SpectralValueMode;
 }
 
-export interface ThrottleSpectrogramResult {
-  /** Throttle bin centers (%). Length = throttleBins. */
-  throttle: Float32Array;
+export interface BinnedSpectrogramResult {
+  /** Domain (X) bin centers. Length = xBins. */
+  xCenters: Float32Array;
   /** Frequency bin centers (Hz). Length = freqBins. */
   frequencies: Float32Array;
-  /** dB magnitudes, indexed [throttleBin * freqBins + freqBin]. Floored to floorDb. */
+  /** dB values, indexed [xBin * freqBins + freqBin]. Magnitude: relative to
+   *  peak, floored. PSD: absolute dB. */
   magnitudes: Float32Array;
   freqBins: number;
-  throttleBins: number;
+  xBins: number;
+  valueMode: SpectralValueMode;
 }
 
-export function computeThrottleSpectrogram(
+/**
+ * Bin the gyro spectrum by an arbitrary per-sample domain signal (throttle % or
+ * motor RPM): split into short segments, FFT each, and average the spectra of
+ * all segments whose mean domain value falls near each X bin. Magnitude mode
+ * yields dB-relative-to-peak (the classic noise heatmap); PSD mode yields
+ * absolute dB so noise-floor levels are directly readable.
+ */
+export function computeBinnedSpectrogram(
   signal: Float32Array,
-  throttle: Float32Array,
+  domain: Float32Array,
   sampleRateHz: number,
-  options: ThrottleSpectrogramOptions = {},
-): ThrottleSpectrogramResult {
-  const throttleBins = options.throttleBins ?? 100;
+  options: BinnedSpectrogramOptions = {},
+): BinnedSpectrogramResult {
+  const xBins = options.bins ?? 100;
+  const domainMin = options.domainMin ?? 0;
+  const domainMax = options.domainMax ?? 100;
   const segmentSec = options.segmentSec ?? 0.2;
-  const wnd = options.throttleWindow ?? 6;
-  const floorDb = options.floorDb ?? -80;
   const smoothRows = options.smoothRows ?? 8;
+  const mode: SpectralValueMode = options.mode ?? 'magnitude';
+  const floorDb = options.floorDb ?? (mode === 'psd' ? -200 : -80);
+
+  const span = domainMax - domainMin;
+  const step = span > 0 ? span / xBins : 1;
+  const wnd = options.domainWindow ?? Math.max(step, span * 0.06);
 
   const segmentLen = Math.max(8, Math.round(sampleRateHz * segmentSec));
   const fftSize = nextPow2(segmentLen);
   const freqBins = (fftSize >> 1) + 1;
   const smoothCols = options.smoothCols ?? Math.max(1, Math.round(segmentLen / 100));
 
-  const empty = (): ThrottleSpectrogramResult => ({
-    throttle: new Float32Array(0),
+  const empty = (): BinnedSpectrogramResult => ({
+    xCenters: new Float32Array(0),
     frequencies: new Float32Array(0),
     magnitudes: new Float32Array(0),
     freqBins,
-    throttleBins,
+    xBins,
+    valueMode: mode,
   });
 
   if (
     signal.length < segmentLen ||
-    throttle.length !== signal.length ||
-    sampleRateHz <= 0
+    domain.length !== signal.length ||
+    sampleRateHz <= 0 ||
+    span <= 0
   ) {
     return empty();
   }
@@ -202,25 +262,30 @@ export function computeThrottleSpectrogram(
   const numSegments = Math.floor(signal.length / segmentLen) - 1;
   if (numSegments <= 0) return empty();
 
-  // Mean throttle per segment.
+  // Mean domain value per segment.
   const segMeans = new Float32Array(numSegments);
   for (let i = 0; i < numSegments; i++) {
     let sum = 0;
     const s = i * segmentLen;
-    for (let k = 0; k < segmentLen; k++) sum += throttle[s + k]!;
+    for (let k = 0; k < segmentLen; k++) sum += domain[s + k]!;
     segMeans[i] = sum / segmentLen;
   }
 
   const hann = makeHannWindow(segmentLen);
+  let winSqSum = 0;
+  for (let i = 0; i < segmentLen; i++) winSqSum += hann[i]! * hann[i]!;
+  const psdNorm = 1 / (sampleRateHz * winSqSum);
+  const nyquistBin = fftSize >> 1;
+
   const fft = new (FFT as unknown as new (size: number) => FFTImpl)(fftSize);
   const fftOut = new Float64Array(fftSize * 2);
   const buf = new Float64Array(fftSize);
 
-  const linear = new Float32Array(throttleBins * freqBins);
+  const linear = new Float32Array(xBins * freqBins);
   const accum = new Float64Array(freqBins);
 
-  for (let tbin = 0; tbin < throttleBins; tbin++) {
-    const center = tbin + 1; // 1..throttleBins, matches MATLAB's `i` (1..100)
+  for (let xbin = 0; xbin < xBins; xbin++) {
+    const center = domainMin + (xbin + 0.5) * step;
     const lo = center - wnd;
     const hi = center + wnd;
 
@@ -238,50 +303,62 @@ export function computeThrottleSpectrogram(
       }
       fft.realTransform(fftOut, buf);
 
-      const norm = 1 / segmentLen;
-      for (let f = 0; f < freqBins; f++) {
-        const re = fftOut[2 * f]!;
-        const im = fftOut[2 * f + 1]!;
-        accum[f] = accum[f]! + Math.sqrt(re * re + im * im) * norm;
+      if (mode === 'psd') {
+        for (let f = 0; f < freqBins; f++) {
+          const re = fftOut[2 * f]!;
+          const im = fftOut[2 * f + 1]!;
+          const factor = f === 0 || f === nyquistBin ? 1 : 2;
+          accum[f] = accum[f]! + (re * re + im * im) * psdNorm * factor;
+        }
+      } else {
+        const norm = 1 / segmentLen;
+        for (let f = 0; f < freqBins; f++) {
+          const re = fftOut[2 * f]!;
+          const im = fftOut[2 * f + 1]!;
+          accum[f] = accum[f]! + Math.sqrt(re * re + im * im) * norm;
+        }
       }
       n++;
     }
 
     if (n > 0) {
       const inv = 1 / n;
-      const base = tbin * freqBins;
+      const base = xbin * freqBins;
       for (let f = 0; f < freqBins; f++) linear[base + f] = accum[f]! * inv;
     }
   }
 
-  const smoothed = boxFilter2D(linear, throttleBins, freqBins, smoothRows, smoothCols);
+  const smoothed = boxFilter2D(linear, xBins, freqBins, smoothRows, smoothCols);
 
-  // Convert to dB relative to overall peak.
-  let peak = 0;
-  for (let i = 0; i < smoothed.length; i++) if (smoothed[i]! > peak) peak = smoothed[i]!;
   const magnitudes = new Float32Array(smoothed.length);
-  if (peak > 0) {
-    const invPeak = 1 / peak;
+  if (mode === 'psd') {
+    // Absolute PSD in dB (mean power/Hz per bin).
     for (let i = 0; i < smoothed.length; i++) {
-      const v = smoothed[i]! * invPeak;
-      const db = v > 0 ? 20 * Math.log10(v) : floorDb;
+      const p = smoothed[i]!;
+      const db = p > 0 ? 10 * Math.log10(p) : floorDb;
       magnitudes[i] = db < floorDb ? floorDb : db;
+    }
+  } else {
+    // Magnitude in dB relative to overall peak.
+    let peak = 0;
+    for (let i = 0; i < smoothed.length; i++) if (smoothed[i]! > peak) peak = smoothed[i]!;
+    if (peak > 0) {
+      const invPeak = 1 / peak;
+      for (let i = 0; i < smoothed.length; i++) {
+        const v = smoothed[i]! * invPeak;
+        const db = v > 0 ? 20 * Math.log10(v) : floorDb;
+        magnitudes[i] = db < floorDb ? floorDb : db;
+      }
     }
   }
 
-  const throttleCenters = new Float32Array(throttleBins);
-  for (let i = 0; i < throttleBins; i++) throttleCenters[i] = i + 1;
+  const xCenters = new Float32Array(xBins);
+  for (let i = 0; i < xBins; i++) xCenters[i] = domainMin + (i + 0.5) * step;
   const frequencies = new Float32Array(freqBins);
   const fStep = sampleRateHz / fftSize;
   for (let i = 0; i < freqBins; i++) frequencies[i] = i * fStep;
 
-  return {
-    throttle: throttleCenters,
-    frequencies,
-    magnitudes,
-    freqBins,
-    throttleBins,
-  };
+  return { xCenters, frequencies, magnitudes, freqBins, xBins, valueMode: mode };
 }
 
 /* ------------------------------------------------------------------ */

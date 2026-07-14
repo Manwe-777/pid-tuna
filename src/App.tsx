@@ -5,7 +5,8 @@ import { FcMscButton } from './components/FcMscButton';
 import { ThemeToggle } from './components/ThemeToggle';
 import { Sidebar } from './components/Sidebar';
 import { SpectrogramPlot } from './components/SpectrogramPlot';
-import { ThrottleSpecPlot } from './components/ThrottleSpecPlot';
+import { BinnedSpecPlot } from './components/BinnedSpecPlot';
+import { DensityPlot } from './components/DensityPlot';
 import { TimeRangeControl } from './components/TimeRangeControl';
 import { TimeSeriesPlot, type PlotBand, type PlotMarker, type PlotSeries } from './components/TimeSeriesPlot';
 import { TuneSettingsPanel } from './components/TuneSettingsPanel';
@@ -48,11 +49,14 @@ import { analyzeSaturation, type SaturationAnalysis } from './dsp/saturation';
 import { buildMergedScorecard, buildScorecard, type ScoreEntry, type ScoreStatus } from './dsp/scorecard';
 import {
   combinePsds,
+  computeBinnedSpectrogram,
   computePsd,
   computeSpectrogram,
-  computeThrottleSpectrogram,
   type PsdResult,
+  type SpectralValueMode,
 } from './dsp/spectrogram';
+import { computeErrorSetpointDensity } from './dsp/errorSetpoint';
+import { motorRpmSeries, rpmAxisMax, throttlePercentSeries } from './dsp/spectralDomains';
 import { combineStepResponses, computeStepResponse } from './dsp/stepResponse';
 import { parseLog } from './parser';
 import { sliceLog, type TimeRangeSec } from './sliceLog';
@@ -200,8 +204,7 @@ type TabId =
   | 'latency'
   | 'spectrum'
   | 'filterSim'
-  | 'spectrogram'
-  | 'throttle'
+  | 'spectral'
   | 'settings'
   | 'diff';
 
@@ -219,8 +222,7 @@ const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: 'latency', label: 'Latency' },
   { id: 'spectrum', label: 'Full spectrum' },
   { id: 'filterSim', label: 'Filter sim' },
-  { id: 'spectrogram', label: 'Spectrogram' },
-  { id: 'throttle', label: 'Throttle spec' },
+  { id: 'spectral', label: 'Spectral' },
   { id: 'settings', label: 'Tune settings' },
   { id: 'diff', label: 'Diff' },
 ];
@@ -243,7 +245,6 @@ function tabHasData(tabId: TabId, entries: LogEntry[]): boolean {
       return some((p) => p.iTerm);
     case 'motors':
     case 'balance':
-    case 'throttle':
       return some((p) => p.motors);
     case 'battery':
       return some((p) => p.vbat || p.amperage);
@@ -363,8 +364,7 @@ function Analyses({ enabled }: { enabled: Array<{ slot: LogSlot; log: ParsedLog 
           {tab === 'latency' && <LatencySection entries={entries} />}
           {tab === 'spectrum' && <FullSpectrumSection entries={entries} />}
           {tab === 'filterSim' && <FilterSimulatorSection entries={entries} />}
-          {tab === 'spectrogram' && <SpectrogramSection entries={entries} />}
-          {tab === 'throttle' && <ThrottleSpectrogramSection entries={entries} />}
+          {tab === 'spectral' && <SpectralSection entries={entries} />}
           {tab === 'settings' && <TuneSettingsPanel entries={entries} />}
           {tab === 'diff' && <DiffSummarySection entries={entries} />}
         </div>
@@ -1228,66 +1228,6 @@ function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
           );
         })
       )}
-    </section>
-  );
-}
-
-function ThrottleSpectrogramSection({ entries }: { entries: LogEntry[] }) {
-  const log = entries[0]!.log;
-  const others = entries.slice(1);
-  const nyquist = Math.floor(log.setup.sampleRateHz / 2);
-  const [maxFreq, setMaxFreq] = useState<number>(Math.min(500, nyquist));
-
-  const specs = useMemo(() => {
-    const rate = log.setup.sampleRateHz;
-    // Convert rcCommand[3] (1000-2000 PWM in Betaflight, similar in INAV)
-    // into 0-100% throttle. Clamp defensively.
-    const raw = log.rcCommand[3];
-    const throttlePct = new Float32Array(raw.length);
-    for (let i = 0; i < raw.length; i++) {
-      const p = (raw[i]! - 1000) / 10;
-      throttlePct[i] = p < 0 ? 0 : p > 100 ? 100 : p;
-    }
-    return AXIS_NAMES.map((name, i) => ({
-      name,
-      data: computeThrottleSpectrogram(log.gyroFilt[i]!, throttlePct, rate),
-    }));
-  }, [log]);
-
-  return (
-    <section className="plot-section">
-      <h2>
-        Throttle spectrogram
-        {others.length > 0 && ` — showing ${shortName(entries[0]!.slot)} only`}
-      </h2>
-      <p className="muted">
-        Gyro frequency content vs. throttle level — vertical streaks reveal RPM-correlated motor noise.
-        {others.length > 0 && " Heatmaps can't overlay — showing first enabled log only."}
-      </p>
-      <div className="controls">
-        <label>
-          Max freq:
-          <select
-            value={maxFreq}
-            onChange={(e) => setMaxFreq(Number.parseInt(e.target.value, 10))}
-          >
-            {[250, 500, 750, 1000, nyquist]
-              .filter((v, i, a) => v <= nyquist && a.indexOf(v) === i)
-              .map((v) => (
-                <option key={v} value={v}>{v} Hz</option>
-              ))}
-          </select>
-        </label>
-      </div>
-      {specs.map((s, i) => (
-        <div key={s.name} className="axis-plot">
-          <h3 className="axis-plot__title">
-            <span className="axis-plot__dot" style={{ background: AXIS_COLORS[i] }} />
-            {s.name}
-          </h3>
-          <ThrottleSpecPlot data={s.data} maxFreqHz={maxFreq} />
-        </div>
-      ))}
     </section>
   );
 }
@@ -2926,51 +2866,210 @@ function FilteringSection({ entries }: { entries: LogEntry[] }) {
 type SpectrogramSource = 'filt' | 'raw';
 const WINDOW_SIZES = [256, 512, 1024, 2048] as const;
 
-function SpectrogramSection({ entries }: { entries: LogEntry[] }) {
+/**
+ * Unified spectral-analysis tab: one heatmap view with a mode selector, à la
+ * Blackbox Explorer. Frequency modes colour by amplitude (dB rel peak); PSD
+ * modes colour by absolute power density (shared dB scale across axes). The
+ * X domain is time, throttle %, or motor RPM depending on the mode; "Error vs
+ * Setpoint" swaps the whole thing for a tracking-error density map.
+ */
+type SpectralMode =
+  | 'freqTime'
+  | 'freqThrottle'
+  | 'freqRpm'
+  | 'psdTime'
+  | 'psdThrottle'
+  | 'psdRpm'
+  | 'errorSetpoint';
+
+const SPECTRAL_MODES: ReadonlyArray<{ id: SpectralMode; label: string }> = [
+  { id: 'freqTime', label: 'Frequency' },
+  { id: 'freqThrottle', label: 'Freq vs Throttle' },
+  { id: 'freqRpm', label: 'Freq vs RPM' },
+  { id: 'psdTime', label: 'Power Spectral Density' },
+  { id: 'psdThrottle', label: 'PSD vs Throttle' },
+  { id: 'psdRpm', label: 'PSD vs RPM' },
+  { id: 'errorSetpoint', label: 'Error vs Setpoint' },
+];
+
+const isTimeMode = (m: SpectralMode) => m === 'freqTime' || m === 'psdTime';
+const isRpmMode = (m: SpectralMode) => m === 'freqRpm' || m === 'psdRpm';
+const isThrottleMode = (m: SpectralMode) => m === 'freqThrottle' || m === 'psdThrottle';
+const isBinnedMode = (m: SpectralMode) => isRpmMode(m) || isThrottleMode(m);
+const modeValueKind = (m: SpectralMode): SpectralValueMode =>
+  m.startsWith('psd') ? 'psd' : 'magnitude';
+
+/** Robust [floor, ceil] dB window for the PSD colour scale, shared across axes
+ *  so their heatmaps are directly comparable. */
+function robustPsdRange(arrays: Float32Array[]): { floor: number; ceil: number } {
+  const vals: number[] = [];
+  for (const a of arrays) {
+    for (let i = 0; i < a.length; i++) {
+      const v = a[i]!;
+      if (Number.isFinite(v) && v > -199) vals.push(v);
+    }
+  }
+  if (vals.length === 0) return { floor: -80, ceil: 0 };
+  vals.sort((x, y) => x - y);
+  const pct = (p: number) => vals[Math.min(vals.length - 1, Math.floor(vals.length * p))]!;
+  const ceil = Math.ceil(pct(0.995) / 5) * 5;
+  const floor = Math.floor((ceil - 60) / 5) * 5;
+  return { floor, ceil };
+}
+
+const HEATMAP_HEIGHT = 460;
+const ALL_AXIS = 3;
+
+/**
+ * Combine per-axis spectra into one "All axes" view. Each input is an absolute
+ * PSD-in-dB array; we sum them in the linear power domain (the physically
+ * correct way to add uncorrelated noise), then emit either amplitude-relative
+ * dB (magnitude mode) or absolute dB (psd mode).
+ */
+function combineAxisPowerDb(psdDbArrays: Float32Array[], outMode: SpectralValueMode): Float32Array {
+  const n = psdDbArrays[0]?.length ?? 0;
+  const acc = new Float64Array(n);
+  for (const arr of psdDbArrays) {
+    for (let i = 0; i < n; i++) acc[i] = acc[i]! + Math.pow(10, arr[i]! / 10);
+  }
+  const out = new Float32Array(n);
+  if (outMode === 'psd') {
+    const floor = -200;
+    for (let i = 0; i < n; i++) {
+      const d = acc[i]! > 0 ? 10 * Math.log10(acc[i]!) : floor;
+      out[i] = d < floor ? floor : d;
+    }
+  } else {
+    let peak = 0;
+    for (let i = 0; i < n; i++) if (acc[i]! > peak) peak = acc[i]!;
+    const floor = -80;
+    const inv = peak > 0 ? 1 / peak : 0;
+    for (let i = 0; i < n; i++) {
+      const r = acc[i]! * inv;
+      const d = r > 0 ? 10 * Math.log10(r) : floor;
+      out[i] = d < floor ? floor : d;
+    }
+  }
+  return out;
+}
+
+function concat3(a: Float32Array, b: Float32Array, c: Float32Array): Float32Array {
+  const out = new Float32Array(a.length + b.length + c.length);
+  out.set(a, 0);
+  out.set(b, a.length);
+  out.set(c, a.length + b.length);
+  return out;
+}
+
+function SpectralSection({ entries }: { entries: LogEntry[] }) {
   const log = entries[0]!.log;
   const others = entries.slice(1);
+  const rate = log.setup.sampleRateHz;
+  const nyquist = Math.floor(rate / 2);
+
+  const [mode, setMode] = useState<SpectralMode>('freqTime');
+  const [axis, setAxis] = useState<number>(ALL_AXIS); // 0=Roll, 1=Pitch, 2=Yaw, 3=All
   const [windowSize, setWindowSize] = useState<number>(512);
   const [source, setSource] = useState<SpectrogramSource>('filt');
-  const [maxFreq, setMaxFreq] = useState<number>(500);
+  const [maxFreq, setMaxFreq] = useState<number>(Math.min(500, nyquist));
   const [cursorTime, setCursorTime] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playSpeed, setPlaySpeed] = useState<number>(1);
+  // User overrides for the PSD colour scale (null = auto from data).
+  const [dbMin, setDbMin] = useState<number | null>(null);
+  const [dbMax, setDbMax] = useState<number | null>(null);
 
-  // Detect whether raw gyro is actually populated (not all zeros).
   const hasRaw = useMemo(() => log.gyroRaw.some((arr) => arr.some((v) => v !== 0)), [log]);
   const effectiveSource: SpectrogramSource = source === 'raw' && !hasRaw ? 'filt' : source;
+  const valueMode = modeValueKind(mode);
+  const timeMode = isTimeMode(mode);
+  const binnedMode = isBinnedMode(mode);
+  const rpmMode = isRpmMode(mode);
 
-  const specs = useMemo(() => {
-    const rate = log.setup.sampleRateHz;
-    // Fixed-time hop (≈ 15 ms) instead of a fixed window-fraction. Keeps the time
-    // resolution uniform across window sizes: large windows naturally use more
-    // overlap and look just as smooth as small windows.
+  // Motor-frequency (Hz) domain for RPM modes — null when no eRPM telemetry.
+  const rpm = useMemo(() => motorRpmSeries(log), [log]);
+  const rpmHz = useMemo(() => {
+    if (!rpm) return null;
+    const a = new Float32Array(rpm.length);
+    for (let i = 0; i < rpm.length; i++) a[i] = rpm[i]! / 60;
+    return a;
+  }, [rpm]);
+  const rpmHzMax = useMemo(() => (rpm ? rpmAxisMax(rpm) / 60 : 0), [rpm]);
+
+  const signalFor = (i: number) =>
+    effectiveSource === 'raw' ? log.gyroRaw[i]! : log.gyroFilt[i]!;
+  const isAll = axis === ALL_AXIS;
+  const axisName = isAll ? 'All axes' : AXIS_NAMES[axis]!;
+  const axisColor = isAll ? '#aab4c4' : AXIS_COLORS[axis]!;
+
+  // Time-domain spectrogram for the selected axis (Frequency / PSD).
+  const spec = useMemo(() => {
+    if (!timeMode) return null;
     const hopSize = Math.max(1, Math.min(windowSize >> 1, Math.round(rate * 0.015)));
-    return AXIS_NAMES.map((name, i) => {
-      const signal = effectiveSource === 'raw' ? log.gyroRaw[i]! : log.gyroFilt[i]!;
-      return { name, data: computeSpectrogram(signal, rate, { windowSize, hopSize }) };
+    if (isAll) {
+      const per = [0, 1, 2].map((i) =>
+        computeSpectrogram(signalFor(i), rate, { windowSize, hopSize, mode: 'psd' }));
+      return { ...per[0]!, magnitudes: combineAxisPowerDb(per.map((p) => p.magnitudes), valueMode), valueMode };
+    }
+    return computeSpectrogram(signalFor(axis), rate, { windowSize, hopSize, mode: valueMode });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [log, windowSize, effectiveSource, mode, axis]);
+
+  // Binned spectrogram (vs Throttle / vs RPM) for the selected axis.
+  const binned = useMemo(() => {
+    if (!binnedMode) return null;
+    const domainSig = rpmMode ? rpmHz : throttlePercentSeries(log);
+    if (!domainSig) return null; // RPM mode without telemetry
+    const domainMax = rpmMode ? rpmHzMax : 100;
+    if (isAll) {
+      const per = [0, 1, 2].map((i) =>
+        computeBinnedSpectrogram(signalFor(i), domainSig, rate, { mode: 'psd', domainMin: 0, domainMax }));
+      return { ...per[0]!, magnitudes: combineAxisPowerDb(per.map((p) => p.magnitudes), valueMode), valueMode };
+    }
+    return computeBinnedSpectrogram(signalFor(axis), domainSig, rate, {
+      mode: valueMode,
+      domainMin: 0,
+      domainMax,
     });
-  }, [log, windowSize, effectiveSource]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [log, mode, axis, effectiveSource, rpmHz, rpmHzMax]);
 
-  const nyquist = Math.floor(log.setup.sampleRateHz / 2);
+  // Error-vs-setpoint density (always filtered gyro). "All" pools every axis'
+  // samples into one density over a shared range.
+  const density = useMemo(() => {
+    if (mode !== 'errorSetpoint') return null;
+    if (isAll) {
+      const sp = concat3(log.setpoint[0]!, log.setpoint[1]!, log.setpoint[2]!);
+      const gy = concat3(log.gyroFilt[0]!, log.gyroFilt[1]!, log.gyroFilt[2]!);
+      return computeErrorSetpointDensity(sp, gy);
+    }
+    return computeErrorSetpointDensity(log.setpoint[axis]!, log.gyroFilt[axis]!);
+  }, [log, mode, axis]);
 
-  // Common time axis across the three spectrograms (all axes use the same hop).
-  const times = specs[0]?.data.times ?? null;
+  // PSD colour scale: robust auto default, overridable by the dB inputs.
+  const autoRange = useMemo(() => {
+    if (valueMode !== 'psd') return { floor: -80, ceil: 0 };
+    const arrs: Float32Array[] = [];
+    if (spec) arrs.push(spec.magnitudes);
+    if (binned) arrs.push(binned.magnitudes);
+    return robustPsdRange(arrs);
+  }, [valueMode, spec, binned]);
+  const floorDb = valueMode === 'psd' ? (dbMin ?? autoRange.floor) : -80;
+  const ceilDb = valueMode === 'psd' ? (dbMax ?? autoRange.ceil) : 0;
+
+  // --- time cursor / playback (time modes only) -------------------------
+  const times = spec?.times ?? null;
   const tMin = times && times.length > 0 ? times[0]! : 0;
   const tMax = times && times.length > 0 ? times[times.length - 1]! : 0;
 
-  // Default the cursor to the middle of the window once data lands.
   useEffect(() => {
-    if (cursorTime == null && times && times.length > 0) {
-      setCursorTime((tMin + tMax) / 2);
-    }
+    if (cursorTime == null && times && times.length > 0) setCursorTime((tMin + tMax) / 2);
     if (cursorTime != null && (cursorTime < tMin || cursorTime > tMax)) {
       setCursorTime(times && times.length > 0 ? (tMin + tMax) / 2 : null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tMin, tMax]);
 
-  // Playback loop: advance cursor in wall-clock seconds × playSpeed.
   useEffect(() => {
     if (!isPlaying || cursorTime == null || tMax <= tMin) return;
     let raf = 0;
@@ -2980,7 +3079,7 @@ function SpectrogramSection({ entries }: { entries: LogEntry[] }) {
       const dt = (now - lastWall) / 1000;
       lastWall = now;
       t += dt * playSpeed;
-      if (t > tMax) t = tMin + (t - tMax); // wrap around
+      if (t > tMax) t = tMin + (t - tMax);
       setCursorTime(t);
       raf = requestAnimationFrame(tick);
     };
@@ -2989,10 +3088,8 @@ function SpectrogramSection({ entries }: { entries: LogEntry[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying, playSpeed, tMin, tMax]);
 
-  // Slice per axis at the chosen cursor time.
-  const slices = useMemo(() => {
-    if (cursorTime == null || !times || times.length === 0) return null;
-    // Find the closest time-bin (times is monotonic ascending).
+  const slice = useMemo(() => {
+    if (!spec || cursorTime == null || !times || times.length === 0) return null;
     let lo = 0;
     let hi = times.length - 1;
     while (lo < hi) {
@@ -3001,36 +3098,26 @@ function SpectrogramSection({ entries }: { entries: LogEntry[] }) {
       else hi = mid;
     }
     let bin = lo;
-    if (bin > 0 && Math.abs(times[bin - 1]! - cursorTime) < Math.abs(times[bin]! - cursorTime)) {
-      bin = bin - 1;
-    }
-    return specs.map((s, i) => {
-      const fb = s.data.freqBins;
-      const slice = new Float32Array(fb);
-      const base = bin * fb;
-      for (let f = 0; f < fb; f++) slice[f] = s.data.magnitudes[base + f]!;
-      return {
-        name: s.name,
-        freq: s.data.frequencies,
-        slice,
-        color: AXIS_COLORS[i]!,
-      };
-    });
-  }, [specs, cursorTime, times]);
+    if (bin > 0 && Math.abs(times[bin - 1]! - cursorTime) < Math.abs(times[bin]! - cursorTime)) bin -= 1;
+    const fb = spec.freqBins;
+    const values = new Float32Array(fb);
+    const base = bin * fb;
+    for (let f = 0; f < fb; f++) values[f] = spec.magnitudes[base + f]!;
+    return { freq: spec.frequencies, values };
+  }, [spec, cursorTime, times]);
 
-  const sliceSeries: PlotSeries[] = slices
-    ? slices.map((s) => ({
-        label: s.name,
-        values: s.slice,
-        stroke: s.color,
-        width: 1.4,
-      }))
+  const sliceSeries: PlotSeries[] = slice
+    ? [{ label: axisName, values: slice.values, stroke: axisColor, width: 1.4 }]
     : [];
+
+  const modeLabel = SPECTRAL_MODES.find((m) => m.id === mode)?.label ?? '';
+  const rpmUnavailable = rpmMode && !rpm;
+  const showDbControls = valueMode === 'psd' && !rpmUnavailable;
 
   return (
     <section className="plot-section">
       <h2>
-        Gyro spectrogram ({effectiveSource === 'raw' ? 'raw' : 'filtered'})
+        Spectral · {modeLabel}
         {others.length > 0 && ` — showing ${shortName(entries[0]!.slot)} only`}
       </h2>
       {others.length > 0 && (
@@ -3038,51 +3125,116 @@ function SpectrogramSection({ entries }: { entries: LogEntry[] }) {
           Heatmaps can&apos;t overlay — showing the first enabled log only. Use the Full spectrum tab to compare logs as line traces.
         </p>
       )}
+
       <div className="controls">
         <label>
-          Signal:
-          <select
-            value={effectiveSource}
-            onChange={(e) => setSource(e.target.value as SpectrogramSource)}
-            disabled={!hasRaw}
-          >
-            <option value="filt">Filtered (gyroADC)</option>
-            <option value="raw" disabled={!hasRaw}>Raw (gyroUnfilt){hasRaw ? '' : ' — not logged'}</option>
-          </select>
-        </label>
-        <label>
-          Window:
-          <select
-            value={windowSize}
-            onChange={(e) => setWindowSize(Number.parseInt(e.target.value, 10))}
-          >
-            {WINDOW_SIZES.map((n) => (
-              <option key={n} value={n}>{n}</option>
+          Mode:
+          <select value={mode} onChange={(e) => setMode(e.target.value as SpectralMode)}>
+            {SPECTRAL_MODES.map((m) => (
+              <option key={m.id} value={m.id}>{m.label}</option>
             ))}
           </select>
         </label>
         <label>
-          Max freq:
-          <select
-            value={maxFreq}
-            onChange={(e) => setMaxFreq(Number.parseInt(e.target.value, 10))}
-          >
-            {[250, 500, 750, 1000, nyquist]
-              .filter((v, i, a) => v <= nyquist && a.indexOf(v) === i)
-              .map((v) => (
-                <option key={v} value={v}>{v} Hz</option>
-              ))}
+          Axis:
+          <select value={axis} onChange={(e) => setAxis(Number.parseInt(e.target.value, 10))}>
+            <option value={ALL_AXIS}>All axes</option>
+            {AXIS_NAMES.map((n, i) => (
+              <option key={n} value={i}>{n}</option>
+            ))}
           </select>
         </label>
+        {mode !== 'errorSetpoint' && (
+          <label>
+            Signal:
+            <select
+              value={effectiveSource}
+              onChange={(e) => setSource(e.target.value as SpectrogramSource)}
+              disabled={!hasRaw}
+            >
+              <option value="filt">Filtered (gyroADC)</option>
+              <option value="raw" disabled={!hasRaw}>Raw (gyroUnfilt){hasRaw ? '' : ' — not logged'}</option>
+            </select>
+          </label>
+        )}
+        {timeMode && (
+          <label>
+            Window:
+            <select value={windowSize} onChange={(e) => setWindowSize(Number.parseInt(e.target.value, 10))}>
+              {WINDOW_SIZES.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {mode !== 'errorSetpoint' && (
+          <label>
+            Max freq:
+            <select value={maxFreq} onChange={(e) => setMaxFreq(Number.parseInt(e.target.value, 10))}>
+              {[250, 500, 750, 1000, nyquist]
+                .filter((v, i, a) => v <= nyquist && a.indexOf(v) === i)
+                .map((v) => (
+                  <option key={v} value={v}>{v} Hz</option>
+                ))}
+            </select>
+          </label>
+        )}
+        {showDbControls && (
+          <>
+            <label>
+              Min dB:
+              <input
+                type="number"
+                step={5}
+                value={floorDb}
+                onChange={(e) => setDbMin(Number.parseInt(e.target.value, 10))}
+                className="spec-db-input"
+              />
+            </label>
+            <label>
+              Max dB:
+              <input
+                type="number"
+                step={5}
+                value={ceilDb}
+                onChange={(e) => setDbMax(Number.parseInt(e.target.value, 10))}
+                className="spec-db-input"
+              />
+            </label>
+            {(dbMin != null || dbMax != null) && (
+              <button
+                type="button"
+                className="step-btn-reset"
+                onClick={() => { setDbMin(null); setDbMax(null); }}
+              >
+                Auto
+              </button>
+            )}
+          </>
+        )}
       </div>
 
-      {times && times.length > 0 && (
+      {mode === 'errorSetpoint' && (
+        <p className="muted">
+          Tracking-error density: error = setpoint − gyro (deg/s) vs commanded setpoint. A tight cloud on the dashed error = 0 line means faithful tracking; spread that grows toward the stick extremes is lag or overshoot.
+        </p>
+      )}
+      {binnedMode && !rpmUnavailable && (
+        <p className="muted">
+          {rpmMode
+            ? 'Gyro spectrum (X) binned by mean motor rotation frequency (Y, from eRPM telemetry). Diagonal streaks are RPM-tracking noise and its harmonics; the RPM/Hz axis is approximate.'
+            : 'Gyro spectrum (X) binned by throttle (Y) — vertical streaks reveal throttle/RPM-correlated motor noise.'}
+        </p>
+      )}
+      {rpmUnavailable && (
+        <p className="muted">
+          This mode needs eRPM telemetry (BiDirectional DSHOT), which isn&apos;t present in this log.
+        </p>
+      )}
+
+      {timeMode && times && times.length > 0 && (
         <div className="spec-playback">
-          <button
-            type="button"
-            className="spec-playback__btn"
-            onClick={() => setIsPlaying((p) => !p)}
-          >
+          <button type="button" className="spec-playback__btn" onClick={() => setIsPlaying((p) => !p)}>
             {isPlaying ? '❚❚' : '▶'}
           </button>
           <input
@@ -3103,10 +3255,7 @@ function SpectrogramSection({ entries }: { entries: LogEntry[] }) {
           </span>
           <label className="spec-playback__speed">
             Speed:
-            <select
-              value={playSpeed}
-              onChange={(e) => setPlaySpeed(Number.parseFloat(e.target.value))}
-            >
+            <select value={playSpeed} onChange={(e) => setPlaySpeed(Number.parseFloat(e.target.value))}>
               <option value={0.25}>0.25×</option>
               <option value={0.5}>0.5×</option>
               <option value={1}>1×</option>
@@ -3117,34 +3266,53 @@ function SpectrogramSection({ entries }: { entries: LogEntry[] }) {
         </div>
       )}
 
-      {slices && slices.length > 0 && (
+      {timeMode && slice && (
         <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
           <h3 className="axis-plot__title">
             Spectral slice at {cursorTime != null ? `${cursorTime.toFixed(2)} s` : '—'}
           </h3>
           <TimeSeriesPlot
-            time={slices[0]!.freq}
+            time={slice.freq}
             series={sliceSeries}
             yLabel="dB"
             xLabel="Hz"
             xMin={0}
             xMax={maxFreq}
-            yMin={-80}
-            yMax={0}
+            yMin={floorDb}
+            yMax={ceilDb}
             height={180}
           />
         </div>
       )}
 
-      {specs.map((s) => (
+      {timeMode && spec && (
         <SpectrogramPlot
-          key={s.name}
-          data={s.data}
-          title={s.name}
+          data={spec}
+          title={axisName}
           maxFreqHz={maxFreq}
+          floorDb={floorDb}
+          ceilDb={ceilDb}
           cursorTime={cursorTime ?? undefined}
+          height={HEATMAP_HEIGHT}
         />
-      ))}
+      )}
+
+      {binnedMode && !rpmUnavailable && binned && (
+        <BinnedSpecPlot
+          data={binned}
+          title={axisName}
+          yLabel={rpmMode ? 'motor freq (Hz)' : 'throttle %'}
+          maxFreqHz={maxFreq}
+          dbFloor={floorDb}
+          dbCeil={ceilDb}
+          valueUnit={valueMode === 'psd' ? 'dBm/Hz' : 'dB'}
+          height={HEATMAP_HEIGHT}
+        />
+      )}
+
+      {mode === 'errorSetpoint' && density && (
+        <DensityPlot data={density} title={axisName} height={HEATMAP_HEIGHT} />
+      )}
     </section>
   );
 }

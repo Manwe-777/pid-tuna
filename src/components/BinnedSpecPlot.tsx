@@ -1,27 +1,45 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ThrottleSpectrogramResult } from '../dsp/spectrogram';
+import type { BinnedSpectrogramResult } from '../dsp/spectrogram';
+import { paintCrosshair, type PlotGeom } from './plotCrosshair';
 
-export interface ThrottleSpecPlotProps {
-  data: ThrottleSpectrogramResult;
+export interface BinnedSpecPlotProps {
+  data: BinnedSpectrogramResult;
+  /** Y-axis (domain) label, e.g. "throttle %" or "motor freq (Hz)". */
+  yLabel: string;
   title?: string;
-  floorDb?: number;
-  /** Optional maximum frequency (Hz) to display. */
+  /** Optional maximum frequency (Hz) to display on the X axis. */
   maxFreqHz?: number;
+  /** Colour-scale bottom in dB (default -80). */
+  dbFloor?: number;
+  /** Colour-scale top in dB (default 0). */
+  dbCeil?: number;
+  /** Colorbar unit label (e.g. "dB" or "dBm/Hz"). */
+  valueUnit?: string;
   height?: number;
 }
 
-const MARGIN = { top: 28, right: 64, bottom: 32, left: 52 } as const;
-const DEFAULT_FLOOR_DB = -80;
+const MARGIN = { top: 24, right: 72, bottom: 40, left: 60 } as const;
 
-export function ThrottleSpecPlot({
+/**
+ * Blackbox-Explorer-style binned heatmap: frequency along the X axis, an
+ * arbitrary binned domain (throttle % or motor frequency) up the Y axis,
+ * coloured by the gyro spectrum. Dark by design — viridis reads on a dark
+ * ground, so this stays dark in both app themes.
+ */
+export function BinnedSpecPlot({
   data,
+  yLabel,
   title,
-  floorDb = DEFAULT_FLOOR_DB,
   maxFreqHz,
-  height = 280,
-}: ThrottleSpecPlotProps) {
+  dbFloor = -80,
+  dbCeil = 0,
+  valueUnit = 'dB',
+  height = 460,
+}: BinnedSpecPlotProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
+  const geomRef = useRef<PlotGeom | null>(null);
   const [width, setWidth] = useState(800);
 
   useEffect(() => {
@@ -35,38 +53,59 @@ export function ThrottleSpecPlot({
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    const overlay = overlayRef.current;
     if (!canvas) return;
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.max(1, width * dpr);
-    canvas.height = Math.max(1, height * dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    for (const c of [canvas, overlay]) {
+      if (!c) continue;
+      c.width = Math.max(1, width * dpr);
+      c.height = Math.max(1, height * dpr);
+      c.style.width = `${width}px`;
+      c.style.height = `${height}px`;
+    }
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw(ctx, width, height, data, { title, floorDb, maxFreqHz });
-  }, [data, width, height, title, floorDb, maxFreqHz]);
+    geomRef.current = draw(ctx, width, height, data, { title, yLabel, maxFreqHz, dbFloor, dbCeil, valueUnit });
+    if (overlay) paintCrosshair(overlay, width, height, geomRef.current, null, null);
+  }, [data, width, height, title, yLabel, maxFreqHz, dbFloor, dbCeil, valueUnit]);
+
+  const onMove = (e: React.MouseEvent) => {
+    const overlay = overlayRef.current;
+    const canvas = canvasRef.current;
+    if (!overlay || !canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    paintCrosshair(overlay, width, height, geomRef.current, e.clientX - rect.left, e.clientY - rect.top);
+  };
+  const onLeave = () => {
+    const overlay = overlayRef.current;
+    if (overlay) paintCrosshair(overlay, width, height, geomRef.current, null, null);
+  };
 
   return (
-    <div className="plot" ref={containerRef}>
-      <canvas ref={canvasRef} />
+    <div className="plot" ref={containerRef} style={{ position: 'relative', padding: 0 }} onMouseMove={onMove} onMouseLeave={onLeave}>
+      <canvas ref={canvasRef} style={{ display: 'block' }} />
+      <canvas ref={overlayRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
     </div>
   );
 }
 
 interface DrawOpts {
   title?: string;
-  floorDb: number;
+  yLabel: string;
   maxFreqHz?: number;
+  dbFloor: number;
+  dbCeil: number;
+  valueUnit: string;
 }
 
 function draw(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  data: ThrottleSpectrogramResult,
+  data: BinnedSpectrogramResult,
   opts: DrawOpts,
-) {
+): PlotGeom | null {
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#0f141b';
   ctx.fillRect(0, 0, width, height);
@@ -76,43 +115,47 @@ function draw(
     ctx.font = '600 13px -apple-system, system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(opts.title, MARGIN.left, 8);
+    ctx.fillText(opts.title, MARGIN.left, 6);
   }
 
   const plotW = width - MARGIN.left - MARGIN.right;
   const plotH = height - MARGIN.top - MARGIN.bottom;
-  if (plotW <= 1 || plotH <= 1) return;
+  if (plotW <= 1 || plotH <= 1) return null;
 
-  if (data.throttleBins === 0 || data.freqBins === 0 || data.magnitudes.length === 0) {
+  if (data.xBins === 0 || data.freqBins === 0 || data.magnitudes.length === 0) {
     ctx.fillStyle = '#8a93a3';
     ctx.font = '12px -apple-system, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('No throttle/signal coverage in this window', MARGIN.left + plotW / 2, MARGIN.top + plotH / 2);
-    return;
+    ctx.fillText('No coverage for this domain in the window', MARGIN.left + plotW / 2, MARGIN.top + plotH / 2);
+    return null;
   }
 
-  // Frequency range.
+  // Displayed frequency range (X axis).
   const nyquist = data.frequencies[data.frequencies.length - 1] ?? 0;
   const fMax = opts.maxFreqHz != null ? Math.min(opts.maxFreqHz, nyquist) : nyquist;
   const fStep = data.frequencies.length > 1 ? (data.frequencies[1]! - data.frequencies[0]!) : 0;
-  const maxFreqBin = fStep > 0
-    ? Math.min(data.freqBins - 1, Math.round(fMax / fStep))
-    : data.freqBins - 1;
+  const maxFreqBin = fStep > 0 ? Math.min(data.freqBins - 1, Math.round(fMax / fStep)) : data.freqBins - 1;
   const visibleFreqBins = maxFreqBin + 1;
   const displayedFMax = data.frequencies[maxFreqBin] ?? fMax;
 
-  // ImageData: width = visibleFreqBins (x = frequency), height = throttleBins (y = throttle).
-  // Image Y=0 at top, but we want throttle 100% at top so iterate accordingly.
-  const img = new ImageData(visibleFreqBins, data.throttleBins);
-  const range = -opts.floorDb;
+  // Domain (Y axis) range from the bin centers.
+  const yc = data.xCenters;
+  const yStep = yc.length > 1 ? yc[1]! - yc[0]! : 1;
+  const yMin = (yc[0] ?? 0) - yStep / 2;
+  const yMax = (yc[yc.length - 1] ?? 1) + yStep / 2;
+
+  // ImageData: width = visibleFreqBins (X = frequency), height = xBins (Y = domain).
+  // Flip Y so the low domain value sits at the bottom.
+  const img = new ImageData(visibleFreqBins, data.xBins);
+  const range = opts.dbCeil - opts.dbFloor || 1;
   const px = img.data;
-  for (let t = 0; t < data.throttleBins; t++) {
-    const imgY = data.throttleBins - 1 - t; // throttle 0% at bottom
-    const rowBase = t * data.freqBins;
+  for (let x = 0; x < data.xBins; x++) {
+    const imgY = data.xBins - 1 - x;
+    const rowBase = x * data.freqBins;
     for (let f = 0; f <= maxFreqBin; f++) {
       const db = data.magnitudes[rowBase + f]!;
-      const norm = Math.max(0, Math.min(1, (db - opts.floorDb) / range));
+      const norm = Math.max(0, Math.min(1, (db - opts.dbFloor) / range));
       const idx = (imgY * visibleFreqBins + f) * 4;
       const [r, g, b] = viridis(norm);
       px[idx] = r;
@@ -124,22 +167,34 @@ function draw(
 
   const off = document.createElement('canvas');
   off.width = visibleFreqBins;
-  off.height = data.throttleBins;
+  off.height = data.xBins;
   off.getContext('2d')!.putImageData(img, 0, 0);
   ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'low';
+  ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(off, MARGIN.left, MARGIN.top, plotW, plotH);
 
   ctx.strokeStyle = '#1d242e';
   ctx.lineWidth = 1;
   ctx.strokeRect(MARGIN.left + 0.5, MARGIN.top + 0.5, plotW - 1, plotH - 1);
 
-  // X = frequency.
   drawXAxis(ctx, MARGIN.left, MARGIN.top + plotH, plotW, 0, displayedFMax, 'Hz');
-  // Y = throttle %.
-  drawYAxis(ctx, MARGIN.left, MARGIN.top, plotH, 0, data.throttleBins, 'throttle %');
+  drawYAxis(ctx, MARGIN.left, MARGIN.top, plotH, yMin, yMax, opts.yLabel);
+  drawColorbar(ctx, width - MARGIN.right + 16, MARGIN.top, 12, plotH, opts.dbFloor, opts.dbCeil, opts.valueUnit);
 
-  drawColorbar(ctx, width - MARGIN.right + 14, MARGIN.top, 12, plotH, opts.floorDb);
+  return {
+    left: MARGIN.left,
+    top: MARGIN.top,
+    plotW,
+    plotH,
+    xMin: 0,
+    xMax: displayedFMax,
+    yMin,
+    yMax,
+    fmtX: (v) => `${v.toFixed(0)} Hz`,
+    fmtY: opts.yLabel.includes('%')
+      ? (v) => `${v.toFixed(0)}%`
+      : (v) => `${v.toFixed(0)} Hz`,
+  };
 }
 
 function drawXAxis(
@@ -151,7 +206,7 @@ function drawXAxis(
   max: number,
   label: string,
 ) {
-  const ticks = niceTicks(min, max, 6);
+  const ticks = niceTicks(min, max, 8);
   ctx.fillStyle = '#9aa4b2';
   ctx.font = '11px -apple-system, system-ui, sans-serif';
   ctx.textAlign = 'center';
@@ -166,9 +221,8 @@ function drawXAxis(
     ctx.stroke();
     ctx.fillText(formatNum(v), px, y + 6);
   }
-  ctx.textAlign = 'right';
   ctx.fillStyle = '#8a93a3';
-  ctx.fillText(label, x + w, y + 20);
+  ctx.fillText(label, x + w / 2, y + 22);
 }
 
 function drawYAxis(
@@ -196,7 +250,7 @@ function drawYAxis(
     ctx.fillText(formatNum(v), x - 6, py);
   }
   ctx.save();
-  ctx.translate(x - 36, y + h / 2);
+  ctx.translate(x - 42, y + h / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.fillStyle = '#8a93a3';
   ctx.textAlign = 'center';
@@ -211,12 +265,14 @@ function drawColorbar(
   y: number,
   w: number,
   h: number,
-  floorDb: number,
+  dbFloor: number,
+  dbCeil: number,
+  unit: string,
 ) {
   const grad = ctx.createLinearGradient(0, y, 0, y + h);
   const stops = 8;
   for (let i = 0; i <= stops; i++) {
-    const t = 1 - i / stops;
+    const t = 1 - i / stops; // top = high
     const [r, g, b] = viridis(t);
     grad.addColorStop(i / stops, `rgb(${r}, ${g}, ${b})`);
   }
@@ -224,15 +280,18 @@ function drawColorbar(
   ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = '#1d242e';
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+
   ctx.fillStyle = '#9aa4b2';
   ctx.font = '11px -apple-system, system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  for (const db of [0, -20, -40, -60, floorDb]) {
-    if (db < floorDb) continue;
-    const py = y + (-db / -floorDb) * h;
-    ctx.fillText(`${db} dB`, x + w + 4, py);
+  const range = dbCeil - dbFloor || 1;
+  for (const db of niceTicks(dbFloor, dbCeil, 5)) {
+    const py = y + (1 - (db - dbFloor) / range) * h;
+    ctx.fillText(`${Math.round(db)}`, x + w + 4, py);
   }
+  ctx.textAlign = 'left';
+  ctx.fillText(unit, x - 2, y - 8);
 }
 
 function niceTicks(min: number, max: number, target: number): number[] {
@@ -253,10 +312,11 @@ function niceTicks(min: number, max: number, target: number): number[] {
 }
 
 function formatNum(n: number): string {
+  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k`;
   if (Math.abs(n) >= 100) return n.toFixed(0);
-  if (Math.abs(n) >= 10) return n.toFixed(1);
-  if (Math.abs(n) >= 1) return n.toFixed(2);
-  return n.toFixed(3);
+  if (Math.abs(n) >= 10) return n.toFixed(0);
+  if (Math.abs(n) >= 1) return n.toFixed(1);
+  return n.toFixed(2);
 }
 
 const VIRIDIS: ReadonlyArray<readonly [number, number, number]> = [
