@@ -29,3 +29,5 @@ tauri-plugin-fs = "2"
 # set; not exposed as a general-purpose serial bridge — only the specific
 # operations we need (list / open / write / read / close) are surfaced.
 serialport = "4"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"

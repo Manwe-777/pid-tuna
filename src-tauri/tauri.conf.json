@@ -25,6 +25,14 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/Manwe-777/pid-tuna/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlBOUFBQjhCNDM2RkI2NkEKUldScXRtOURpNnVhbW5iQlZDWEFVcVV1elk3RWtlWkFxZnlpdmg5bjNKTjkwNzB5YlBtREtTSTYK"
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",

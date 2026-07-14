@@ -176,6 +176,48 @@ body {
   display: block;
 }
 
+/* Desktop self-update pill (only rendered in the Tauri app when an update is
+   available). */
+.update-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 34px;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: var(--surface-sel);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: background 120ms ease, opacity 120ms ease;
+}
+
+.update-pill:hover:not(:disabled) {
+  background: var(--surface-info);
+}
+
+.update-pill:disabled {
+  cursor: progress;
+  opacity: 0.75;
+}
+
+.update-pill__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  animation: update-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes update-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
 /* FC → MSC button lives in the header, with a popover panel for the flow. */
 .fc-msc {
   position: relative;

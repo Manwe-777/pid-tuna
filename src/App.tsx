@@ -3,6 +3,7 @@ import { GpsMapTrack } from './components/GpsMapTrack';
 import { LogDotPlot, type LogDot } from './components/LogDotPlot';
 import { FcMscButton } from './components/FcMscButton';
 import { ThemeToggle } from './components/ThemeToggle';
+import { UpdateBanner } from './components/UpdateBanner';
 import { Sidebar } from './components/Sidebar';
 import { SpectrogramPlot } from './components/SpectrogramPlot';
 import { BinnedSpecPlot } from './components/BinnedSpecPlot';
@@ -155,6 +156,7 @@ export function App() {
           className="app-header__logo"
         />
         <div className="app-header__right">
+          <UpdateBanner />
           <ThemeToggle />
           <FcMscButton />
           <a

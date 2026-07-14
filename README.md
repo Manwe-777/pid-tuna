@@ -173,6 +173,39 @@ To sign releases, add these repo secrets and `tauri-action` will pick them up au
 
 No code signing certificate? Skip this — the unsigned flow works, just with the OS warnings above.
 
+### In-app auto-update
+
+The desktop app can update itself from GitHub Releases via Tauri's updater plugin.
+When a newer signed release exists, an **"Update to vX.Y.Z"** pill appears in the
+header; clicking it downloads, installs, and relaunches. The hosted web / PWA build
+updates itself through its service worker instead, so this only affects the
+downloaded desktop app.
+
+**This is dormant until you add a (free) signing key** — the updater's minisign
+signature is separate from, and independent of, the paid OS code-signing certs
+above. To enable it:
+
+1. Generate a keypair (once): `pnpm tauri signer generate -w ~/.tauri/pidtuna.key`
+2. Add two **repo secrets**: `TAURI_SIGNING_PRIVATE_KEY` (the private key's
+   contents) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+3. Replace the placeholder `plugins.updater.pubkey` in `src-tauri/tauri.conf.json`
+   with the generated **public** key.
+
+On the next tagged release, `build.yml` signs the bundles and publishes a
+`latest.json` manifest (the updater endpoint) alongside the installers. Until the
+secret is present the release still builds normally — it just omits the updater
+artifacts, so no in-app update is offered.
+
+Per-platform reality (with the free minisign key but **no** paid OS certs):
+
+- **Linux** — works cleanly, **AppImage only** (`.deb`/`.rpm` are owned by the
+  system package manager and never self-update).
+- **Windows** — works; users see the usual SmartScreen prompt on each update
+  unless you also add an Authenticode cert.
+- **macOS** — works, but without an Apple Developer ID + notarization Gatekeeper
+  quarantine can make auto-updated builds flaky ("app is damaged"). Fine for
+  personal/beta use; notarize for a smooth public experience.
+
 ---
 
 ## Continuous integration

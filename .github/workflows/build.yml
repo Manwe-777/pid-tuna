@@ -82,13 +82,22 @@ jobs:
         id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signing keys for the self-updater. Generate with `pnpm tauri signer
+          # generate` and add both as repository secrets. Until then, signed
+          # release builds (and thus auto-update) are disabled — the app still
+          # ships and installs normally, it just won't offer in-app updates.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           # On tag pushes, create / update a draft release. Skipped for workflow_dispatch.
           tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
           releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && format('PIDTuna {0}', github.ref_name) || '' }}
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }}
+          # Append the updater overlay (which turns on signed updater artifacts +
+          # latest.json) only when the signing key secret is configured. Without
+          # it, the release still builds — just without self-update.
+          args: ${{ matrix.args }} ${{ env.TAURI_SIGNING_PRIVATE_KEY != '' && '--config src-tauri/tauri.conf.updater.json' || '' }}
 
       # For manual (workflow_dispatch) runs there's no release to attach assets to,
       # so make the bundles downloadable as workflow artifacts.
