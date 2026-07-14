@@ -1,6 +1,6 @@
 [package]
 name = "pidtuna"
-version = "0.1.0"
+version = "0.2.0"
 description = "Betaflight blackbox log analyzer (desktop wrapper around the PIDTuna web app)"
 authors = ["PIDTuna contributors"]
 license = "AGPL-3.0-only"
