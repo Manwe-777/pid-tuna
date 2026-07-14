@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, use
 import { GpsMapTrack } from './components/GpsMapTrack';
 import { LogDotPlot, type LogDot } from './components/LogDotPlot';
 import { FcMscButton } from './components/FcMscButton';
+import { ThemeToggle } from './components/ThemeToggle';
 import { Sidebar } from './components/Sidebar';
 import { SpectrogramPlot } from './components/SpectrogramPlot';
 import { ThrottleSpecPlot } from './components/ThrottleSpecPlot';
@@ -150,6 +151,7 @@ export function App() {
           className="app-header__logo"
         />
         <div className="app-header__right">
+          <ThemeToggle />
           <FcMscButton />
           <a
             className="app-header__version"

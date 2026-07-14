@@ -133,8 +133,8 @@ export function FcMscButton() {
         title="Connect to a Betaflight FC over USB and switch it to mass-storage mode"
       >
         <UsbIcon className="fc-msc__icon" />
+        <span className="fc-msc__label">Connect FC</span>
       </button>
-      <span className="fc-msc__label">Connect FC</span>
 
       {panelOpen && (
         <div className="fc-msc__panel" ref={panelRef}>

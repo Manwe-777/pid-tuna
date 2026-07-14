@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { PLOT_COLORS, useTheme } from '../theme';
 
 export interface LogDot {
   label: string;
@@ -42,9 +43,10 @@ export function LogDotPlot({
   const innerW = width - PAD.left - PAD.right;
   const innerH = height - PAD.top - PAD.bottom;
   const chartBottom = PAD.top + innerH;
+  const chrome = PLOT_COLORS[useTheme()];
   // X-axis description color — slightly darker than tick text so the axis title recedes.
-  const AXIS_TICK_FILL = '#6c7383';
-  const AXIS_LABEL_FILL = '#5a6473';
+  const AXIS_TICK_FILL = chrome.caption;
+  const AXIS_LABEL_FILL = chrome.label;
 
   const { effYMin, effYMax, yTicks } = useMemo(() => {
     const validValues = dots.map((d) => d.value).filter((v): v is number => v != null);
@@ -86,7 +88,7 @@ export function LogDotPlot({
       <text
         x={PAD.left}
         y={14}
-        fill="#c8ced9"
+        fill={chrome.title}
         fontSize="12"
         fontWeight="600"
       >
@@ -99,7 +101,7 @@ export function LogDotPlot({
         width={innerW}
         height={innerH}
         fill="none"
-        stroke="#1d242e"
+        stroke={chrome.grid}
       />
 
       {yTicks.map((t) => {
@@ -111,12 +113,12 @@ export function LogDotPlot({
               x2={PAD.left + innerW}
               y1={y}
               y2={y}
-              stroke="#1d242e"
+              stroke={chrome.grid}
             />
             <text
               x={PAD.left - 4}
               y={y + 3}
-              fill="#8a93a3"
+              fill={chrome.tick}
               fontSize="10"
               textAnchor="end"
             >
@@ -132,7 +134,7 @@ export function LogDotPlot({
           x2={PAD.left + innerW}
           y1={yPos(referenceY)}
           y2={yPos(referenceY)}
-          stroke="#3a4150"
+          stroke={chrome.axisLine}
           strokeDasharray="3 3"
         />
       )}
@@ -157,7 +159,7 @@ export function LogDotPlot({
                 cy={chartBottom - 4}
                 r={3}
                 fill="none"
-                stroke="#3a4150"
+                stroke={chrome.axisLine}
                 strokeDasharray="2 2"
               />
             </g>
