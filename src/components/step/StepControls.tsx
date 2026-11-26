@@ -1,9 +1,7 @@
 import type { ReactNode } from 'react';
-
-import type { StepMetrics } from '../../dsp/stepResponse';
-import { STEP_DEFAULTS } from '../../dsp/stepResponse';
+import { STEP_METRICS } from '../../constants';
+import { STEP_DEFAULTS, type StepMetrics } from '../../dsp/stepResponse';
 import { STEP_MASK_DEFAULTS } from '../../dsp/stepResponseForLog';
-import { STEP_METRICS } from './stepMetricOptions';
 
 export interface StepSettings {
   windowMs: number;

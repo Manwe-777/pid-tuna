@@ -1,4 +1,4 @@
-import { AXIS_COLORS, AXIS_NAMES } from '../../axes';
+import { AXIS_COLORS, AXIS_NAMES } from '../../constants';
 import type { AxisHarmonicNoise } from '../../dsp/harmonicNoiseForLog';
 import type { HarmonicNoise } from '../../dsp/motorHarmonicNoise';
 

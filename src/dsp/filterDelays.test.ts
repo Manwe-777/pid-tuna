@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'vitest';
-
-import type { TuneView } from '../tuneView';
+import type { TuneView } from '../types';
 import { computeFilterDelays, DELAY_REFERENCE_HZ } from './filterDelays';
 import { partsDelay } from './partsDelay';
 import { rpmNotchParts } from './rpmNotchParts';

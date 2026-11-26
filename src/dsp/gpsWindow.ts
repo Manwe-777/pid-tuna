@@ -1,5 +1,4 @@
-import type { GpsFrameSeries, ParsedLog } from '../types';
-import type { TimeRangeSec } from '../sliceLog';
+import type { GpsFrameSeries, ParsedLog, TimeRangeSec } from '../types';
 import { gpsCoordValid } from './gpsPlayback';
 
 /**

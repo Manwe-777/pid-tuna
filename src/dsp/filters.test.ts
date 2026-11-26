@@ -1,10 +1,9 @@
 import { describe, expect, test } from 'vitest';
-
-import { applyFilterChain, computeFilterChainResponse, type FilterSpec } from './filters';
+import type { TuneView } from '../types';
 import { computeFilterDelays, DELAY_REFERENCE_HZ } from './filterDelays';
+import { applyFilterChain, computeFilterChainResponse, type FilterSpec } from './filters';
 import { gyroChainFromTune } from './gyroChainFromTune';
 import { notchQFromCutoff } from './notchQFromCutoff';
-import type { TuneView } from '../tuneView';
 
 const FS = 4000;
 const spec = (type: FilterSpec['type'], cutoffHz: number, bandwidth = 40): FilterSpec => ({

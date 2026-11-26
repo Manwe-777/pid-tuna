@@ -1,4 +1,4 @@
-import { AXIS_NAMES } from '../axes';
+import { AXIS_NAMES } from '../constants';
 import type { ParsedLog } from '../types';
 import { flightRange } from './flightRange';
 import { throttlePercentSeries } from './spectralDomains';

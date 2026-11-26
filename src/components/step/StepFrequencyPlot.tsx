@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 import type { FrequencyResponse } from '../../dsp/stepFrequencyResponse';
-import { type PlotSeries, TimeSeriesPlot } from '../TimeSeriesPlot';
+import { type PlotSeries, TimeSeriesPlot } from '../common/TimeSeriesPlot';
 
 export interface StepFrequencyEntry {
   label: string;

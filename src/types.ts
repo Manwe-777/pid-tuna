@@ -1,3 +1,8 @@
+import { AXIS_NAMES } from './constants';
+import type { LatencyResult } from './dsp/latency';
+import type { StepMetrics } from './dsp/stepResponse';
+import type { computeAxisSteps } from './utils/computeAxisSteps';
+
 export type Axis3 = readonly [Float32Array, Float32Array, Float32Array];
 export type Axis4 = readonly [Float32Array, Float32Array, Float32Array, Float32Array];
 
@@ -100,4 +105,203 @@ export interface GpsFrameSeries {
   speed: Float32Array;
   /** Satellites in fix. */
   numSat: Float32Array;
+}
+
+export type TabId =
+  | 'scorecard'
+  | 'tracking'
+  | 'filtering'
+  | 'pid'
+  | 'saturation'
+  | 'motors'
+  | 'balance'
+  | 'battery'
+  | 'gps'
+  | 'step'
+  | 'latency'
+  | 'spectrum'
+  | 'filterSim'
+  | 'spectral'
+  | 'settings'
+  | 'diff';
+
+export type SignalKey =
+  | 'gyroFilt'
+  | 'gyroRaw'
+  | 'pterm'
+  | 'iterm'
+  | 'dterm'
+  | 'dtermRaw'
+  | 'fterm'
+  | 'pidsum'
+  | 'pidErr'
+  | 'setpoint'
+  | 'motor0'
+  | 'motor1'
+  | 'motor2'
+  | 'motor3';
+
+export interface SignalDef {
+  key: SignalKey;
+  label: string;
+  /** If true, the signal is the same across all axes (e.g. motors). */
+  perLog: boolean;
+  /** Color used when the signal is not the per-axis gyro. */
+  color: string;
+}
+
+export type PidTermKey = 'pterm' | 'iterm' | 'dterm' | 'dtermRaw' | 'fterm' | 'pidsum' | 'pidErr';
+
+export interface PidTermDef {
+  key: PidTermKey;
+  signalKey: SignalKey; // for extractSignal()
+  label: string;
+  color: string;
+}
+
+export type SpectrogramSource = 'filt' | 'raw';
+
+/**
+ * Unified spectral-analysis tab: one heatmap view with a mode selector, à la
+ * Blackbox Explorer. Frequency modes colour by amplitude (dB rel peak); PSD
+ * modes colour by absolute power density (shared dB scale across axes). The
+ * X domain is time, throttle %, or motor RPM depending on the mode; "Error vs
+ * Setpoint" swaps the whole thing for a tracking-error density map.
+ */
+export type SpectralMode =
+  'freqTime' | 'freqThrottle' | 'freqRpm' | 'psdTime' | 'psdThrottle' | 'psdRpm' | 'errorSetpoint';
+
+export interface AxisLatency extends LatencyResult {
+  axis: number;
+}
+
+export type AxisStepData = ReturnType<typeof computeAxisSteps>[number];
+
+/** One curve per log, per merged pool, or per band. */
+export interface StepCurveSet {
+  id: string;
+  label: string;
+  color: string;
+  dash: number[];
+  axes: AxisStepData[];
+}
+
+export interface AxisStepWithSlot {
+  id: string;
+  label: string;
+  color: string;
+  dash: number[];
+  data: AxisStepData;
+}
+
+export type AxisName = (typeof AXIS_NAMES)[number];
+
+export type SlotState =
+  | { kind: 'parsing'; fileName: string; progress: number; rows: number }
+  | { kind: 'ready'; log: ParsedLog }
+  | { kind: 'error'; fileName: string; message: string };
+
+export interface LogSlot {
+  id: string;
+  state: SlotState;
+  enabled: boolean;
+  /** Index into DASH_PATTERNS — picks the line style. Solid for the first log. */
+  dashIndex: number;
+}
+
+/** A windowed log paired with its slot for rendering attribution. */
+export interface LogEntry {
+  slot: LogSlot;
+  /** Already sliced to the active time window. */
+  log: ParsedLog;
+  dash: number[];
+}
+
+export interface StepMetricOption {
+  key: keyof StepMetrics;
+  label: string;
+  unit: string;
+  digits: number;
+  help: string;
+  /** Reference line for dot plots (e.g. 1 for levels). */
+  reference?: number;
+  /** Range the dot-plot axis always shows, so a single dot isn't blown up. */
+  axis?: [number, number];
+}
+
+export interface TimeRangeSec {
+  start: number;
+  end: number;
+}
+
+export interface PidRow {
+  p?: number;
+  i?: number;
+  d?: number;
+  dMax?: number;
+  f?: number;
+}
+
+export interface TuneView {
+  hasPid: boolean;
+  pidByAxis: ReadonlyArray<PidRow>;
+  hasRates: boolean;
+  rcRates: number[];
+  rcExpo: number[];
+  superRates: number[];
+  gyroLpf1Hz?: number;
+  gyroLpf1Type?: number;
+  gyroLpf2Hz?: number;
+  gyroLpf2Type?: number;
+  gyroDynRange?: { min: number; max: number };
+  gyroNotch1Hz?: number;
+  gyroNotch1Cutoff?: number;
+  gyroNotch2Hz?: number;
+  gyroNotch2Cutoff?: number;
+  dtermLpf1Hz?: number;
+  dtermLpf1Type?: number;
+  dtermLpf2Hz?: number;
+  dtermLpf2Type?: number;
+  dtermDynRange?: { min: number; max: number };
+  dtermNotchHz?: number;
+  dtermNotchCutoff?: number;
+  rpmHarmonics?: number;
+  /** Per-harmonic RPM notch weights, % (Betaflight 4.4+). */
+  rpmWeights: number[];
+  /** RPM notches fade in over this range above their minimum frequency, Hz. */
+  rpmFadeHz?: number;
+  rpmMinHz?: number;
+  rpmQ?: number;
+  dynNotchCount?: number;
+  dynNotchMin?: number;
+  dynNotchMax?: number;
+  dynNotchQ?: number;
+  /** Gyro loop rate, Hz: gyro filters run at this rate. */
+  gyroRateHz?: number;
+  /** PID loop rate, Hz: D-term filters run at this rate. */
+  pidRateHz?: number;
+}
+
+export type Theme = 'light' | 'dark';
+
+/**
+ * Chrome colors for imperatively-drawn plots (uPlot axes, canvas heatmap frames,
+ * inline SVG), mirroring the neutral tokens in the CSS so plots match the UI in
+ * each theme. Data-encoding colors stay constant across themes.
+ */
+export interface PlotChrome {
+  /** Grid lines / faint frames. */
+  grid: string;
+  /** uPlot axis stroke (tick labels + baseline). */
+  axis: string;
+  /** Tick marks / reference lines. */
+  axisLine: string;
+  /** Plot title text. */
+  title: string;
+  /** Primary tick-label text. */
+  tick: string;
+  /** Secondary axis captions (e.g. x tick numbers). */
+  caption: string;
+  /** Recessed axis labels (e.g. "log #"). */
+  label: string;
 }

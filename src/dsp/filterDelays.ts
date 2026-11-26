@@ -1,4 +1,4 @@
-import type { TuneView } from '../tuneView';
+import type { TuneView } from '../types';
 import type { BfFilterKind } from './bfFilterSections';
 import type { FilterPart } from './filterPart';
 import { notchQFromCutoff } from './notchQFromCutoff';

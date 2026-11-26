@@ -1,4 +1,4 @@
-import { AXIS_NAMES } from '../axes';
+import { AXIS_NAMES } from '../constants';
 import type { ScoreEntry, ScoreStatus } from './scorecard';
 import type { StepMetrics, StepResponseResult } from './stepResponse';
 

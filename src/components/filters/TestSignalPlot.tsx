@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { filterTestSignal, type TestSignalKind } from '../../dsp/filterTestSignal';
 import type { FilterSpec } from '../../dsp/filters';
-import { TimeSeriesPlot } from '../TimeSeriesPlot';
+import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 
 const NOISE_LEVELS = [
   { label: 'none', value: 0 },

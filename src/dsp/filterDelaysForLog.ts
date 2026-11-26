@@ -1,5 +1,5 @@
+import { buildTuneView } from '../tune/buildTuneView';
 import type { ParsedLog } from '../types';
-import { buildTuneView } from '../tuneView';
 import { computeFilterDelays, type FilterDelayBreakdown } from './filterDelays';
 import { medianMotorHz } from './medianMotorHz';
 
