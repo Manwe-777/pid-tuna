@@ -11,7 +11,7 @@ export function SpectralSlicePlot(p: {
   ceilDb: number;
 }) {
   return (
-    <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
+    <div className="axis-plot mt-2">
       <h3 className="axis-plot__title">
         Spectral slice at {p.cursorTime != null ? `${p.cursorTime.toFixed(2)} s` : '—'}
       </h3>

@@ -65,21 +65,21 @@ export function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
         <label>
           Y min:
           <input
+            className="w-18"
             type="number"
             step="5"
             value={yMin}
             onChange={(e) => setYMin(Number.parseFloat(e.target.value))}
-            style={{ width: '4.5rem' }}
           />
         </label>
         <label>
           Y max:
           <input
+            className="w-18"
             type="number"
             step="5"
             value={yMax}
             onChange={(e) => setYMax(Number.parseFloat(e.target.value))}
-            style={{ width: '4.5rem' }}
           />
         </label>
         <MergeLogsToggle checked={mergeLogs} canMerge={canMerge} onChange={setMergeLogs} />
@@ -94,7 +94,7 @@ export function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
       {harmonicNoise && (
         <details className="harmonic-noise" open>
           <summary>Noise at motor harmonics</summary>
-          <p className="muted" style={{ fontSize: '0.78rem' }}>
+          <p className="muted text-[0.78rem]">
             Peak noise within ±20 Hz of each multiple of motor speed (mean ± SD over the flight, takeoff to landing),
             and how much the gyro filters remove there. Uses {rpm.polePairs} pole pairs.
           </p>

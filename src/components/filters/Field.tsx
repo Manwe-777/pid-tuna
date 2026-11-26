@@ -15,6 +15,7 @@ export function Field({
     <label>
       {label}
       <input
+        className="w-18"
         type="number"
         step={step}
         value={value}
@@ -22,7 +23,6 @@ export function Field({
           const v = Number.parseFloat(e.target.value);
           if (Number.isFinite(v)) onChange(v);
         }}
-        style={{ width: '4.5rem' }}
       />
       <span className="muted">{unit}</span>
     </label>

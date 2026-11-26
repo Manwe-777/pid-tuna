@@ -38,7 +38,7 @@ export function ScorecardSection({ entries, onJump }: { entries: LogEntry[]; onJ
         tab. Thresholds are rules of thumb for typical FPV builds.
       </p>
 
-      <div className="controls" style={{ marginBottom: '0.5rem' }}>
+      <div className="controls mb-2">
         <MergeLogsToggle checked={mergeLogs} canMerge={canMerge} onChange={setMergeLogs} />
       </div>
 

@@ -75,10 +75,8 @@ export function GpsLogCard({
         <GpsStat label="Sats min" value={stats.minSats} />
       </div>
 
-      <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
-        <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
-          Ground track
-        </h5>
+      <div className="axis-plot mt-2">
+        <h5 className="axis-plot__title text-[0.78rem]">Ground track</h5>
         <GpsMapTrack
           gpsTime={log.gps.time}
           lat={log.gps.lat}

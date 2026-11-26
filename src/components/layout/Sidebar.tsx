@@ -24,10 +24,10 @@ export function Sidebar({ slots, onAddFile, onToggle, onRemove, onReorder }: Sid
           + Add log
         </button>
         <input
+          className="hidden"
           ref={inputRef}
           type="file"
           accept=".bbl,.bfl,.BBL,.BFL,.csv"
-          style={{ display: 'none' }}
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) onAddFile(file);

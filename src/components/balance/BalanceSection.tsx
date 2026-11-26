@@ -49,7 +49,7 @@ export function BalanceSection({ entries }: { entries: LogEntry[] }) {
         others point to that motor specifically.
       </p>
 
-      <div className="controls" style={{ marginBottom: '0.5rem' }}>
+      <div className="controls mb-2">
         <MergeLogsToggle checked={mergeLogs} canMerge={canMerge} onChange={setMergeLogs} />
       </div>
 
@@ -69,7 +69,7 @@ export function BalanceSection({ entries }: { entries: LogEntry[] }) {
         </div>
       ))}
 
-      <p className="muted" style={{ fontSize: '0.78rem', marginTop: '0.5rem' }}>
+      <p className="muted mt-2 text-[0.78rem]">
         Axes are projections of the per-motor mean onto pitch / roll / yaw using the default Quad-X mixer (M1=RR/CW,
         M2=FR/CCW, M3=RL/CCW, M4=FL/CW): pitch is rear minus front, roll is right minus left, yaw is CCW minus CW motors
         (flipped for reversed props). Interpret against your own motor mapping.

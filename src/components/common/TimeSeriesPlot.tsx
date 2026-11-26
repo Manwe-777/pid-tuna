@@ -1,5 +1,3 @@
-import 'uplot/dist/uPlot.min.css';
-
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import uPlot, { type AlignedData } from 'uplot';
 

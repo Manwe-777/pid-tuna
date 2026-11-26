@@ -32,15 +32,9 @@ export function DensityPlot({
   const { containerRef, canvasRef, overlayRef, onMove, onLeave } = useCanvasHeatmap(height, draw);
 
   return (
-    <div
-      className="plot"
-      ref={containerRef}
-      style={{ position: 'relative', padding: 0 }}
-      onMouseMove={onMove}
-      onMouseLeave={onLeave}
-    >
-      <canvas ref={canvasRef} style={{ display: 'block' }} />
-      <canvas ref={overlayRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+    <div className="plot relative p-0" ref={containerRef} onMouseMove={onMove} onMouseLeave={onLeave}>
+      <canvas className="block" ref={canvasRef} />
+      <canvas className="pointer-events-none absolute inset-0" ref={overlayRef} />
     </div>
   );
 }

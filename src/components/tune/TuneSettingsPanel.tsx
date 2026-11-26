@@ -35,7 +35,7 @@ export function TuneSettingsPanel({ entries }: TuneSettingsPanelProps) {
       <h2>
         Tune settings
         {multi && (
-          <span className="muted" style={{ marginLeft: '0.75rem', fontSize: '0.85rem', fontWeight: 400 }}>
+          <span className="muted ml-3 text-[0.85rem] font-normal">
             Comparing {views.length} logs · differences vs {shortName(primary.slot)} highlighted
           </span>
         )}

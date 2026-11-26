@@ -154,26 +154,27 @@ export function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
         <label>
           Y min:
           <input
+            className="w-18"
             type="number"
             step="5"
             value={yMin}
             onChange={(e) => setYMin(Number.parseFloat(e.target.value))}
-            style={{ width: '4.5rem' }}
           />
         </label>
         <label>
           Y max:
           <input
+            className="w-18"
             type="number"
             step="5"
             value={yMax}
             onChange={(e) => setYMax(Number.parseFloat(e.target.value))}
-            style={{ width: '4.5rem' }}
           />
         </label>
         <label title="Frequency the chain's delay is reported at">
           Delay at:
           <input
+            className="w-16"
             type="number"
             min={1}
             max={200}
@@ -182,7 +183,6 @@ export function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
             onChange={(e) =>
               setDelayHz(Math.min(200, Math.max(1, Number.parseFloat(e.target.value) || DELAY_REFERENCE_HZ)))
             }
-            style={{ width: '4rem' }}
           />
           <span className="muted">Hz</span>
         </label>

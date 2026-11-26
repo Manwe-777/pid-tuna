@@ -11,10 +11,8 @@ export function GpsSeriesPlot(props: {
   segmentStrokeColors?: readonly string[];
 }) {
   return (
-    <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
-      <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
-        {props.title}
-      </h5>
+    <div className="axis-plot mt-2">
+      <h5 className="axis-plot__title text-[0.78rem]">{props.title}</h5>
       <TimeSeriesPlot
         time={props.time}
         series={props.series}

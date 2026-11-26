@@ -35,19 +35,15 @@ export function BatteryLogCard({
       <BatteryStats analysis={analysis} />
 
       {vbatSeries.length > 0 && (
-        <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
-          <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
-            Voltage (V)
-          </h5>
+        <div className="axis-plot mt-2">
+          <h5 className="axis-plot__title text-[0.78rem]">Voltage (V)</h5>
           <TimeSeriesPlot time={slow.time} series={vbatSeries} yLabel="V" height={180} showLegend={false} />
         </div>
       )}
 
       {currentSeries.length > 0 && (
-        <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
-          <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
-            Current (A)
-          </h5>
+        <div className="axis-plot mt-2">
+          <h5 className="axis-plot__title text-[0.78rem]">Current (A)</h5>
           <TimeSeriesPlot time={slow.time} series={currentSeries} yLabel="A" height={180} showLegend={false} />
         </div>
       )}

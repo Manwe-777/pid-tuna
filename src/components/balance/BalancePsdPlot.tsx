@@ -17,8 +17,8 @@ export function BalancePsdPlot({ analysis }: { analysis: BalanceAnalysis }) {
   }));
 
   return (
-    <div className="axis-plot" style={{ marginTop: '0.75rem' }}>
-      <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
+    <div className="axis-plot mt-3">
+      <h5 className="axis-plot__title text-[0.78rem]">
         Motor command PSD — spikes on one motor only = that motor is the source
       </h5>
       <TimeSeriesPlot

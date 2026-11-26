@@ -24,13 +24,13 @@ function SmallNumber(props: {
     <label>
       {props.label}:
       <input
+        className="w-14"
         type="number"
         min={1}
         max={props.max}
         step="1"
         value={props.value}
         onChange={(e) => props.onChange(Math.max(1, Number.parseInt(e.target.value || props.fallback, 10)))}
-        style={{ width: '3.5rem' }}
       />
     </label>
   );

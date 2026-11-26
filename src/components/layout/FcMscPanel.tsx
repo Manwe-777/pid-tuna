@@ -22,7 +22,7 @@ export function FcMscPanel({
             {isMacLike() ? 'Finder' : 'your file explorer'}, copy the <code>.BBL</code> files off, and eject the drive
             when you&apos;re done.
           </p>
-          <p className="muted" style={{ fontSize: '0.8rem' }}>
+          <p className="muted text-[0.8rem]">
             Nothing is written to the FC. The only command sent is a one-byte request to reboot into mass-storage mode.
           </p>
           <div className="fc-msc__actions">
@@ -71,7 +71,7 @@ export function FcMscPanel({
       return (
         <PanelLayout title="Couldn’t switch the FC" onClose={onClose}>
           <p className="fc-msc__error">{phase.message}</p>
-          <p className="muted" style={{ fontSize: '0.8rem' }}>
+          <p className="muted text-[0.8rem]">
             Common causes: the FC is in bootloader / DFU mode, no SD card present, Blackbox set to a destination other
             than SD or flash, or the USB driver isn&apos;t installed (Windows users may need the STM32 VCP driver).
           </p>

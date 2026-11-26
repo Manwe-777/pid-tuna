@@ -38,7 +38,7 @@ export function SignalPicker({ multi, isChecked, available, onPick }: Props) {
         })}
       </div>
       {multi && (
-        <p className="muted" style={{ marginTop: '-0.25rem', fontSize: '0.82rem' }}>
+        <p className="muted -mt-1 text-[0.82rem]">
           Multi-log mode: pick one signal — each log will be drawn in its sidebar color.
         </p>
       )}

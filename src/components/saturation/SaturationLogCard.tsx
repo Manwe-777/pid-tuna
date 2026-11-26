@@ -64,8 +64,8 @@ export function SaturationLogCard({
           fill: SAT_BAND_COLOR,
         }));
         return (
-          <div key={a.axisIndex} className="axis-plot" style={{ marginTop: '0.5rem' }}>
-            <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
+          <div key={a.axisIndex} className="axis-plot mt-2">
+            <h5 className="axis-plot__title text-[0.78rem]">
               <span className="axis-plot__dot" style={{ background: AXIS_COLORS[a.axisIndex] }} />
               {a.axisName} — threshold {a.threshold.toFixed(0)}
             </h5>

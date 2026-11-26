@@ -65,7 +65,7 @@ export function LatencySection({ entries }: { entries: LogEntry[] }) {
             ))}
           </tbody>
         </table>
-        <p className="muted" style={{ fontSize: '0.78rem', marginTop: '0.5rem' }}>
+        <p className="muted mt-2 text-[0.78rem]">
           Faded values had low correlation or low stick activity in the window — widen the time range or pick a more
           active flight segment.
         </p>
@@ -75,6 +75,7 @@ export function LatencySection({ entries }: { entries: LogEntry[] }) {
         <h3>
           Filter delay at{' '}
           <input
+            className="w-16"
             type="number"
             min={1}
             max={200}
@@ -83,7 +84,6 @@ export function LatencySection({ entries }: { entries: LogEntry[] }) {
             onChange={(e) =>
               setDelayHz(Math.min(200, Math.max(1, Number.parseFloat(e.target.value) || DELAY_REFERENCE_HZ)))
             }
-            style={{ width: '4rem' }}
             aria-label="Frequency the delay is reported at"
           />{' '}
           Hz
@@ -104,7 +104,7 @@ export function LatencySection({ entries }: { entries: LogEntry[] }) {
             )}
           </div>
         ))}
-        <p className="muted" style={{ fontSize: '0.78rem', marginTop: '0.5rem' }}>
+        <p className="muted mt-2 text-[0.78rem]">
           Computed with Betaflight&apos;s filter maths: gyro filters at the gyro loop rate, D-term filters at the PID
           loop rate. Gyro filters delay every PID term; D-term filters only add to the D path. Dynamic filters are shown
           where they add the most delay, and RPM notches at the log&apos;s median motor frequency when RPM telemetry is

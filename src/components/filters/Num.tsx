@@ -21,6 +21,7 @@ export function Num({
     <label title={title}>
       {label}:
       <input
+        className="w-18"
         type="number"
         min={min}
         max={max}
@@ -30,7 +31,6 @@ export function Num({
           const v = Number.parseFloat(e.target.value);
           if (Number.isFinite(v)) onChange(Math.min(max, Math.max(min, v)));
         }}
-        style={{ width: '4.5rem' }}
       />
       {unit && <span className="filter-row__unit">{unit}</span>}
     </label>

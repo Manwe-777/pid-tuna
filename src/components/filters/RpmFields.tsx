@@ -35,6 +35,7 @@ export function RpmFields({
       <label title="Per-harmonic weights, %">
         Weights
         <input
+          className="w-26"
           type="text"
           value={(f.weights ?? []).join(',')}
           onChange={(e) =>
@@ -45,7 +46,6 @@ export function RpmFields({
                 .filter(Number.isFinite),
             })
           }
-          style={{ width: '6.5rem' }}
         />
       </label>
       <Num

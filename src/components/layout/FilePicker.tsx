@@ -84,10 +84,10 @@ export function FilePicker({ onFile, disabled }: FilePickerProps) {
       tabIndex={0}
     >
       <input
+        className="hidden"
         ref={inputRef}
         type="file"
         accept=".bbl,.bfl,.BBL,.BFL,.csv"
-        style={{ display: 'none' }}
         onChange={(e) => handle(e.target.files?.[0])}
       />
       <div className="dropzone__label">

@@ -1,5 +1,3 @@
-import 'leaflet/dist/leaflet.css';
-
 import { useMemo } from 'react';
 import { CircleMarker, MapContainer, Polyline, TileLayer } from 'react-leaflet';
 
@@ -91,13 +89,7 @@ export function GpsMapTrack({
 
   return (
     <div className="gps-map-wrap" style={{ height }}>
-      <MapContainer
-        center={track.center}
-        zoom={14}
-        style={{ height: '100%', width: '100%' }}
-        scrollWheelZoom
-        className="gps-map"
-      >
+      <MapContainer center={track.center} zoom={14} scrollWheelZoom className="gps-map h-full w-full">
         <TileLayer attribution={MAP_TILE_ATTRIBUTION} url={MAP_TILE_URL} maxZoom={20} />
         <InvalidateSizeOnResize />
         <FitTrackBounds boundsPoints={track.boundsPoints} anchorLat={lat} anchorLon={lon} anchorGpsTime={gpsTime} />
