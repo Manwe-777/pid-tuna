@@ -7,6 +7,7 @@ import { drawPlotEvents } from './drawPlotEvents';
 import { drawPlotMarkers } from './drawPlotMarkers';
 import { drawSegmentStrokeLine } from './drawSegmentStrokeLine';
 import { refitYToVisible } from './refitYToVisible';
+import type { ZoomGroup } from './ZoomGroup';
 
 /** Props the plot callbacks read at call time, so changing them doesn't rebuild the plot. */
 export interface TimeSeriesLive {
@@ -35,6 +36,19 @@ interface TimeSeriesLayout {
   /** The first series is drawn per segment in its own colours instead of as one path. */
   hasSegmentStrokes: boolean;
   live: () => TimeSeriesLive;
+  /** Plots that zoom together. */
+  zoomGroup?: ZoomGroup;
+  /** Plots with the same key share the cursor. */
+  syncKey?: string;
+}
+
+/** Whether the X scale shows all the data. */
+function showsAllX(u: uPlot): boolean {
+  const xd = u.data[0];
+  const { min, max } = u.scales.x ?? {};
+  if (!xd?.length || min == null || max == null) return true;
+
+  return min <= xd[0]! && max >= xd[xd.length - 1]!;
 }
 
 function drawSegmentStrokes(u: uPlot, live: TimeSeriesLive) {
@@ -104,6 +118,10 @@ export function timeSeriesOptions(layout: TimeSeriesLayout): Options {
     legend: { show: layout.showLegend },
     cursor: {
       drag: { x: true, y: false, setScale: true },
+      // Share the time only: other plots' Y axes have other units, so they hide the horizontal line.
+      sync: layout.syncKey
+        ? { key: layout.syncKey, setSeries: false, match: [(a, b) => a === b, () => false] }
+        : undefined,
       bind: {
         // Double-click fits the data again, then re-applies the caller-pinned
         // bounds on the sides that have one.
@@ -123,7 +141,9 @@ export function timeSeriesOptions(layout: TimeSeriesLayout): Options {
       ready: [pin],
       setScale: [
         (u, key) => {
-          if (key === 'x') refitYToVisible(u, live().xMin, live().xMax);
+          if (key !== 'x') return;
+          refitYToVisible(u, live().xMin, live().xMax);
+          layout.zoomGroup?.publish(u, showsAllX(u));
         },
       ],
       draw: [

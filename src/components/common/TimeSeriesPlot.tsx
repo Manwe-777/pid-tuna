@@ -8,6 +8,7 @@ import { fingerprintSegmentStrokeColors } from '../../plot/fingerprintSegmentStr
 import { sameArrays } from '../../plot/sameArrays';
 import { type TimeSeriesLive, timeSeriesOptions } from '../../plot/timeSeriesOptions';
 import { timeSeriesStructureKey } from '../../plot/timeSeriesStructureKey';
+import type { ZoomGroup } from '../../plot/ZoomGroup';
 import type { PlotArea, PlotBand, PlotEvent, PlotMarker, PlotSeries } from '../../types';
 import { PlotEventTargets } from './PlotEventTargets';
 import { PngExportButton } from './PngExportButton';
@@ -44,6 +45,10 @@ interface TimeSeriesPlotProps {
   height?: number;
   /** Name for the PNG export; defaults to the title or Y label. */
   exportName?: string;
+  /** Plots that zoom together; read when the plot is built. */
+  zoomGroup?: ZoomGroup;
+  /** Plots with the same key share the cursor. */
+  syncKey?: string;
 }
 
 export function TimeSeriesPlot({
@@ -63,6 +68,8 @@ export function TimeSeriesPlot({
   showLegend = true,
   height = 320,
   exportName,
+  zoomGroup,
+  syncKey,
 }: TimeSeriesPlotProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
@@ -120,10 +127,13 @@ export function TimeSeriesPlot({
       chrome: PLOT_COLORS[theme],
       hasSegmentStrokes,
       live: () => liveRef.current,
+      zoomGroup,
+      syncKey,
     });
 
     const plot = new uPlot(opts, data, container);
     plotRef.current = plot;
+    const leaveGroup = zoomGroup?.join(plot);
     lastDataRef.current = [time, ...series.map((s) => s.values)];
 
     const onResize = () => plot.setSize({ width: container.clientWidth, height });
@@ -131,6 +141,7 @@ export function TimeSeriesPlot({
     ro.observe(container);
 
     return () => {
+      leaveGroup?.();
       ro.disconnect();
       plot.destroy();
       plotRef.current = null;

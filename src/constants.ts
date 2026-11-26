@@ -2,7 +2,6 @@ import type {
   FilterSpec,
   FilterType,
   LogEventKind,
-  PidTermDef,
   PlotChrome,
   SignalDef,
   SpectralMode,
@@ -11,6 +10,9 @@ import type {
   StepSettings,
   TabId,
   Theme,
+  ViewerPreset,
+  ViewerSignalDef,
+  ViewerSignalKey,
 } from './types';
 
 /** Takeoff to landing, minus moments at idle throttle (motors at idle respond differently) or with a motor pinned. */
@@ -18,11 +20,8 @@ export const STEP_MASK_DEFAULTS = { flightOnly: true, minThrottle: 5, maxThrottl
 
 export const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: 'scorecard', label: 'Scorecard' },
-  { id: 'tracking', label: 'Tracking' },
-  { id: 'filtering', label: 'Raw vs filt' },
-  { id: 'pid', label: 'PID terms' },
+  { id: 'viewer', label: 'Log viewer' },
   { id: 'saturation', label: 'I-term sat' },
-  { id: 'motors', label: 'Motors' },
   { id: 'balance', label: 'Balance' },
   { id: 'battery', label: 'Battery' },
   { id: 'gps', label: 'GPS' },
@@ -128,16 +127,6 @@ export const NOISE_BANDS: ReadonlyArray<{ label: string; lo: number; hi: number 
   { label: '100–300 Hz', lo: 100, hi: 300 },
   { label: '300–500 Hz', lo: 300, hi: 500 },
   { label: '500+ Hz', lo: 500, hi: Infinity },
-];
-
-export const PID_TERM_DEFS: PidTermDef[] = [
-  { key: 'pterm', signalKey: 'pterm', label: 'P', color: '#4ee08a' },
-  { key: 'iterm', signalKey: 'iterm', label: 'I', color: '#e0d24e' },
-  { key: 'dterm', signalKey: 'dterm', label: 'D', color: '#5fa8ff' },
-  { key: 'dtermRaw', signalKey: 'dtermRaw', label: 'D prefilt', color: '#9bd1ff' },
-  { key: 'fterm', signalKey: 'fterm', label: 'F', color: '#bd5dff' },
-  { key: 'pidsum', signalKey: 'pidsum', label: 'PID sum', color: '#e6e6e6' },
-  { key: 'pidErr', signalKey: 'pidErr', label: 'PID error', color: '#ffaa5d' },
 ];
 
 export const SAT_BAND_COLOR = 'rgba(255, 112, 112, 0.18)';
@@ -668,3 +657,56 @@ export const PLOT_EVENT_RADIUS_PX = 8;
 
 /** Gap between the top of the plot area and a log event's icon circle, in CSS px. */
 export const PLOT_EVENT_INSET_PX = 4;
+
+/** Log viewer signals, in drawing order (later ones on top). */
+export const VIEWER_SIGNALS: readonly ViewerSignalDef[] = [
+  {
+    key: 'gyroRaw',
+    label: 'Gyro prefilt',
+    color: '#5a6473',
+    width: 0.75,
+    lane: 'axis',
+    unit: 'deg/s',
+    needs: 'gyroRaw',
+  },
+  { key: 'setpoint', label: 'Setpoint', color: '#9aa3b2', width: 1.2, lane: 'axis', unit: 'deg/s' },
+  { key: 'gyroFilt', label: 'Gyro', color: '', width: 1.4, lane: 'axis', unit: 'deg/s' },
+  { key: 'pidErr', label: 'Error', color: '#ffaa5d', width: 1, lane: 'axis', unit: 'deg/s' },
+  { key: 'pterm', label: 'P', color: '#4ee08a', width: 1.2, lane: 'axis', unit: 'output', needs: 'pidTerms' },
+  { key: 'iterm', label: 'I', color: '#e0d24e', width: 1.2, lane: 'axis', unit: 'output', needs: 'iTerm' },
+  { key: 'dterm', label: 'D', color: '#5fa8ff', width: 1.2, lane: 'axis', unit: 'output', needs: 'pidTerms' },
+  { key: 'dtermRaw', label: 'D prefilt', color: '#9bd1ff', width: 1, lane: 'axis', unit: 'output' },
+  { key: 'fterm', label: 'F', color: '#bd5dff', width: 1.2, lane: 'axis', unit: 'output', needs: 'pidTerms' },
+  { key: 'pidsum', label: 'PID sum', color: '#e6e6e6', width: 1.2, lane: 'axis', unit: 'output', needs: 'pidTerms' },
+  { key: 'throttle', label: 'Throttle', color: '#bd5dff', width: 1, lane: 'throttle', unit: 'PWM' },
+  { key: 'motors', label: 'Motors', color: '', width: 1, lane: 'motors', unit: 'PWM', needs: 'motors' },
+  { key: 'eRpm', label: 'eRPM', color: '', width: 1, lane: 'eRpm', unit: 'eRPM/100', needs: 'eRpm' },
+];
+
+/** The viewer's signal chips, grouped as they are shown. */
+export const VIEWER_SIGNAL_GROUPS: ReadonlyArray<{ title: string; keys: readonly ViewerSignalKey[] }> = [
+  { title: 'Gyro', keys: ['setpoint', 'gyroFilt', 'gyroRaw', 'pidErr'] },
+  { title: 'Controller', keys: ['pterm', 'iterm', 'dterm', 'dtermRaw', 'fterm', 'pidsum'] },
+  { title: 'Power', keys: ['throttle', 'motors', 'eRpm'] },
+];
+
+export const VIEWER_PRESETS: readonly ViewerPreset[] = [
+  {
+    id: 'tracking',
+    label: 'Tracking',
+    signals: ['setpoint', 'gyroFilt'],
+    hint: 'How closely the gyro follows the sticks',
+  },
+  { id: 'filtering', label: 'Filtering', signals: ['gyroRaw', 'gyroFilt'], hint: 'What the gyro filters remove' },
+  {
+    id: 'pid',
+    label: 'PID terms',
+    signals: ['pterm', 'iterm', 'dterm', 'fterm'],
+    hint: 'What each controller term contributes',
+  },
+  { id: 'motors', label: 'Motors', signals: ['throttle', 'motors', 'eRpm'], hint: 'Throttle, motor outputs and eRPM' },
+];
+
+export const VIEWER_LANE_HEIGHTS = { axis: 220, throttle: 140, motors: 200, eRpm: 180 } as const;
+
+export const VIEWER_STORAGE_KEY = 'pidtuna:viewer';

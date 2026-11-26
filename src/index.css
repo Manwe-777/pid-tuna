@@ -269,6 +269,14 @@
     cursor: not-allowed;
   }
 
+  /* A button that is one of a set of choices; the chosen one is pressed. */
+  .btn--choice[aria-pressed='true'],
+  .btn--choice[aria-pressed='true']:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-accent) 18%, var(--color-raised));
+    border-color: var(--color-accent);
+    color: var(--color-ink);
+  }
+
   .btn--sm {
     height: 1.625rem;
     padding: 0 0.6rem;

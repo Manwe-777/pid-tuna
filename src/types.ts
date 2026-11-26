@@ -65,7 +65,7 @@ export interface ParsedLog {
 }
 
 export interface DataPresence {
-  /** Raw / unfiltered gyro columns logged (used by Raw-vs-filt and Filter sim tabs). */
+  /** Raw / unfiltered gyro columns logged (the log viewer's prefilt gyro and the Filter sim tab). */
   gyroRaw: boolean;
   /** PID terms (axisP/axisI/axisD/axisF) logged. */
   pidTerms: boolean;
@@ -109,11 +109,8 @@ export interface GpsFrameSeries {
 
 export type TabId =
   | 'scorecard'
-  | 'tracking'
-  | 'filtering'
-  | 'pid'
+  | 'viewer'
   | 'saturation'
-  | 'motors'
   | 'balance'
   | 'battery'
   | 'gps'
@@ -150,13 +147,54 @@ export interface SignalDef {
   color: string;
 }
 
-export type PidTermKey = 'pterm' | 'iterm' | 'dterm' | 'dtermRaw' | 'fterm' | 'pidsum' | 'pidErr';
+/** A per-axis signal `extractSignal` can pull out of a log. */
+export type AxisSignalKey = Exclude<SignalKey, 'motor0' | 'motor1' | 'motor2' | 'motor3'>;
 
-export interface PidTermDef {
-  key: PidTermKey;
-  signalKey: SignalKey; // for extractSignal()
+/** A signal the log viewer can draw. */
+export type ViewerSignalKey = AxisSignalKey | 'throttle' | 'motors' | 'eRpm';
+
+/** Which lane a viewer signal is drawn in: one per axis, or a shared throttle, motor or eRPM lane. */
+export type ViewerLaneKind = 'axis' | 'throttle' | 'motors' | 'eRpm';
+
+export interface ViewerSignalDef {
+  key: ViewerSignalKey;
   label: string;
+  /** CSS colour; empty means the axis colour. */
   color: string;
+  width: number;
+  lane: ViewerLaneKind;
+  /** Y unit of the lane: rotation rate or controller output. */
+  unit: 'deg/s' | 'output' | 'PWM' | 'eRPM/100';
+  /** The presence flag the signal needs, if any. */
+  needs?: keyof DataPresence;
+}
+
+export type ViewerPresetId = 'tracking' | 'filtering' | 'pid' | 'motors';
+
+export interface ViewerPreset {
+  id: ViewerPresetId;
+  label: string;
+  signals: readonly ViewerSignalKey[];
+  /** What the preset is for, shown as its tooltip. */
+  hint: string;
+}
+
+/** What the log viewer shows: signals, axes (0-based) and the motors hidden from the motor and eRPM lanes. */
+export interface ViewerSelection {
+  signals: ReadonlySet<ViewerSignalKey>;
+  axes: ReadonlySet<number>;
+  hiddenMotors: ReadonlySet<number>;
+}
+
+/** One stacked plot of the log viewer. */
+export interface ViewerLane {
+  id: string;
+  title: string;
+  /** Colour of the dot before the title (the axis colour). */
+  dot?: string;
+  yLabel: string;
+  height: number;
+  series: PlotSeries[];
 }
 
 export type SpectrogramSource = 'filt' | 'raw';
