@@ -5,6 +5,7 @@ import { PLOT_COLORS } from '../../constants';
 import { usePlotSync } from '../../hooks/usePlotSync';
 import { useTheme } from '../../hooks/useTheme';
 import { fingerprintSegmentStrokeColors } from '../../plot/fingerprintSegmentStrokeColors';
+import { refreshPlotData } from '../../plot/refreshPlotData';
 import { resetXScale } from '../../plot/resetXScale';
 import { sameArrays } from '../../plot/sameArrays';
 import { type TimeSeriesLive, timeSeriesOptions } from '../../plot/timeSeriesOptions';
@@ -154,6 +155,7 @@ export function TimeSeriesPlot({
 
   // Data updates: only push to uPlot when the underlying typed arrays actually
   // change identity. Calling setData mid-drag would abort the pending selection.
+  // The zoom is kept; Y refits to the new data.
   useEffect(() => {
     const plot = plotRef.current;
     if (!plot) return;
@@ -161,7 +163,7 @@ export function TimeSeriesPlot({
     if (sameArrays(lastDataRef.current, next)) return;
 
     lastDataRef.current = next;
-    plot.setData(next as AlignedData, false);
+    refreshPlotData(plot, next as AlignedData, { yMin, yMax });
   });
 
   // Redraw on marker / band changes (cheap — no scale reset).
