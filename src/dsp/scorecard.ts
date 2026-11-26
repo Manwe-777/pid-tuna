@@ -8,6 +8,7 @@ import { analyzeMotorBalance, combineMotorBalances, type BalanceAnalysis } from 
 import { combinePsds, computePsd } from './spectrogram';
 import { combineStepResponses, type StepResponseResult } from './stepResponse';
 import { stepResponseForLog } from './stepResponseForLog';
+import { stepScoreEntries } from './stepScoreEntries';
 
 export type ScoreStatus = 'good' | 'warn' | 'bad' | 'na';
 
@@ -66,7 +67,7 @@ export function buildScorecard(log: ParsedLog): Scorecard {
   const steps = AXIS_NAMES.map((_n, axis) =>
     stepResponseForLog(log, axis),
   );
-  const stepRows = stepResponseEntries(steps);
+  const stepRows = stepScoreEntries(steps);
   for (const row of stepRows) entries.push(row);
 
   // ---- Battery sag ----
@@ -133,7 +134,7 @@ export function buildMergedScorecard(logs: ParsedLog[]): Scorecard {
       ),
     ),
   );
-  for (const row of stepResponseEntries(pooledSteps)) entries.push(row);
+  for (const row of stepScoreEntries(pooledSteps)) entries.push(row);
 
   // ---- Battery sag: average per-log analyses where battery was logged ----
   const batteries = logs.map((l) => analyzeBattery(l)).filter((b) => b.hasVoltage);
@@ -232,48 +233,6 @@ function noiseFloorEntry(psds: { frequencies: Float32Array; psdDb: Float32Array 
     value: `${midBandMean.toFixed(1)} dB mean`,
     detail: 'Filtered gyro across roll/pitch/yaw',
   };
-}
-
-function stepResponseEntries(steps: StepResponseResult[]): ScoreEntry[] {
-  const anyDetected = steps.some((s) => s.segments.length > 0);
-  if (!anyDetected) return [];
-
-  const out: ScoreEntry[] = [];
-  const risePerAxis = steps.map((s) => s.metrics.riseTimeMs);
-  const validRise = RATED_AXES
-    .map((i) => risePerAxis[i])
-    .filter((x): x is number => x != null);
-  if (validRise.length > 0) {
-    const maxRise = Math.max(...validRise);
-    const status: ScoreStatus = maxRise < 30 ? 'good' : maxRise < 50 ? 'warn' : 'bad';
-    out.push({
-      key: 'Step response (rise)',
-      status,
-      value:
-        RATED_AXES
-          .map((i) => `${AXIS_NAMES[i]} ${risePerAxis[i] != null ? risePerAxis[i]!.toFixed(1) : '—'}`)
-          .join(' · ') + ' ms',
-      detail: `${steps.reduce((a, s) => a + s.segments.length, 0)} step windows analyzed`,
-    });
-  }
-
-  const overshoots = steps.map((s) => s.metrics.overshootPct);
-  const validOver = RATED_AXES
-    .map((i) => overshoots[i])
-    .filter((x): x is number => x != null);
-  if (validOver.length > 0) {
-    const maxOver = Math.max(...validOver);
-    const status: ScoreStatus = maxOver < 10 ? 'good' : maxOver < 20 ? 'warn' : 'bad';
-    out.push({
-      key: 'Step response (overshoot)',
-      status,
-      value:
-        RATED_AXES
-          .map((i) => `${AXIS_NAMES[i]} ${overshoots[i] != null ? overshoots[i]!.toFixed(1) : '—'}`)
-          .join(' · ') + '%',
-    });
-  }
-  return out;
 }
 
 function batteryEntry(battery: BatteryAnalysis): ScoreEntry | null {
