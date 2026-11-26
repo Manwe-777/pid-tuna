@@ -105,35 +105,36 @@ export function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
           />
         ))}
         <div className="filter-add">
-          <button type="button" onClick={() => addFilter('pt1')}>
+          <button type="button" className="btn btn--sm" onClick={() => addFilter('pt1')}>
             + PT1
           </button>
-          <button type="button" onClick={() => addFilter('pt2')}>
+          <button type="button" className="btn btn--sm" onClick={() => addFilter('pt2')}>
             + PT2
           </button>
-          <button type="button" onClick={() => addFilter('pt3')}>
+          <button type="button" className="btn btn--sm" onClick={() => addFilter('pt3')}>
             + PT3
           </button>
-          <button type="button" onClick={() => addFilter('biquad')}>
+          <button type="button" className="btn btn--sm" onClick={() => addFilter('biquad')}>
             + Biquad
           </button>
-          <button type="button" onClick={() => addFilter('notch')}>
+          <button type="button" className="btn btn--sm" onClick={() => addFilter('notch')}>
             + Notch
           </button>
-          <button type="button" onClick={() => addFilter('rpm')}>
+          <button type="button" className="btn btn--sm" onClick={() => addFilter('rpm')}>
             + RPM filter
           </button>
-          <button type="button" onClick={() => addFilter('dynNotch')}>
+          <button type="button" className="btn btn--sm" onClick={() => addFilter('dynNotch')}>
             + Dynamic notch
           </button>
           <button
             type="button"
+            className="btn btn--sm"
             onClick={() =>
               setChain(
                 gyroChainFromTune(tune, { motorHz: medianMotorHz(log), motorCount: log.motor.length || undefined }),
               )
             }
-            title="Replace the chain with this log's gyro filters: a dynamic lowpass at its minimum cutoff, RPM notches at the median motor frequency, dynamic notches at their minimum"
+            data-tip="Replace the chain with this log's gyro filters: a dynamic lowpass at its minimum cutoff, RPM notches at the median motor frequency, dynamic notches at their minimum"
           >
             Load from log
           </button>
@@ -171,7 +172,7 @@ export function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
             onChange={(e) => setYMax(Number.parseFloat(e.target.value))}
           />
         </label>
-        <label title="Frequency the chain's delay is reported at">
+        <label data-tip="Frequency the chain's delay is reported at">
           Delay at:
           <input
             className="w-16"

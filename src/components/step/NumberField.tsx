@@ -5,7 +5,7 @@ export function NumberField({
   min,
   max,
   step,
-  title,
+  tip,
   placeholder,
   onChange,
 }: {
@@ -15,12 +15,12 @@ export function NumberField({
   min: number;
   max: number;
   step: number;
-  title?: string;
+  tip?: string;
   placeholder?: string;
   onChange: (v: number) => void;
 }) {
   return (
-    <label title={title}>
+    <label data-tip={tip}>
       {label}
       <input
         type="number"

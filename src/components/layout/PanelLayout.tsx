@@ -11,7 +11,7 @@ export function PanelLayout({
     <>
       <div className="fc-msc__panel-head">
         <span className="fc-msc__panel-title">{title}</span>
-        <button type="button" className="fc-msc__close" onClick={onClose} aria-label="Close" title="Close">
+        <button type="button" className="fc-msc__close" onClick={onClose} aria-label="Close" data-tip="Close">
           ✕
         </button>
       </div>

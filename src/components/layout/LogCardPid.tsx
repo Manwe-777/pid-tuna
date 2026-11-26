@@ -5,7 +5,7 @@ import { formatGain } from '../../utils/formatGain';
 /** P · I · D · D-max · F per axis. */
 export function LogCardPid({ view }: { view: TuneView }) {
   return (
-    <div className="log-card__pid" title="P · I · D · D-max · F">
+    <div className="log-card__pid" data-tip="P · I · D · D-max · F">
       {AXIS_NAMES.map((name, i) => {
         const row = view.pidByAxis[i]!;
 

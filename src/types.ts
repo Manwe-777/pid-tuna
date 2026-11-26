@@ -1165,3 +1165,19 @@ export interface GpsTrackOverlay {
   /** Altitude range of the colour scale, or null when the track isn't coloured by altitude. */
   legend: { min: number; max: number } | null;
 }
+
+/** A rectangle in viewport pixels, shaped like the useful part of a DOMRect. */
+export interface ViewportRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** Where a tooltip sits: its top-left corner, which side of the element it is on, and the arrow's x inside it. */
+export interface TooltipPlacement {
+  left: number;
+  top: number;
+  side: 'above' | 'below';
+  arrowX: number;
+}

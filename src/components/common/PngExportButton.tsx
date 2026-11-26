@@ -29,7 +29,7 @@ export function PngExportButton({ canvases, backgroundOf, name, fallbackName }: 
     <button
       type="button"
       className="absolute top-1 right-1 z-10 px-1.5 py-0.5 text-[0.7rem] opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
-      title="Save this plot as a PNG image"
+      data-tip="Save this plot as a PNG image"
       onClick={exportPng}
     >
       PNG

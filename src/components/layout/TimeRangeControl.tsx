@@ -59,7 +59,7 @@ export function TimeRangeControl({ max, value, onChange }: TimeRangeControlProps
       <span className="time-range__duration">
         ({(value.end - value.start).toFixed(2)}s of {max.toFixed(2)}s)
       </span>
-      <button type="button" className="time-range__reset" onClick={reset}>
+      <button type="button" className="btn btn--sm time-range__reset" onClick={reset}>
         Full log
       </button>
     </div>

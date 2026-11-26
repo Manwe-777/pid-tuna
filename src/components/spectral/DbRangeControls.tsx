@@ -30,7 +30,7 @@ export function DbRangeControls(p: {
         />
       </label>
       {p.overridden && (
-        <button type="button" className="step-btn-reset" onClick={p.onAuto}>
+        <button type="button" className="btn btn--sm" onClick={p.onAuto}>
           Auto
         </button>
       )}

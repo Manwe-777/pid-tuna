@@ -10,7 +10,7 @@ export function CsvExportButton({ name, csv }: { name: string; csv: () => string
     });
 
   return (
-    <button type="button" title="Save these results as a CSV table" onClick={exportCsv}>
+    <button type="button" className="btn btn--sm" data-tip="Save these results as a CSV table" onClick={exportCsv}>
       Export CSV
     </button>
   );

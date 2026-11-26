@@ -22,6 +22,11 @@ A client-side React app that parses Betaflight blackbox logs and runs DSP on the
 - Analyses run takeoff to landing (`flightRange`: stick throttle at or above 20% for 0.5 s). Throttle in percent comes from `throttlePercentSeries` (rcCommand[3]).
 - Yaw is shown but never rated: scorecard rows score `RATED_AXES = [0, 1]` only.
 
+## UI rules
+
+- Tooltips are `data-tip` attributes on DOM elements, shown by the one `TooltipLayer` mounted in `App`. Native `title` is a lint error.
+- Buttons use `btn` (with `btn--sm` or `btn--primary`); a checkbox with its label uses `toggle`, which `.controls` applies automatically. Settings with several parts go in a `control-panel` of `ControlGroup`s.
+
 ## Tests
 
 - Accuracy tests assert against the simulated drone's known response, not against current output. A known inaccuracy is a `test.fails` case.

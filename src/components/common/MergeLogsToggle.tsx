@@ -13,14 +13,8 @@ export function MergeLogsToggle({
 }) {
   return (
     <label
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.35rem',
-        opacity: canMerge ? 1 : 0.45,
-        cursor: canMerge ? 'pointer' : 'not-allowed',
-      }}
-      title={
+      className="toggle"
+      data-tip={
         canMerge
           ? 'Pool data across every enabled log into one combined view.'
           : 'Enable two or more logs in the sidebar to merge them.'

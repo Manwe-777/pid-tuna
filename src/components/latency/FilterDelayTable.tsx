@@ -18,7 +18,7 @@ export function FilterDelayTable({ entries }: { entries: FilterDelayEntry[] }) {
           <tr key={`${e.label}-${i}`}>
             <th>{e.label}</th>
             <td className="muted">{e.chain === 'gyro' ? 'gyro' : 'D only'}</td>
-            <td title={e.note}>
+            <td data-tip={e.note}>
               {e.cutoffHz > 0 ? `${e.cutoffHz} Hz` : '—'}
               {e.dynamic && <span className="muted"> (dyn)</span>}
             </td>

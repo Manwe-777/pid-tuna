@@ -22,7 +22,8 @@ export function CopyCliButtons({ entries }: { entries: LogEntry[] }) {
         <button
           key={slot.id}
           type="button"
-          title="Betaflight CLI set commands for this log's PIDs, rates and filters; review, then type save"
+          className="btn btn--sm"
+          data-tip="Betaflight CLI set commands for this log's PIDs, rates and filters; review, then type save"
           onClick={() =>
             copy(
               slot.id,

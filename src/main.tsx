@@ -1,4 +1,5 @@
 import './parser/compat'; // Must run before any blackbox-log code is imported.
+import '@fontsource-variable/inter';
 import './index.css';
 
 import { StrictMode } from 'react';

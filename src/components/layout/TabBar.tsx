@@ -28,7 +28,7 @@ export function TabBar({
             className={cls}
             onClick={() => !isDisabled && onChange(t.id)}
             disabled={isDisabled}
-            title={isDisabled ? 'No data in the loaded log(s) for this tab' : undefined}
+            data-tip={isDisabled ? 'No data in the loaded log(s) for this tab' : undefined}
           >
             {t.label}
             {isDisabled && <span className="tab-bar__dot" aria-hidden="true" />}

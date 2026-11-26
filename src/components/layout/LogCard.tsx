@@ -47,7 +47,7 @@ export function LogCard({
     <div className={className} draggable={draggable} {...dragHandlers}>
       <div className="log-card__top">
         {draggable && (
-          <span className="log-card__grip" title="Drag to reorder" aria-hidden>
+          <span className="log-card__grip" data-tip="Drag to reorder" aria-hidden>
             ⋮⋮
           </span>
         )}
@@ -56,11 +56,11 @@ export function LogCard({
           checked={slot.enabled}
           onChange={onToggle}
           disabled={slot.state.kind !== 'ready'}
-          title={slot.enabled ? 'Plotted' : 'Hidden'}
+          data-tip={slot.enabled ? 'Plotted' : 'Hidden'}
         />
         <DashSwatch dashIndex={slot.dashIndex} />
         <span className="log-card__name">{slotFileName(slot.state)}</span>
-        <button type="button" className="log-card__remove" onClick={onRemove} title="Remove">
+        <button type="button" className="log-card__remove" onClick={onRemove} data-tip="Remove">
           ✕
         </button>
       </div>

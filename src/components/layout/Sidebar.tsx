@@ -20,7 +20,7 @@ export function Sidebar({ slots, onAddFile, onToggle, onRemove, onReorder }: Sid
     <aside className="sidebar">
       <div className="sidebar__header">
         <span className="sidebar__title">Logs</span>
-        <button type="button" className="sidebar__add" onClick={() => inputRef.current?.click()}>
+        <button type="button" className="btn btn--sm" onClick={() => inputRef.current?.click()}>
           + Add log
         </button>
         <input

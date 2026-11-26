@@ -24,6 +24,18 @@ export default tseslint.config(
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       'simple-import-sort/imports': 'error',
       'simple-import-sort/exports': 'error',
+      // Tooltips go through TooltipLayer: `data-tip` on DOM elements, never a native `title`.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXOpeningElement[name.name=/^[a-z]/] > JSXAttribute[name.name='title']",
+          message: 'Use data-tip for tooltips; native title tooltips are slow and unstyled.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name=/^[A-Z]/] > JSXAttribute[name.name='data-tip']",
+          message: 'data-tip only works on DOM elements; pass the text through a prop.',
+        },
+      ],
       complexity: ['error', 10],
       'max-depth': ['error', 3],
       '@stylistic/padding-line-between-statements': [

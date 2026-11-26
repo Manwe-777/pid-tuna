@@ -7,7 +7,17 @@
 
 /* App colours (dark theme) and font. The light theme overrides the colours below. */
 @theme static {
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --animate-tooltip-in: tooltip-in 110ms ease-out;
+
+  @keyframes tooltip-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--tooltip-shift, 2px));
+    }
+  }
 
   /* Surfaces */
   --color-bg: #0b0d10;
@@ -47,14 +57,21 @@
   --color-bad: #ff7070;
   --color-danger-ink: #ff9b9b;
   --color-chip-ink: #0b0d10;
+  --color-tooltip-bg: #232b38;
+  --color-tooltip-border: #3a4456;
+  --color-tooltip-ink: #eef1f5;
 }
 
 @layer base {
   :root {
     font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss03';
+    line-height: 1.5;
     color-scheme: dark;
     background: var(--color-bg);
     color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   :root[data-theme='light'] {
@@ -98,6 +115,9 @@
     --color-bad: #d63a3a;
     --color-danger-ink: #b32626;
     --color-chip-ink: #0b0d10;
+    --color-tooltip-bg: #1d232c;
+    --color-tooltip-border: #1d232c;
+    --color-tooltip-ink: #f4f6f9;
   }
 
   * {
@@ -108,10 +128,321 @@
     margin: 0;
     min-height: 100vh;
   }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  h2 {
+    margin: 0 0 0.4rem;
+    font-size: 1.375rem;
+    font-weight: 650;
+    letter-spacing: -0.015em;
+    color: var(--color-ink);
+  }
+
+  h3 {
+    margin: 1.5rem 0 0.6rem;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    color: var(--color-ink-2);
+  }
+
+  h4,
+  h5 {
+    margin: 1rem 0 0.4rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-ink-2);
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  input[type='number'],
+  input[type='text'],
+  input[type='search'],
+  select {
+    height: 1.875rem;
+    padding: 0 0.5rem;
+    background: var(--color-surface-inset);
+    color: var(--color-ink);
+    border: 1px solid var(--color-border-2);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    transition:
+      border-color 100ms ease,
+      box-shadow 100ms ease;
+  }
+
+  select {
+    padding-right: 0.25rem;
+    cursor: pointer;
+  }
+
+  input[type='number']:hover,
+  input[type='text']:hover,
+  input[type='search']:hover,
+  select:hover {
+    border-color: var(--color-border-3);
+  }
+
+  input[type='number']:focus-visible,
+  input[type='text']:focus-visible,
+  input[type='search']:focus-visible,
+  select:focus-visible {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 25%, transparent);
+  }
+
+  input::placeholder {
+    color: var(--color-dim);
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 0.95rem;
+    height: 0.95rem;
+    margin: 0;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+  }
+
+  input:disabled,
+  select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
 }
 
 /* Component styles: layouts and visuals shared by several elements. */
 @layer components {
+  /* Shared button. `btn--sm` for inline controls, `btn--primary` for the main action. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    height: 1.875rem;
+    padding: 0 0.8rem;
+    background: var(--color-raised);
+    color: var(--color-ink-2);
+    border: 1px solid var(--color-border-2);
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background 100ms ease,
+      border-color 100ms ease,
+      color 100ms ease;
+  }
+
+  .btn:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+    border-color: var(--color-border-3);
+    color: var(--color-ink);
+  }
+
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn--sm {
+    height: 1.625rem;
+    padding: 0 0.6rem;
+    font-size: 0.78rem;
+  }
+
+  .btn--primary {
+    background: var(--color-brand);
+    border-color: var(--color-brand);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .btn--primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-brand) 85%, #fff);
+    border-color: color-mix(in srgb, var(--color-brand) 85%, #fff);
+    color: #fff;
+  }
+
+  /* A checkbox with its label, drawn as a chip so the whole thing is the click target. */
+  .toggle,
+  .controls label:has(> input[type='checkbox']) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    height: 1.875rem;
+    padding: 0 0.65rem;
+    background: var(--color-surface-inset);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    color: var(--color-ink-3);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition:
+      background 100ms ease,
+      border-color 100ms ease,
+      color 100ms ease;
+  }
+
+  .toggle:hover,
+  .controls label:has(> input[type='checkbox']):hover {
+    border-color: var(--color-border-3);
+    color: var(--color-ink);
+  }
+
+  .toggle:has(> input:checked),
+  .controls label:has(> input[type='checkbox']:checked) {
+    background: var(--color-surface-sel);
+    border-color: var(--color-border-accent);
+    color: var(--color-ink);
+  }
+
+  .toggle:has(> input:disabled),
+  .controls label:has(> input[type='checkbox']:disabled) {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .toggle:has(> input:disabled) > input,
+  .controls label:has(> input[type='checkbox']:disabled) > input {
+    opacity: 1;
+  }
+
+  /* Settings for a tab, in titled groups. */
+  .control-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem 2rem;
+    margin: 0.75rem 0 1rem;
+    padding: 0.8rem 1rem;
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .control-group__title {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+  }
+
+  .control-group .controls {
+    margin: 0;
+    gap: 0.5rem 0.75rem;
+  }
+
+  .control-panel__footer {
+    flex-basis: 100%;
+  }
+
+  /* Intro text under a tab's heading. */
+  .plot-section > h2 + p.muted,
+  .section-lead {
+    max-width: 120ch;
+    margin: 0 0 1rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  /* Elements with a tooltip that aren't controls: a dotted underline says there's more. */
+  th[data-tip],
+  td[data-tip] > span,
+  span[data-tip],
+  [data-tip] > .step-stats__k {
+    text-decoration: underline dotted var(--color-dim);
+    text-underline-offset: 3px;
+  }
+
+  .tooltip {
+    position: fixed;
+    z-index: 1000;
+    max-width: min(20rem, calc(100vw - 16px));
+    padding: 0.45rem 0.65rem;
+    background: var(--color-tooltip-bg);
+    color: var(--color-tooltip-ink);
+    border: 1px solid var(--color-tooltip-border);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+    font-size: 0.8rem;
+    font-weight: 450;
+    line-height: 1.45;
+    text-wrap: pretty;
+    pointer-events: none;
+    animation: var(--animate-tooltip-in);
+  }
+
+  .tooltip--measuring {
+    left: 0;
+    top: 0;
+    visibility: hidden;
+    animation: none;
+  }
+
+  .tooltip--below {
+    --tooltip-shift: -2px;
+  }
+
+  .tooltip::after {
+    content: '';
+    position: absolute;
+    left: calc(var(--arrow-x, 50%) - 5px);
+    width: 8px;
+    height: 8px;
+    background: var(--color-tooltip-bg);
+    border: 1px solid var(--color-tooltip-border);
+    transform: rotate(45deg);
+  }
+
+  .tooltip--above::after {
+    bottom: -5px;
+    border-top: none;
+    border-left: none;
+  }
+
+  .tooltip--below::after {
+    top: -5px;
+    border-bottom: none;
+    border-right: none;
+  }
+
+  .tooltip--measuring::after {
+    display: none;
+  }
+
   /* Global header sits above the sidebar and main column, always visible. */
   .app-header {
     position: sticky;
@@ -321,22 +652,6 @@
     justify-content: flex-end;
   }
 
-  .fc-msc__primary {
-    background: #5060d0;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    padding: 0.45rem 1rem;
-    font-family: inherit;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .fc-msc__primary:hover {
-    background: #6070e8;
-  }
-
   .fc-msc__error {
     color: var(--color-danger-ink);
   }
@@ -394,22 +709,6 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--color-muted);
-  }
-
-  .sidebar__add {
-    background: var(--color-raised);
-    color: var(--color-ink);
-    border: 1px solid var(--color-border-2);
-    border-radius: 4px;
-    padding: 0.3rem 0.7rem;
-    font-family: inherit;
-    font-size: 0.85rem;
-    cursor: pointer;
-  }
-
-  .sidebar__add:hover {
-    background: var(--color-surface-hover);
-    border-color: var(--color-border-3);
   }
 
   .sidebar__body {
@@ -702,9 +1001,10 @@
     color: var(--color-muted);
     border: none;
     border-bottom: 2px solid transparent;
-    padding: 0.55rem 0.95rem;
-    font-family: inherit;
-    font-size: 0.9rem;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
     cursor: pointer;
     margin-bottom: -1px;
     transition:
@@ -802,7 +1102,7 @@
   }
 
   code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-mono);
     background: var(--color-raised);
     padding: 0.05rem 0.35rem;
     border-radius: 3px;
@@ -810,10 +1110,6 @@
 
   .plot-section {
     margin: 2rem 0;
-  }
-
-  .plot-section h2 {
-    margin-bottom: 0.5rem;
   }
 
   .plot {
@@ -877,37 +1173,22 @@
 
   .controls {
     display: flex;
-    gap: 1.25rem;
+    align-items: center;
+    gap: 0.6rem 1.25rem;
     flex-wrap: wrap;
     margin: 0.5rem 0 1rem;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--color-ink-3);
   }
 
   .controls label {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-  }
-
-  .controls select {
-    background: var(--color-surface-inset);
-    color: var(--color-ink);
-    border: 1px solid var(--color-border-2);
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-    font-family: inherit;
+    gap: 0.45rem;
   }
 
   .spec-db-input {
-    width: 4rem;
-    background: var(--color-surface-inset);
-    color: var(--color-ink);
-    border: 1px solid var(--color-border-2);
-    border-radius: 4px;
-    padding: 0.25rem 0.4rem;
-    font-family: inherit;
-    font-variant-numeric: tabular-nums;
+    width: 4.25rem;
   }
 
   .plot-section > .plot + .plot {
@@ -947,29 +1228,10 @@
 
   .time-range input[type='number'] {
     width: 5.5rem;
-    background: var(--color-surface-inset);
-    color: var(--color-ink);
-    border: 1px solid var(--color-border-2);
-    border-radius: 4px;
-    padding: 0.25rem 0.4rem;
-    font-family: inherit;
-    font-variant-numeric: tabular-nums;
   }
 
   .time-range__reset {
     margin-left: auto;
-    background: var(--color-raised);
-    color: var(--color-ink-2);
-    border: 1px solid var(--color-border-2);
-    border-radius: 4px;
-    padding: 0.25rem 0.7rem;
-    font-family: inherit;
-    font-size: 0.85rem;
-    cursor: pointer;
-  }
-
-  .time-range__reset:hover {
-    background: var(--color-surface-hover);
   }
 
   .axis-plot {
@@ -1310,16 +1572,6 @@
     font-size: 0.75rem;
   }
 
-  .filter-row input[type='number'] {
-    background: var(--color-surface-inset);
-    color: var(--color-ink);
-    border: 1px solid var(--color-border-2);
-    border-radius: 4px;
-    padding: 0.18rem 0.35rem;
-    font-family: inherit;
-    font-variant-numeric: tabular-nums;
-  }
-
   .filter-row__remove {
     margin-left: auto;
     background: transparent;
@@ -1342,21 +1594,6 @@
     gap: 0.5rem;
     flex-wrap: wrap;
     margin-top: 0.25rem;
-  }
-
-  .filter-add button {
-    background: var(--color-raised);
-    color: var(--color-ink-2);
-    border: 1px solid var(--color-border-2);
-    border-radius: 4px;
-    padding: 0.3rem 0.7rem;
-    font-family: inherit;
-    font-size: 0.85rem;
-    cursor: pointer;
-  }
-
-  .filter-add button:hover {
-    background: var(--color-surface-hover);
   }
 
   .tune-panel {
@@ -1454,9 +1691,9 @@
     padding: 0;
     margin: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 0 1.25rem;
-    font-size: 0.88rem;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0 1.5rem;
+    font-size: 0.85rem;
   }
 
   .tune-list li {
@@ -1468,6 +1705,7 @@
 
   .tune-list__k {
     color: var(--color-muted);
+    white-space: nowrap;
   }
 
   .tune-list__v {
@@ -1985,12 +2223,7 @@
   }
 
   .spec-playback__speed select {
-    background: var(--color-inset-2);
-    border: 1px solid var(--color-border-2);
-    color: var(--color-ink-2);
-    border-radius: 4px;
-    padding: 0.15rem 0.3rem;
-    font-family: inherit;
+    height: 1.625rem;
   }
 
   .step-axis-row {
@@ -2064,52 +2297,33 @@
     font-size: 0.7rem;
   }
 
-  .step-btn-reset {
-    background: var(--color-inset-2);
-    border: 1px solid var(--color-border-2);
-    color: var(--color-ink-2);
-    border-radius: 3px;
-    padding: 0.2rem 0.5rem;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 0.78rem;
-  }
-
-  .step-btn-reset:hover {
-    background: var(--color-surface-hover);
-  }
-
-  .step-btn-reset:disabled {
-    opacity: 0.45;
-    cursor: default;
-  }
-
-  .step-controls__row {
-    align-items: center;
-    margin: 0.4rem 0;
-    gap: 0.6rem 1.25rem;
-  }
-
   .step-controls__number {
-    width: 4.5rem;
-    background: var(--color-surface-inset);
-    color: var(--color-ink);
-    border: 1px solid var(--color-border-2);
-    border-radius: 4px;
-    padding: 0.15rem 0.3rem;
-    font-family: inherit;
-    font-variant-numeric: tabular-nums;
+    width: 4.75rem;
   }
 
   .step-controls__advanced {
     font-size: 0.85rem;
     color: var(--color-ink-3);
-    margin: 0.2rem 0 0.4rem;
   }
 
   .step-controls__advanced summary {
+    width: fit-content;
+    color: var(--color-muted);
+    font-size: 0.8rem;
     cursor: pointer;
     user-select: none;
+  }
+
+  .step-controls__advanced summary:hover {
+    color: var(--color-ink);
+  }
+
+  .step-controls__advanced[open] summary {
+    margin-bottom: 0.4rem;
+  }
+
+  .step-controls__advanced .controls {
+    margin: 0;
   }
 
   .step-stats {
@@ -2124,7 +2338,6 @@
     border: 1px solid var(--color-border);
     border-radius: 4px;
     padding: 0.3rem 0.5rem;
-    cursor: help;
   }
 
   .step-stats__k {

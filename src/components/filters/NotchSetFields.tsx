@@ -25,7 +25,7 @@ export function NotchSetFields({
         min={10}
         max={2000}
         step={10}
-        title="Betaflight scale: 500 = Q 5"
+        tip="Betaflight scale: 500 = Q 5"
         onChange={(v) => onChange({ bfQ: v })}
       />
     </>

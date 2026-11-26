@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { TooltipLayer } from './components/common/TooltipLayer';
 import { Analyses } from './components/layout/Analyses';
 import { FcMscButton } from './components/layout/FcMscButton';
 import { Sidebar } from './components/layout/Sidebar';
@@ -22,7 +23,7 @@ export function App() {
             href={`https://github.com/Manwe-777/pid-tuna/releases/tag/v${__APP_VERSION__}`}
             target="_blank"
             rel="noreferrer noopener"
-            title="View this version's release notes"
+            data-tip="View this version's release notes"
           >
             v{__APP_VERSION__}
           </a>
@@ -40,6 +41,7 @@ export function App() {
           )}
         </main>
       </div>
+      <TooltipLayer />
     </>
   );
 }

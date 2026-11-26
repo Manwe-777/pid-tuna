@@ -9,7 +9,7 @@ export function ThemeToggle() {
   const nextLabel = isDark ? 'Switch to light theme' : 'Switch to dark theme';
 
   return (
-    <button type="button" className="theme-toggle" onClick={toggleTheme} title={nextLabel} aria-label={nextLabel}>
+    <button type="button" className="theme-toggle" onClick={toggleTheme} data-tip={nextLabel} aria-label={nextLabel}>
       {isDark ? <MoonIcon /> : <SunIcon />}
     </button>
   );

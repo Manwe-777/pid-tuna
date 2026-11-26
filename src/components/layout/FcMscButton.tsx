@@ -116,7 +116,7 @@ export function FcMscButton() {
         onClick={onButtonClick}
         disabled={buttonDisabled}
         aria-label="Connect FC over USB"
-        title="Connect to a Betaflight FC over USB and switch it to mass-storage mode"
+        data-tip="Connect to a Betaflight FC over USB and switch it to mass-storage mode"
       >
         <UsbIcon className="fc-msc__icon" />
         <span className="fc-msc__label">Connect FC</span>

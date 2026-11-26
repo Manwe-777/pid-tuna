@@ -18,7 +18,7 @@ export function StepStatsTable({ rows }: { rows: StepStatsRow[] }) {
 
   return (
     <div className="step-stats">
-      <div className="step-stats__cell" title="Analysis windows pooled into the estimate">
+      <div className="step-stats__cell" data-tip="Analysis windows pooled into the estimate">
         <div className="step-stats__k">Windows</div>
         {rows.map((row) => (
           <div key={row.id} className="step-stats__v">
@@ -28,7 +28,7 @@ export function StepStatsTable({ rows }: { rows: StepStatsRow[] }) {
         ))}
       </div>
       {STEP_METRICS.map((m) => (
-        <div key={m.key} className="step-stats__cell" title={m.help}>
+        <div key={m.key} className="step-stats__cell" data-tip={m.help}>
           <div className="step-stats__k">{m.label}</div>
           {rows.map((row) => (
             <div key={row.id} className={`step-stats__v ${toneFor(m.key, row.metrics) ?? ''}`}>

@@ -21,7 +21,7 @@ export function ErrorSetpointInfo({
         stick-to-gyro delay is taken out first, so what remains is tracking, not lag.
       </p>
       <div className="controls">
-        <label title="Compare setpoint with gyro shifted back by the measured tracking latency">
+        <label data-tip="Compare setpoint with gyro shifted back by the measured tracking latency">
           <input type="checkbox" checked={compensateLag} onChange={(e) => onCompensateLag(e.target.checked)} />
           Compensate latency
         </label>

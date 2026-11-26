@@ -26,7 +26,7 @@ export function FcMscPanel({
             Nothing is written to the FC. The only command sent is a one-byte request to reboot into mass-storage mode.
           </p>
           <div className="fc-msc__actions">
-            <button type="button" className="fc-msc__primary" onClick={onConnect}>
+            <button type="button" className="btn btn--primary" onClick={onConnect}>
               Connect
             </button>
           </div>
@@ -76,7 +76,7 @@ export function FcMscPanel({
             than SD or flash, or the USB driver isn&apos;t installed (Windows users may need the STM32 VCP driver).
           </p>
           <div className="fc-msc__actions">
-            <button type="button" className="fc-msc__primary" onClick={onConnect}>
+            <button type="button" className="btn btn--primary" onClick={onConnect}>
               Try again
             </button>
           </div>

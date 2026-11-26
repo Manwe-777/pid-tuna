@@ -29,10 +29,10 @@ export function RpmFields({
         min={0}
         max={500}
         step={5}
-        title="Notches fade in from 0% at the minimum to full weight at minimum + fade"
+        tip="Notches fade in from 0% at the minimum to full weight at minimum + fade"
         onChange={(v) => onChange({ fadeHz: v })}
       />
-      <label title="Per-harmonic weights, %">
+      <label data-tip="Per-harmonic weights, %">
         Weights
         <input
           className="w-26"

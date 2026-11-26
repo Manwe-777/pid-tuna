@@ -5,7 +5,7 @@ export function Num({
   min,
   max,
   step,
-  title,
+  tip,
   onChange,
 }: {
   label: string;
@@ -14,11 +14,11 @@ export function Num({
   min: number;
   max: number;
   step: number;
-  title?: string;
+  tip?: string;
   onChange: (v: number) => void;
 }) {
   return (
-    <label title={title}>
+    <label data-tip={tip}>
       {label}:
       <input
         className="w-18"

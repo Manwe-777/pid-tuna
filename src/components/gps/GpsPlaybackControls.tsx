@@ -44,7 +44,7 @@ export function GpsPlaybackControls(p: {
         <button
           type="button"
           className="gps-playback__speed"
-          title="Playback speed"
+          data-tip="Playback speed"
           onClick={() => p.onPlaybackSpeedChange(NEXT_SPEED[p.playbackSpeed] ?? 1)}
         >
           {p.playbackSpeed === 1 ? '1×' : p.playbackSpeed === 2 ? '2×' : '4×'}

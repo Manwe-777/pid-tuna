@@ -32,7 +32,7 @@ export function FilterRow({ filter, maxHz, onChange, onRemove }: Props) {
         type="checkbox"
         checked={f.enabled}
         onChange={(e) => onChange({ enabled: e.target.checked })}
-        title="Enable / disable"
+        data-tip="Enable / disable"
       />
       <span className="filter-row__type">{LABEL[f.type]}</span>
       <Num
@@ -42,7 +42,7 @@ export function FilterRow({ filter, maxHz, onChange, onRemove }: Props) {
         min={1}
         max={maxHz - 1}
         step={5}
-        title={f.type === 'rpm' ? 'Motor rotation frequency: the 1st harmonic' : undefined}
+        tip={f.type === 'rpm' ? 'Motor rotation frequency: the 1st harmonic' : undefined}
         onChange={(v) => onChange({ cutoffHz: v })}
       />
       {f.type === 'notch' && (
@@ -58,7 +58,7 @@ export function FilterRow({ filter, maxHz, onChange, onRemove }: Props) {
       )}
       {(f.type === 'rpm' || f.type === 'dynNotch') && <NotchSetFields filter={f} onChange={onChange} />}
       {f.type === 'rpm' && <RpmFields filter={f} maxHz={maxHz} onChange={onChange} />}
-      <button type="button" className="filter-row__remove" onClick={onRemove} title="Remove">
+      <button type="button" className="filter-row__remove" onClick={onRemove} data-tip="Remove">
         ✕
       </button>
     </div>

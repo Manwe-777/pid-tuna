@@ -10,9 +10,9 @@ export function BalanceStatsTable({ analysis }: { analysis: BalanceAnalysis }) {
       <thead>
         <tr>
           <th>Motor</th>
-          <th title="Mean motor command above zero output, takeoff to landing">Mean output</th>
+          <th data-tip="Mean motor command above zero output, takeoff to landing">Mean output</th>
           <th>Load</th>
-          <th title="How much the command moves around its mean">Output σ</th>
+          <th data-tip="How much the command moves around its mean">Output σ</th>
           <th>Mean eRPM</th>
           <th>eRPM CV</th>
         </tr>

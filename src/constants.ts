@@ -643,3 +643,15 @@ export const BF_CLI_GROUPS: ReadonlyArray<{ title: string; settings: readonly st
 
 /** How long a copy button says "Copied", in ms. */
 export const COPIED_FEEDBACK_MS = 1500;
+
+/** Hover time before a tooltip appears, in ms. */
+export const TOOLTIP_DELAY_MS = 250;
+
+/** After a tooltip hides, another one shows at once if the pointer reaches it within this time, in ms. */
+export const TOOLTIP_WARM_MS = 500;
+
+/** Gap between a tooltip and the element it explains, in px. */
+export const TOOLTIP_GAP_PX = 8;
+
+/** Closest a tooltip gets to the window edge, in px. */
+export const TOOLTIP_EDGE_PX = 8;
