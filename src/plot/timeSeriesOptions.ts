@@ -105,10 +105,10 @@ export function timeSeriesOptions(layout: TimeSeriesLayout): Options {
     cursor: {
       drag: { x: true, y: false, setScale: true },
       bind: {
-        // Double-click resets to the caller-pinned bounds (or to auto if no
-        // bound was specified for that side). Returning a non-null handler
-        // suppresses uPlot's default reset.
-        dblclick: (u) => () => {
+        // Double-click fits the data again, then re-applies the caller-pinned
+        // bounds on the sides that have one.
+        dblclick: (u, _target, reset) => (e) => {
+          reset(e);
           pin(u);
 
           return null;
