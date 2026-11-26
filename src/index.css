@@ -404,6 +404,102 @@
     pointer-events: auto;
   }
 
+  /* A dragged-out time selection, waiting for a double-click to zoom into it. */
+  .plot-selection-layer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  /* uPlot's box while dragging out a selection; matches the selection it becomes. */
+  .u-select,
+  .plot-selection {
+    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+    border-left: 1px solid var(--color-accent);
+    border-right: 1px solid var(--color-accent);
+  }
+
+  .plot-selection {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+  }
+
+  .plot-selection__edge {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 13px;
+    margin-left: -6px;
+    cursor: ew-resize;
+    pointer-events: auto;
+    touch-action: none;
+  }
+
+  /* A grip on the edge line, so the edges read as draggable. */
+  .plot-selection__edge::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 9px;
+    height: 26px;
+    transform: translate(-50%, -50%);
+    border-radius: 3px;
+    background:
+      repeating-linear-gradient(
+          to bottom,
+          transparent 0 7px,
+          color-mix(in srgb, var(--color-raised) 80%, transparent) 7px 8px,
+          transparent 8px 10px
+        )
+        center / 3px 100% no-repeat,
+      var(--color-accent);
+    box-shadow: 0 0 0 1px var(--color-raised);
+    transition: transform 100ms ease;
+  }
+
+  .plot-selection__edge:hover::after,
+  .plot-selection__edge:active::after {
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+
+  .plot-selection__label {
+    position: absolute;
+    top: 4px;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.05rem 0.2rem 0.05rem 0.45rem;
+    background: var(--color-raised);
+    border: 1px solid var(--color-accent);
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink);
+    white-space: nowrap;
+    pointer-events: auto;
+  }
+
+  .plot-selection__clear {
+    padding: 0 0.25rem;
+    background: transparent;
+    border: 0;
+    border-radius: 3px;
+    font-size: 0.85rem;
+    color: var(--color-ink-3);
+    line-height: 1.1;
+    cursor: pointer;
+  }
+
+  .plot-selection__clear:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-ink);
+  }
+
   .plot-event-target:hover {
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-ink) 45%, transparent);
   }

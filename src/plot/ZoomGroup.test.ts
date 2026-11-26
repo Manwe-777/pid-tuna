@@ -57,3 +57,36 @@ describe('ZoomGroup', () => {
     expect(b.scales.x).toEqual({ min: 0, max: 100 });
   });
 });
+
+describe('ZoomGroup selection', () => {
+  test('double-clicking a selection zooms every plot to it and clears it', () => {
+    const g = new ZoomGroup();
+    const a = plot(g);
+    const b = plot(g);
+    g.join(a);
+    g.join(b);
+    g.select({ min: 12, max: 18 });
+    expect(g.zoomToSelection(a)).toBe(true);
+    expect(b.scales.x).toEqual({ min: 12, max: 18 });
+    expect(g.selection).toBeNull();
+  });
+
+  test('without a selection, zoomToSelection leaves the plots alone', () => {
+    const g = new ZoomGroup();
+    const a = plot(g);
+    g.join(a);
+    expect(g.zoomToSelection(a)).toBe(false);
+    expect(a.scales.x).toEqual({ min: 0, max: 100 });
+  });
+
+  test('listeners hear each change once, and an empty span clears the selection', () => {
+    const g = new ZoomGroup();
+    let calls = 0;
+    g.subscribe(() => calls++);
+    g.select({ min: 1, max: 2 });
+    g.select({ min: 1, max: 2 });
+    g.select({ min: 3, max: 3 });
+    expect(calls).toBe(2);
+    expect(g.selection).toBeNull();
+  });
+});

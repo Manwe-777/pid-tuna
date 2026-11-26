@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import uPlot, { type AlignedData } from 'uplot';
 
 import { PLOT_COLORS } from '../../constants';
@@ -8,9 +7,9 @@ import { fingerprintSegmentStrokeColors } from '../../plot/fingerprintSegmentStr
 import { sameArrays } from '../../plot/sameArrays';
 import { type TimeSeriesLive, timeSeriesOptions } from '../../plot/timeSeriesOptions';
 import { timeSeriesStructureKey } from '../../plot/timeSeriesStructureKey';
-import type { ZoomGroup } from '../../plot/ZoomGroup';
+import { ZoomGroup } from '../../plot/ZoomGroup';
 import type { PlotArea, PlotBand, PlotEvent, PlotMarker, PlotSeries } from '../../types';
-import { PlotEventTargets } from './PlotEventTargets';
+import { PlotOverlays } from './PlotOverlays';
 import { PngExportButton } from './PngExportButton';
 
 interface TimeSeriesPlotProps {
@@ -45,7 +44,7 @@ interface TimeSeriesPlotProps {
   height?: number;
   /** Name for the PNG export; defaults to the title or Y label. */
   exportName?: string;
-  /** Plots that zoom together; read when the plot is built. */
+  /** Plots that zoom together and share the selection; read when the plot is built. Defaults to its own. */
   zoomGroup?: ZoomGroup;
   /** Plots with the same key share the cursor. */
   syncKey?: string;
@@ -77,6 +76,8 @@ export function TimeSeriesPlot({
   const theme = useTheme();
   // Where the plot area is after the last draw, for the event hover targets.
   const [eventLayer, setEventLayer] = useState<{ area: PlotArea; over: HTMLElement } | null>(null);
+  const [ownGroup] = useState(() => new ZoomGroup());
+  const group = zoomGroup ?? ownGroup;
 
   // The latest prop values, so callbacks (dblclick, Y-autofit, draw hooks) see
   // them without forcing a plot rebuild when they change.
@@ -127,13 +128,13 @@ export function TimeSeriesPlot({
       chrome: PLOT_COLORS[theme],
       hasSegmentStrokes,
       live: () => liveRef.current,
-      zoomGroup,
+      zoomGroup: group,
       syncKey,
     });
 
     const plot = new uPlot(opts, data, container);
     plotRef.current = plot;
-    const leaveGroup = zoomGroup?.join(plot);
+    const leaveGroup = group.join(plot);
     lastDataRef.current = [time, ...series.map((s) => s.values)];
 
     const onResize = () => plot.setSize({ width: container.clientWidth, height });
@@ -141,7 +142,7 @@ export function TimeSeriesPlot({
     ro.observe(container);
 
     return () => {
-      leaveGroup?.();
+      leaveGroup();
       ro.disconnect();
       plot.destroy();
       plotRef.current = null;
@@ -151,7 +152,7 @@ export function TimeSeriesPlot({
   }, [structureKey]);
 
   // Data updates: only push to uPlot when the underlying typed arrays actually
-  // change identity. Calling setData mid-drag would abort the pending zoom.
+  // change identity. Calling setData mid-drag would abort the pending selection.
   useEffect(() => {
     const plot = plotRef.current;
     if (!plot) return;
@@ -175,9 +176,7 @@ export function TimeSeriesPlot({
         name={exportName ?? title}
         fallbackName={yLabel ?? 'plot'}
       />
-      {events?.length && eventLayer
-        ? createPortal(<PlotEventTargets events={events} area={eventLayer.area} />, eventLayer.over)
-        : null}
+      <PlotOverlays layer={eventLayer} events={events} group={group} />
     </div>
   );
 }

@@ -1,11 +1,13 @@
 import uPlot, { type Options } from 'uplot';
 
+import { PLOT_CLICK_SLOP_PX } from '../constants';
 import type { PlotArea, PlotBand, PlotChrome, PlotEvent, PlotMarker, PlotSeries } from '../types';
 import { applyPinned } from './applyPinned';
 import { drawPlotBands } from './drawPlotBands';
 import { drawPlotEvents } from './drawPlotEvents';
 import { drawPlotMarkers } from './drawPlotMarkers';
 import { drawSegmentStrokeLine } from './drawSegmentStrokeLine';
+import { isOutsideSpan } from './isOutsideSpan';
 import { refitYToVisible } from './refitYToVisible';
 import type { ZoomGroup } from './ZoomGroup';
 
@@ -36,8 +38,8 @@ interface TimeSeriesLayout {
   /** The first series is drawn per segment in its own colours instead of as one path. */
   hasSegmentStrokes: boolean;
   live: () => TimeSeriesLive;
-  /** Plots that zoom together. */
-  zoomGroup?: ZoomGroup;
+  /** Plots that zoom together and share the dragged-out selection. */
+  zoomGroup: ZoomGroup;
   /** Plots with the same key share the cursor. */
   syncKey?: string;
 }
@@ -59,6 +61,30 @@ function drawSegmentStrokes(u: uPlot, live: TimeSeriesLive) {
   if (segs?.length && xd && yd && segs.length === xd.length - 1 && yd.length === xd.length) {
     drawSegmentStrokeLine(u, segs, live.firstSeriesStrokeWidth);
   }
+}
+
+/**
+ * Mouse bindings that clear the selection on a click (not a drag) outside it. Presses on the
+ * selection's edges and label never reach uPlot, so they keep it.
+ */
+function clickOutsideClears(group: ZoomGroup) {
+  let downX = Number.NaN;
+
+  return {
+    mousedown: (_u: uPlot, _t: HTMLElement, handler: (e: MouseEvent) => null) => (e: MouseEvent) => {
+      downX = e.clientX;
+
+      return handler(e);
+    },
+    mouseup: (u: uPlot, _t: HTMLElement, handler: (e: MouseEvent) => null) => (e: MouseEvent) => {
+      if (Math.abs(e.clientX - downX) < PLOT_CLICK_SLOP_PX) {
+        const value = u.posToVal(e.clientX - u.over.getBoundingClientRect().left, 'x');
+        if (isOutsideSpan(group.selection, value)) group.select(null);
+      }
+
+      return handler(e);
+    },
+  };
 }
 
 /** Draws the log events and reports where the plot area now is, for their hover targets. */
@@ -117,15 +143,18 @@ export function timeSeriesOptions(layout: TimeSeriesLayout): Options {
     ],
     legend: { show: layout.showLegend },
     cursor: {
-      drag: { x: true, y: false, setScale: true },
+      // Dragging picks a span; a double-click zooms into it.
+      drag: { x: true, y: false, setScale: false },
       // Share the time only: other plots' Y axes have other units, so they hide the horizontal line.
       sync: layout.syncKey
         ? { key: layout.syncKey, setSeries: false, match: [(a, b) => a === b, () => false] }
         : undefined,
       bind: {
-        // Double-click fits the data again, then re-applies the caller-pinned
-        // bounds on the sides that have one.
+        ...clickOutsideClears(layout.zoomGroup),
+        // Double-click zooms into the selection. Without one it fits the data
+        // again, then re-applies the caller-pinned bounds on the sides that have one.
         dblclick: (u, _target, reset) => (e) => {
+          if (layout.zoomGroup.zoomToSelection(u)) return null;
           reset(e);
           pin(u);
 
@@ -139,11 +168,20 @@ export function timeSeriesOptions(layout: TimeSeriesLayout): Options {
       // Set the caller-pinned bounds once data is loaded but before the first
       // paint — avoids a flash of the auto-fit range.
       ready: [pin],
+      // Hand a finished drag to the group, which draws it as an adjustable selection.
+      setSelect: [
+        (u) => {
+          const { left, width } = u.select;
+          if (width < 2) return;
+          layout.zoomGroup.select({ min: u.posToVal(left, 'x'), max: u.posToVal(left + width, 'x') });
+          u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
+        },
+      ],
       setScale: [
         (u, key) => {
           if (key !== 'x') return;
           refitYToVisible(u, live().xMin, live().xMax);
-          layout.zoomGroup?.publish(u, showsAllX(u));
+          layout.zoomGroup.publish(u, showsAllX(u));
         },
       ],
       draw: [

@@ -1236,6 +1236,12 @@ export interface PlotEvent extends LogEvent {
 }
 
 /** A plot's data area and the x range it shows, in the units of whatever draws into it. */
+/** A stretch of the X axis, in data units. */
+export interface TimeSpan {
+  min: number;
+  max: number;
+}
+
 export interface PlotArea {
   left: number;
   top: number;

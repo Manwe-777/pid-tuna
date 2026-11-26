@@ -710,3 +710,6 @@ export const VIEWER_PRESETS: readonly ViewerPreset[] = [
 export const VIEWER_LANE_HEIGHTS = { axis: 220, throttle: 140, motors: 200, eRpm: 180 } as const;
 
 export const VIEWER_STORAGE_KEY = 'pidtuna:viewer';
+
+/** Pointer travel (CSS px) below which a press on a plot counts as a click, not a drag. */
+export const PLOT_CLICK_SLOP_PX = 3;

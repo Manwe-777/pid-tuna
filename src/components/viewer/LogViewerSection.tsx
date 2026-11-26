@@ -21,7 +21,8 @@ export function LogViewerSection({ entries }: { entries: LogEntry[] }) {
     <section className="plot-section">
       <h2>Log viewer</h2>
       <p className="muted">
-        Pick a preset or any signals. Drag across a plot to zoom them all, double-click to zoom back out.
+        Pick a preset or any signals. Drag across a plot to select a stretch of time, drag its edges to adjust it, and
+        double-click to zoom every plot into it. Double-click with nothing selected zooms back out.
         {entries.length > 1 && ' A signal alone in its plot is drawn in log colours; otherwise logs differ by dash.'}
       </p>
       <ViewerControls entries={entries} viewer={viewer} motorCount={motorCount} />
