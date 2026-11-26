@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { AXIS_COLORS, AXIS_NAMES, PID_TERM_DEFS } from '../../constants';
 import { colorFor } from '../../logs/colorFor';
+import { plotEvents } from '../../logs/plotEvents';
 import { shortName } from '../../logs/shortName';
 import type { LogEntry, PidTermKey, PlotSeries } from '../../types';
 import { align } from '../../utils/align';
@@ -11,6 +12,7 @@ import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 export function PidTermsSection({ entries }: { entries: LogEntry[] }) {
   const primary = entries[0]!;
   const multi = entries.length > 1;
+  const events = useMemo(() => plotEvents(entries), [entries]);
 
   const [selected, setSelected] = useState<ReadonlySet<PidTermKey>>(() => new Set<PidTermKey>(['pterm', 'iterm']));
   const singleSelected: PidTermKey = multi ? ([...selected][0] ?? 'pterm') : 'pterm';
@@ -111,7 +113,7 @@ export function PidTermsSection({ entries }: { entries: LogEntry[] }) {
               {name}
             </h3>
             {series.length > 0 ? (
-              <TimeSeriesPlot time={primary.log.time} series={series} yLabel="output" height={220} />
+              <TimeSeriesPlot time={primary.log.time} events={events} series={series} yLabel="output" height={220} />
             ) : (
               <p className="muted">No data for selected terms on this axis.</p>
             )}

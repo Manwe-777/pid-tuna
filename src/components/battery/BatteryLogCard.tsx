@@ -1,5 +1,8 @@
+import { useMemo } from 'react';
+
 import { CURRENT_COLOR, VOLT_COLOR } from '../../constants';
 import { colorFor } from '../../logs/colorFor';
+import { plotEvents } from '../../logs/plotEvents';
 import { shortName } from '../../logs/shortName';
 import type { BatteryAnalysis, LogSlot, ParsedLog, PlotSeries } from '../../types';
 import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
@@ -17,6 +20,7 @@ export function BatteryLogCard({
   multi: boolean;
 }) {
   const slow = log.slow;
+  const events = useMemo(() => plotEvents([{ log, slot }]), [log, slot]);
   const vbatSeries: PlotSeries[] = analysis.hasVoltage
     ? [{ label: 'vbat', values: slow.vbat, stroke: VOLT_COLOR, width: 1.5 }]
     : [];
@@ -37,14 +41,28 @@ export function BatteryLogCard({
       {vbatSeries.length > 0 && (
         <div className="axis-plot mt-2">
           <h5 className="axis-plot__title text-[0.78rem]">Voltage (V)</h5>
-          <TimeSeriesPlot time={slow.time} series={vbatSeries} yLabel="V" height={180} showLegend={false} />
+          <TimeSeriesPlot
+            events={events}
+            time={slow.time}
+            series={vbatSeries}
+            yLabel="V"
+            height={180}
+            showLegend={false}
+          />
         </div>
       )}
 
       {currentSeries.length > 0 && (
         <div className="axis-plot mt-2">
           <h5 className="axis-plot__title text-[0.78rem]">Current (A)</h5>
-          <TimeSeriesPlot time={slow.time} series={currentSeries} yLabel="A" height={180} showLegend={false} />
+          <TimeSeriesPlot
+            events={events}
+            time={slow.time}
+            series={currentSeries}
+            yLabel="A"
+            height={180}
+            showLegend={false}
+          />
         </div>
       )}
     </div>

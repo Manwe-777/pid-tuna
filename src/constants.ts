@@ -1,6 +1,7 @@
 import type {
   FilterSpec,
   FilterType,
+  LogEventKind,
   PidTermDef,
   PlotChrome,
   SignalDef,
@@ -655,3 +656,15 @@ export const TOOLTIP_GAP_PX = 8;
 
 /** Closest a tooltip gets to the window edge, in px. */
 export const TOOLTIP_EDGE_PX = 8;
+
+/** How each log event is named and coloured on the time plots. */
+export const LOG_EVENT_STYLES: Record<LogEventKind, { label: string; color: string }> = {
+  arm: { label: 'Armed', color: '#3fbf6a' },
+  disarm: { label: 'Disarmed', color: '#e5534b' },
+};
+
+/** Radius of a log event's icon circle at the top of a plot, in CSS px. */
+export const PLOT_EVENT_RADIUS_PX = 8;
+
+/** Gap between the top of the plot area and a log event's icon circle, in CSS px. */
+export const PLOT_EVENT_INSET_PX = 4;

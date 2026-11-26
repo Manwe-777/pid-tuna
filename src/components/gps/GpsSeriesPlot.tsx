@@ -1,4 +1,4 @@
-import type { PlotMarker, PlotSeries } from '../../types';
+import type { PlotEvent, PlotMarker, PlotSeries } from '../../types';
 import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 
 /** A small titled GPS chart (altitude or speed) with the playback marker. */
@@ -9,6 +9,7 @@ export function GpsSeriesPlot(props: {
   yLabel: string;
   markers: PlotMarker[];
   segmentStrokeColors?: readonly string[];
+  events: readonly PlotEvent[];
 }) {
   return (
     <div className="axis-plot mt-2">
@@ -20,6 +21,7 @@ export function GpsSeriesPlot(props: {
         height={180}
         showLegend={false}
         markers={props.markers}
+        events={props.events}
         segmentStrokeColors={props.segmentStrokeColors}
       />
     </div>

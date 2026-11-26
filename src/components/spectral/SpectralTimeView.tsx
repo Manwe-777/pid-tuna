@@ -1,6 +1,6 @@
 import { HEATMAP_HEIGHT } from '../../constants';
 import type { useSpectralCursor } from '../../hooks/useSpectralCursor';
-import type { SpectrogramResult } from '../../types';
+import type { PlotEvent, SpectrogramResult } from '../../types';
 import { SpectralPlayback } from './SpectralPlayback';
 import { SpectralSlicePlot } from './SpectralSlicePlot';
 import { SpectrogramPlot } from './SpectrogramPlot';
@@ -14,10 +14,21 @@ interface Props {
   maxFreq: number;
   floorDb: number;
   ceilDb: number;
+  events: readonly PlotEvent[];
 }
 
 /** Time modes: playback bar, the spectrum at the cursor, and the time × frequency heatmap. */
-export function SpectralTimeView({ spec, cursor, slice, axisName, axisColor, maxFreq, floorDb, ceilDb }: Props) {
+export function SpectralTimeView({
+  spec,
+  cursor,
+  slice,
+  axisName,
+  axisColor,
+  maxFreq,
+  floorDb,
+  ceilDb,
+  events,
+}: Props) {
   return (
     <>
       {cursor.hasTimes && (
@@ -55,6 +66,7 @@ export function SpectralTimeView({ spec, cursor, slice, axisName, axisColor, max
         floorDb={floorDb}
         ceilDb={ceilDb}
         cursorTime={cursor.cursorTime ?? undefined}
+        events={events}
         height={HEATMAP_HEIGHT}
       />
     </>

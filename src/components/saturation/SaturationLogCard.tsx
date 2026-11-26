@@ -1,5 +1,8 @@
+import { useMemo } from 'react';
+
 import { AXIS_COLORS, SAT_BAND_COLOR } from '../../constants';
 import { colorFor } from '../../logs/colorFor';
+import { plotEvents } from '../../logs/plotEvents';
 import { shortName } from '../../logs/shortName';
 import type { LogSlot, ParsedLog, PlotBand, PlotSeries, SaturationAnalysis } from '../../types';
 import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
@@ -15,6 +18,7 @@ export function SaturationLogCard({
   analysis: SaturationAnalysis;
   multi: boolean;
 }) {
+  const events = useMemo(() => plotEvents([{ log, slot }]), [log, slot]);
   const yaw = analysis.axes[2]?.limit;
   const limits =
     yaw != null && yaw !== analysis.itermLimit
@@ -70,6 +74,7 @@ export function SaturationLogCard({
               {a.axisName} — threshold {a.threshold.toFixed(0)}
             </h5>
             <TimeSeriesPlot
+              events={events}
               time={log.time}
               series={series}
               yLabel="iTerm"

@@ -1,5 +1,8 @@
+import { useMemo } from 'react';
+
 import { AXIS_COLORS, AXIS_NAMES } from '../../constants';
 import { colorFor } from '../../logs/colorFor';
+import { plotEvents } from '../../logs/plotEvents';
 import { shortName } from '../../logs/shortName';
 import type { LogEntry, PlotSeries } from '../../types';
 import { align } from '../../utils/align';
@@ -8,6 +11,7 @@ import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 export function TrackingSection({ entries }: { entries: LogEntry[] }) {
   const primary = entries[0]!;
   const multi = entries.length > 1;
+  const events = useMemo(() => plotEvents(entries), [entries]);
   return (
     <section className="plot-section">
       <h2>Setpoint vs gyro</h2>
@@ -51,7 +55,7 @@ export function TrackingSection({ entries }: { entries: LogEntry[] }) {
               <span className="axis-plot__dot" style={{ background: AXIS_COLORS[i] }} />
               {name}
             </h3>
-            <TimeSeriesPlot time={primary.log.time} series={series} yLabel="deg/s" height={220} />
+            <TimeSeriesPlot time={primary.log.time} events={events} series={series} yLabel="deg/s" height={220} />
           </div>
         );
       })}

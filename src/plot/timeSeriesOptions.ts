@@ -1,9 +1,9 @@
-import type uPlot from 'uplot';
-import type { Options } from 'uplot';
+import uPlot, { type Options } from 'uplot';
 
-import type { PlotBand, PlotChrome, PlotMarker, PlotSeries } from '../types';
+import type { PlotArea, PlotBand, PlotChrome, PlotEvent, PlotMarker, PlotSeries } from '../types';
 import { applyPinned } from './applyPinned';
 import { drawPlotBands } from './drawPlotBands';
+import { drawPlotEvents } from './drawPlotEvents';
 import { drawPlotMarkers } from './drawPlotMarkers';
 import { drawSegmentStrokeLine } from './drawSegmentStrokeLine';
 import { refitYToVisible } from './refitYToVisible';
@@ -18,6 +18,9 @@ export interface TimeSeriesLive {
   bands?: PlotBand[];
   segmentStrokeColors?: readonly string[];
   firstSeriesStrokeWidth: number;
+  events?: readonly PlotEvent[];
+  /** Called after each draw with uPlot's `over` element and the plot area in CSS px relative to it. */
+  onArea?: (area: PlotArea, over: HTMLElement) => void;
 }
 
 interface TimeSeriesLayout {
@@ -42,6 +45,16 @@ function drawSegmentStrokes(u: uPlot, live: TimeSeriesLive) {
   if (segs?.length && xd && yd && segs.length === xd.length - 1 && yd.length === xd.length) {
     drawSegmentStrokeLine(u, segs, live.firstSeriesStrokeWidth);
   }
+}
+
+/** Draws the log events and reports where the plot area now is, for their hover targets. */
+function drawEvents(u: uPlot, live: TimeSeriesLive) {
+  const xMin = u.scales.x?.min ?? 0;
+  const xMax = u.scales.x?.max ?? 0;
+  const { left, top, width, height } = u.bbox;
+  drawPlotEvents(u.ctx, live.events, { left, top, width, height, xMin, xMax }, uPlot.pxRatio);
+  const cssArea = { left: 0, top: 0, width: width / uPlot.pxRatio, height: height / uPlot.pxRatio, xMin, xMax };
+  live.onArea?.(cssArea, u.over);
 }
 
 function seriesOptions(series: PlotSeries[], xLabel: string, hasSegmentStrokes: boolean) {
@@ -117,6 +130,7 @@ export function timeSeriesOptions(layout: TimeSeriesLayout): Options {
         (u) => {
           drawSegmentStrokes(u, live());
           drawPlotMarkers(u, live().markers);
+          drawEvents(u, live());
         },
       ],
     },

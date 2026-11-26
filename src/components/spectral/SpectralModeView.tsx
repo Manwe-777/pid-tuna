@@ -1,7 +1,7 @@
 import { HEATMAP_HEIGHT } from '../../constants';
 import type { useSpectralCursor } from '../../hooks/useSpectralCursor';
 import type { useSpectralMaps } from '../../hooks/useSpectralMaps';
-import type { SpectralMode } from '../../types';
+import type { PlotEvent, SpectralMode } from '../../types';
 import { isBinnedMode } from '../../utils/isBinnedMode';
 import { isRpmMode } from '../../utils/isRpmMode';
 import { BinnedModeNote } from './BinnedModeNote';
@@ -22,6 +22,7 @@ interface Props {
   ceilDb: number;
   compensateLag: boolean;
   onCompensateLag: (on: boolean) => void;
+  events: readonly PlotEvent[];
 }
 
 /** The current mode's view: error density, binned heatmap, or the time view with its cursor. */
@@ -69,6 +70,7 @@ export function SpectralModeView(p: Props) {
       maxFreq={p.maxFreq}
       floorDb={p.floorDb}
       ceilDb={p.ceilDb}
+      events={p.events}
     />
   ) : null;
 }

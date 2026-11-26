@@ -10,6 +10,7 @@ import type {
   SetupInfo,
   SlowFrameSeries,
 } from '../types';
+import { armEvents } from './armEvents';
 import { freeLogFile } from './freeLogFile';
 import { type OriginalHeader, patchHeaders } from './patchHeaders';
 import { rawGyroSource } from './rawGyroSource';
@@ -136,6 +137,7 @@ export async function parseLog(
       .map((c) => toF32(cols.get(c), rowCount)),
     slow,
     gps,
+    events: armEvents(offsetFrom(frames.slowTime, t0), frames.slowModeFlags),
     presence,
   };
 
@@ -158,6 +160,7 @@ interface FrameBuffers {
   slowTime: number[];
   slowVbat: number[];
   slowAmperage: number[];
+  slowModeFlags: number[];
   lastMainTime: number;
   sawSlowVbat: boolean;
   sawSlowAmperage: boolean;
@@ -182,6 +185,7 @@ function collectFrames(dataParser: DataParser, onProgress: ProgressCallback | un
     slowTime: [],
     slowVbat: [],
     slowAmperage: [],
+    slowModeFlags: [],
     lastMainTime: 0,
     sawSlowVbat: false,
     sawSlowAmperage: false,
@@ -242,6 +246,7 @@ function addSlowFrame(buf: FrameBuffers, f: FrameFields): void {
   buf.slowTime.push(buf.lastMainTime);
   if (pushOrNaN(buf.slowVbat, f.get('vbatLatest'))) buf.sawSlowVbat = true;
   if (pushOrNaN(buf.slowAmperage, f.get('amperageLatest'))) buf.sawSlowAmperage = true;
+  pushOrNaN(buf.slowModeFlags, f.get('flightModeFlags'));
 }
 
 /** Push the value, or NaN when the field is missing; true when it was present. */

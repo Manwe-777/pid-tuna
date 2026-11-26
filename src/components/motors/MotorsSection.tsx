@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { plotEvents } from '../../logs/plotEvents';
 import type { LogEntry } from '../../types';
 import { motorChannelSeries } from '../../utils/motorChannelSeries';
 import { throttleSeries } from '../../utils/throttleSeries';
@@ -9,6 +10,7 @@ import { MotorPicker } from './MotorPicker';
 export function MotorsSection({ entries }: { entries: LogEntry[] }) {
   const primary = entries[0]!;
   const multi = entries.length > 1;
+  const events = useMemo(() => plotEvents(entries), [entries]);
 
   const motorCount = primary.log.motor.length;
   const hasERpm = useMemo(
@@ -50,18 +52,18 @@ export function MotorsSection({ entries }: { entries: LogEntry[] }) {
 
       <div className="axis-plot">
         <h3 className="axis-plot__title">Throttle command</h3>
-        <TimeSeriesPlot time={primary.log.time} series={throttle} yLabel="PWM" height={180} />
+        <TimeSeriesPlot time={primary.log.time} events={events} series={throttle} yLabel="PWM" height={180} />
       </div>
 
       <div className="axis-plot">
         <h3 className="axis-plot__title">Motor output{multi ? ` — M${selectedMotor + 1}` : 's'}</h3>
-        <TimeSeriesPlot time={primary.log.time} series={motorSeries} yLabel="PWM" height={220} />
+        <TimeSeriesPlot time={primary.log.time} events={events} series={motorSeries} yLabel="PWM" height={220} />
       </div>
 
       {hasERpm && (
         <div className="axis-plot">
           <h3 className="axis-plot__title">eRPM{multi ? ` — M${selectedMotor + 1}` : ''}</h3>
-          <TimeSeriesPlot time={primary.log.time} series={erpmSeries} yLabel="eRPM/100" height={200} />
+          <TimeSeriesPlot time={primary.log.time} events={events} series={erpmSeries} yLabel="eRPM/100" height={200} />
         </div>
       )}
     </section>

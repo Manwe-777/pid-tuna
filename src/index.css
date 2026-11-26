@@ -387,6 +387,19 @@
     text-underline-offset: 3px;
   }
 
+  /* Hover target over a log event's icon on a plot; the icon itself is drawn on the canvas. */
+  .plot-event-target {
+    position: absolute;
+    z-index: 2;
+    border-radius: 50%;
+    cursor: default;
+    pointer-events: auto;
+  }
+
+  .plot-event-target:hover {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-ink) 45%, transparent);
+  }
+
   .tooltip {
     position: fixed;
     z-index: 1000;

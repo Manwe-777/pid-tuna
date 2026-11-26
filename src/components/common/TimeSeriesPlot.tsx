@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import uPlot, { type AlignedData } from 'uplot';
 
 import { PLOT_COLORS } from '../../constants';
@@ -7,7 +8,8 @@ import { fingerprintSegmentStrokeColors } from '../../plot/fingerprintSegmentStr
 import { sameArrays } from '../../plot/sameArrays';
 import { type TimeSeriesLive, timeSeriesOptions } from '../../plot/timeSeriesOptions';
 import { timeSeriesStructureKey } from '../../plot/timeSeriesStructureKey';
-import type { PlotBand, PlotMarker, PlotSeries } from '../../types';
+import type { PlotArea, PlotBand, PlotEvent, PlotMarker, PlotSeries } from '../../types';
+import { PlotEventTargets } from './PlotEventTargets';
 import { PngExportButton } from './PngExportButton';
 
 interface TimeSeriesPlotProps {
@@ -29,6 +31,8 @@ interface TimeSeriesPlotProps {
   markers?: PlotMarker[];
   /** Horizontal background bands drawn behind the data (e.g. saturation runs). */
   bands?: PlotBand[];
+  /** Log events (arming, disarming) drawn as lines with an icon at the top; x is time. */
+  events?: readonly PlotEvent[];
   /**
    * One stroke color per segment between adjacent samples (length `time.length - 1`),
    * applied only to the first Y series (`series[0]`). Suppresses the default mono-color path.
@@ -54,6 +58,7 @@ export function TimeSeriesPlot({
   yMax,
   markers,
   bands,
+  events,
   segmentStrokeColors,
   showLegend = true,
   height = 320,
@@ -63,6 +68,8 @@ export function TimeSeriesPlot({
   const plotRef = useRef<uPlot | null>(null);
   const lastDataRef = useRef<readonly (Float32Array | number[])[] | null>(null);
   const theme = useTheme();
+  // Where the plot area is after the last draw, for the event hover targets.
+  const [eventLayer, setEventLayer] = useState<{ area: PlotArea; over: HTMLElement } | null>(null);
 
   // The latest prop values, so callbacks (dblclick, Y-autofit, draw hooks) see
   // them without forcing a plot rebuild when they change.
@@ -76,6 +83,9 @@ export function TimeSeriesPlot({
       markers,
       bands,
       segmentStrokeColors,
+      events,
+      onArea: (area, over) =>
+        setEventLayer((prev) => (prev?.over === over && sameArea(prev.area, area) ? prev : { area, over })),
       firstSeriesStrokeWidth: series[0]?.width ?? 1,
     };
   });
@@ -144,7 +154,7 @@ export function TimeSeriesPlot({
   // Redraw on marker / band changes (cheap — no scale reset).
   useEffect(() => {
     plotRef.current?.redraw(false);
-  }, [markers, bands, segmentStrokeColors]);
+  }, [markers, bands, events, segmentStrokeColors]);
 
   return (
     <div ref={containerRef} className="plot group relative">
@@ -154,6 +164,13 @@ export function TimeSeriesPlot({
         name={exportName ?? title}
         fallbackName={yLabel ?? 'plot'}
       />
+      {events?.length && eventLayer
+        ? createPortal(<PlotEventTargets events={events} area={eventLayer.area} />, eventLayer.over)
+        : null}
     </div>
   );
+}
+
+function sameArea(a: PlotArea, b: PlotArea): boolean {
+  return a.width === b.width && a.height === b.height && a.xMin === b.xMin && a.xMax === b.xMax;
 }

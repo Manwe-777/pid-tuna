@@ -54,6 +54,8 @@ export interface ParsedLog {
   slow: SlowFrameSeries;
   /** GPS-frame telemetry (per-fix coords, altitude, speed). May be empty. */
   gps: GpsFrameSeries;
+  /** Arming and disarming, in log time. */
+  events: LogEvent[];
   /**
    * Which optional data fields were actually present in the source log (vs.
    * zero-filled by the parser). Drives per-tab availability in the UI so we
@@ -1180,4 +1182,27 @@ export interface TooltipPlacement {
   top: number;
   side: 'above' | 'below';
   arrowX: number;
+}
+
+export type LogEventKind = 'arm' | 'disarm';
+
+/** Something that happened during the flight, at `time` seconds of log time. */
+export interface LogEvent {
+  time: number;
+  kind: LogEventKind;
+}
+
+/** A log event drawn on a time plot, with the text its tooltip shows. */
+export interface PlotEvent extends LogEvent {
+  label: string;
+}
+
+/** A plot's data area and the x range it shows, in the units of whatever draws into it. */
+export interface PlotArea {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  xMin: number;
+  xMax: number;
 }

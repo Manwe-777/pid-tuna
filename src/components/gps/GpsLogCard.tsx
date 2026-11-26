@@ -5,6 +5,7 @@ import { gpsAltitudeViridisSegments } from '../../dsp/gps/gpsAltitudeViridisSegm
 import { gpsSampleTimeRange } from '../../dsp/gps/gpsSampleTimeRange';
 import { useGpsPlayback } from '../../hooks/useGpsPlayback';
 import { colorFor } from '../../logs/colorFor';
+import { plotEvents } from '../../logs/plotEvents';
 import { shortName } from '../../logs/shortName';
 import type { GpsAnalysis, LogSlot, ParsedLog, PlotMarker, PlotSeries } from '../../types';
 import { gpsStatTexts } from '../../utils/gpsStatTexts';
@@ -32,6 +33,7 @@ export function GpsLogCard({
   const playback = useGpsPlayback(gpsTMin, gpsTMax, slot.id);
   const { playbackT } = playback;
   const stats = gpsStatTexts(analysis);
+  const events = useMemo(() => plotEvents([{ log, slot }]), [log, slot]);
 
   const gpsPlaybackMarkers: PlotMarker[] = useMemo(() => {
     if (!(gpsTMax > gpsTMin)) return [];
@@ -95,6 +97,7 @@ export function GpsLogCard({
           series={altSeries}
           yLabel="m"
           markers={gpsPlaybackMarkers}
+          events={events}
           segmentStrokeColors={altitudeSegmentStrokeColors}
         />
       )}
@@ -106,6 +109,7 @@ export function GpsLogCard({
           series={speedSeries}
           yLabel="m/s"
           markers={gpsPlaybackMarkers}
+          events={events}
         />
       )}
     </div>
