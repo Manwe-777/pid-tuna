@@ -10,8 +10,8 @@ import type {
   ViewerSignalDef,
   ViewerSignalKey,
 } from '../types';
-import { align } from '../utils/align';
 import { extractSignal } from '../utils/extractSignal';
+import { padWithGap } from '../utils/padWithGap';
 import { viewerSignalAvailable } from './viewerSignalAvailable';
 
 const MOTOR_LANES: ReadonlyArray<{
@@ -35,7 +35,7 @@ function line(
   byLog: boolean,
 ): PlotSeries {
   const length = entries[0]!.log.time.length;
-  const base = { values: align(values, length), width: own.width };
+  const base = { values: padWithGap(values, length), width: own.width };
   if (byLog) return { ...base, label: shortName(entry.slot), stroke: colorFor(entry.slot) };
   if (entries.length === 1) return { ...base, label: own.label, stroke: own.color };
   const dash = entry.dash.length ? entry.dash : undefined;

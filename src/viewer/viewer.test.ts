@@ -134,9 +134,10 @@ describe('viewerLanes', () => {
       expect(labels(roll)).toEqual(['B Gyro prefilt', 'A Gyro', 'B Gyro']);
     });
 
-    test('a shorter log is stretched to the first log’s length', () => {
+    test('a shorter log stops where it ends instead of running flat to the end', () => {
       const [roll] = viewerLanes([entry('A'), entry('B', {}, 2, 1)], sel(['gyroFilt'], [0]));
       expect(roll?.series.map((s) => s.values.length)).toEqual([N, N]);
+      expect([...roll!.series[1]!.values]).toEqual([1, 1, Number.NaN, Number.NaN]);
     });
   });
 });

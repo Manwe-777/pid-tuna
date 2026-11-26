@@ -110,6 +110,8 @@ function seriesOptions(series: PlotSeries[], xLabel: string, hasSegmentStrokes: 
         width: strokeFirst ? 0 : (s.width ?? 1),
         dash: s.dash,
         paths: strokeFirst ? () => null : undefined,
+        // A shorter log is padded with NaN past its end; show that as no value.
+        value: (_u: uPlot, v: number | null) => (v == null || Number.isNaN(v) ? '--' : uPlot.fmtNum(v)),
       };
     }),
   ];
