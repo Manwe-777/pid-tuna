@@ -1,20 +1,17 @@
 name: Build desktop bundles
 
 # Builds Tauri desktop installers for macOS (universal), Windows, and Linux.
-# Triggers:
-#   - push of a `v*` tag (e.g. v0.1.0)   → creates / updates a draft GitHub Release
-#     with each platform's installer attached
-#   - manual `workflow_dispatch`         → builds without creating a release
+# Called by the CI workflow after semantic-release cuts a version: the
+# installers are attached to that version's GitHub release. A manual run builds
+# without a release and keeps the bundles as workflow artifacts.
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_call:
+    inputs:
+      version:
+        description: Release version, without the leading v
+        required: true
+        type: string
   workflow_dispatch:
-
-# Cancel in-flight builds when a newer commit lands on the same ref.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   build:
@@ -78,15 +75,24 @@ jobs:
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
 
+      # The version lives in git tags; stamp it into the files Tauri and Cargo read.
+      - name: Set release version
+        if: inputs.version != ''
+        shell: bash
+        run: |
+          npm pkg set version=${{ inputs.version }}
+          perl -pi -e 'if (!$done && s/^version = ".*"/version = "${{ inputs.version }}"/) { $done = 1 }' src-tauri/Cargo.toml
+
       - uses: tauri-apps/tauri-action@v0
         id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_VERSION: ${{ inputs.version }}
         with:
-          # On tag pushes, create / update a draft release. Skipped for workflow_dispatch.
-          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
-          releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && format('PIDTuna {0}', github.ref_name) || '' }}
-          releaseDraft: true
+          # Attach the installers to the release semantic-release just published.
+          tagName: ${{ inputs.version != '' && format('v{0}', inputs.version) || '' }}
+          releaseName: ${{ inputs.version != '' && format('PIDTuna v{0}', inputs.version) || '' }}
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
 

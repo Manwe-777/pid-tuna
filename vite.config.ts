@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -6,11 +7,22 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// Read the app version from package.json at build time so the UI always
-// reflects the source of truth (Tauri reads the same field via tauri.conf.json).
+// The app version lives in git tags (cut by semantic-release). CI passes it as
+// APP_VERSION; elsewhere the latest tag is read, with package.json as a last resort.
 const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf-8')) as {
   version: string;
 };
+
+function latestTagVersion(): string | null {
+  try {
+    return execSync('git describe --tags --abbrev=0', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+      .replace(/^v/, '');
+  } catch {
+    return null;
+  }
+}
 
 // Tauri runs the desktop wrapper against this dev server (see src-tauri/tauri.conf.json
 // `devUrl`). Tauri's webview is picky about ports and HMR — keep the port pinned and
@@ -27,7 +39,7 @@ const basePath = env?.VITE_BASE_PATH ?? '/';
 export default defineConfig({
   base: basePath,
   define: {
-    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_VERSION__: JSON.stringify(env?.APP_VERSION ?? latestTagVersion() ?? pkg.version),
   },
   plugins: [
     react(),
