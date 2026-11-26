@@ -713,3 +713,9 @@ export const VIEWER_STORAGE_KEY = 'pidtuna:viewer';
 
 /** Pointer travel (CSS px) below which a press on a plot counts as a click, not a drag. */
 export const PLOT_CLICK_SLOP_PX = 3;
+
+/** Positions on a filter slider; values are mapped onto them linearly or logarithmically. */
+export const SLIDER_STEPS = 1000;
+
+/** A slider range at least this wide (max / min) uses a logarithmic scale. */
+export const SLIDER_LOG_RATIO = 50;

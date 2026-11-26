@@ -41,7 +41,8 @@ export function FilterRow({ filter, maxHz, onChange, onRemove }: Props) {
         value={f.cutoffHz}
         min={1}
         max={maxHz - 1}
-        step={5}
+        step={1}
+        slider
         tip={f.type === 'rpm' ? 'Motor rotation frequency: the 1st harmonic' : undefined}
         onChange={(v) => onChange({ cutoffHz: v })}
       />
@@ -52,7 +53,8 @@ export function FilterRow({ filter, maxHz, onChange, onRemove }: Props) {
           value={f.bandwidth}
           min={1}
           max={maxHz}
-          step={5}
+          step={1}
+          slider
           onChange={(v) => onChange({ bandwidth: v })}
         />
       )}

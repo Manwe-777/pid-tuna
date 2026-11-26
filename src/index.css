@@ -1702,6 +1702,18 @@
     gap: 0.35rem;
   }
 
+  .filter-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .filter-field__slider {
+    width: 7.5rem;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+  }
+
   .filter-row__type {
     font-weight: 600;
     color: var(--color-ink-2);

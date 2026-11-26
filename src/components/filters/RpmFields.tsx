@@ -20,6 +20,7 @@ export function RpmFields({
         min={0}
         max={maxHz}
         step={5}
+        slider
         onChange={(v) => onChange({ minHz: v })}
       />
       <Num
@@ -29,6 +30,7 @@ export function RpmFields({
         min={0}
         max={500}
         step={5}
+        slider
         tip="Notches fade in from 0% at the minimum to full weight at minimum + fade"
         onChange={(v) => onChange({ fadeHz: v })}
       />

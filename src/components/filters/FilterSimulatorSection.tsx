@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 
 import {
   AXIS_COLORS,
@@ -60,19 +60,23 @@ export function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
     [chain, gyroRateHz, delayHz],
   );
 
+  // The spectra filter the whole log, too slow to redo on every slider step; they catch up
+  // once the slider rests while the response curves above follow it live.
+  const deferredChain = useDeferredValue(chain);
+
   const psdByAxis = useMemo(() => {
     const rate = log.setup.sampleRateHz;
     return AXIS_NAMES.map((_name, axis) => {
       const raw = log.gyroRaw[axis]!;
       const filt = log.gyroFilt[axis]!;
       if (!hasRaw || raw.length === 0) return null;
-      const sim = applyFilterChain(raw, rate, chain);
+      const sim = applyFilterChain(raw, rate, deferredChain);
       const rawPsd = computePsd(raw, rate, { windowSize });
       const simPsd = computePsd(sim, rate, { windowSize });
       const filtPsd = computePsd(filt, rate, { windowSize });
       return { rawPsd, simPsd, filtPsd };
     });
-  }, [log, chain, windowSize, hasRaw]);
+  }, [log, deferredChain, windowSize, hasRaw]);
 
   if (!hasRaw) {
     return (
