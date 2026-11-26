@@ -28,7 +28,8 @@ import {
   type FilterSpec,
   type FilterType,
 } from './dsp/filters';
-import { type FilterDelayEntry } from './dsp/filterDelays';
+import { DELAY_REFERENCE_HZ, type FilterDelayEntry } from './dsp/filterDelays';
+import { gyroChainFromTune } from './dsp/gyroChainFromTune';
 import { filterDelaysForLog } from './dsp/filterDelaysForLog';
 import { type LatencyResult } from './dsp/latency';
 import { latencyForLog } from './dsp/latencyForLog';
@@ -385,6 +386,8 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
   const log = entries[0]!.log;
   const multi = entries.length > 1;
   const nyquist = Math.floor(log.setup.sampleRateHz / 2);
+  const tune = useMemo(() => buildTuneView(log), [log]);
+  const gyroRateHz = tune.gyroRateHz ?? log.setup.sampleRateHz;
   const [chain, setChain] = useState<FilterSpec[]>([]);
   const [windowSize, setWindowSize] = useState<number>(1024);
   const [yMin, setYMin] = useState<number>(-50);
@@ -411,11 +414,13 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
     const freqs = new Float32Array(N);
     const fStep = nyquist / (N - 1 || 1);
     for (let i = 0; i < N; i++) freqs[i] = i * fStep;
-    return computeFilterChainResponse(chain, log.setup.sampleRateHz, freqs);
-  }, [chain, log.setup.sampleRateHz, nyquist]);
+    return computeFilterChainResponse(chain, gyroRateHz, freqs);
+  }, [chain, gyroRateHz, nyquist]);
 
-  // Group delay near DC = "what this chain costs you" in flight-feel terms.
-  const dcDelayMs = bode.groupDelayMs.length > 0 ? bode.groupDelayMs[0] : null;
+  const controlDelayMs = useMemo(
+    () => computeFilterChainResponse(chain, gyroRateHz, Float32Array.of(DELAY_REFERENCE_HZ)).phaseDelayMs[0] ?? null,
+    [chain, gyroRateHz],
+  );
 
   const psdByAxis = useMemo(() => {
     const rate = log.setup.sampleRateHz;
@@ -446,8 +451,10 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
     <section className="plot-section">
       <h2>Filter simulator</h2>
       <p className="muted">
-        Apply a hypothetical filter chain to gyro prefilt and compare against the firmware's actual filtered
-        output. Useful for choosing cutoff/Q before flashing config.
+        Apply a filter chain to the unfiltered gyro and compare it with the firmware&apos;s filtered
+        gyro. Filters use Betaflight&apos;s own maths. The response curves run at the gyro loop rate (
+        {Math.round(gyroRateHz)} Hz); the simulated spectrum can only run at the logging rate (
+        {Math.round(log.setup.sampleRateHz)} Hz), so it is approximate near the top of the plot.
       </p>
 
       <div className="filter-chain">
@@ -462,9 +469,18 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
           />
         ))}
         <div className="filter-add">
-          <button type="button" onClick={() => addFilter('pt1')}>+ PT1 lowpass</button>
-          <button type="button" onClick={() => addFilter('biquad')}>+ Biquad lowpass</button>
+          <button type="button" onClick={() => addFilter('pt1')}>+ PT1</button>
+          <button type="button" onClick={() => addFilter('pt2')}>+ PT2</button>
+          <button type="button" onClick={() => addFilter('pt3')}>+ PT3</button>
+          <button type="button" onClick={() => addFilter('biquad')}>+ Biquad</button>
           <button type="button" onClick={() => addFilter('notch')}>+ Notch</button>
+          <button
+            type="button"
+            onClick={() => setChain(gyroChainFromTune(tune))}
+            title="Replace the chain with this log's static gyro filters (a dynamic lowpass at its minimum cutoff; RPM and dynamic notches are left out)"
+          >
+            Load from log
+          </button>
         </div>
       </div>
 
@@ -506,11 +522,11 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
         <div className="axis-plot">
           <h3 className="axis-plot__title">
             Filter response (chain)
-            {dcDelayMs != null && (
+            {controlDelayMs != null && (
               <span className="step-metrics">
                 <span className="step-metrics__item">
-                  <span className="step-metrics__k">delay @0Hz</span>
-                  {dcDelayMs.toFixed(2)} ms
+                  <span className="step-metrics__k">delay @{DELAY_REFERENCE_HZ} Hz</span>
+                  {controlDelayMs.toFixed(2)} ms
                 </span>
               </span>
             )}
@@ -539,8 +555,8 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
               time={bode.frequencies}
               series={[
                 {
-                  label: 'Group delay',
-                  values: bode.groupDelayMs,
+                  label: 'Phase delay',
+                  values: bode.phaseDelayMs,
                   stroke: SIM_FILTERED_COLOR,
                   width: 1.5,
                 },
@@ -603,6 +619,14 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
   );
 }
 
+const FILTER_TYPE_LABEL: Record<FilterType, string> = {
+  pt1: 'PT1 LPF',
+  pt2: 'PT2 LPF',
+  pt3: 'PT3 LPF',
+  biquad: 'Biquad LPF',
+  notch: 'Notch',
+};
+
 function FilterRow({
   filter,
   nyquist,
@@ -622,9 +646,7 @@ function FilterRow({
         onChange={(e) => onChange({ enabled: e.target.checked })}
         title="Enable / disable"
       />
-      <span className="filter-row__type">
-        {filter.type === 'pt1' ? 'PT1 LPF' : filter.type === 'biquad' ? 'Biquad LPF' : 'Notch'}
-      </span>
+      <span className="filter-row__type">{FILTER_TYPE_LABEL[filter.type]}</span>
       <label>
         {filter.type === 'notch' ? 'Center' : 'Cutoff'}:
         <input
@@ -638,20 +660,6 @@ function FilterRow({
         />
         <span className="filter-row__unit">Hz</span>
       </label>
-      {filter.type === 'biquad' && (
-        <label>
-          Q:
-          <input
-            type="number"
-            min={0.1}
-            max={10}
-            step="0.05"
-            value={filter.q}
-            onChange={(e) => onChange({ q: Number.parseFloat(e.target.value) })}
-            style={{ width: '4rem' }}
-          />
-        </label>
-      )}
       {filter.type === 'notch' && (
         <label>
           BW:

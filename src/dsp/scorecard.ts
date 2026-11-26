@@ -46,7 +46,7 @@ export function buildScorecard(log: ParsedLog): Scorecard {
 
   // ---- Gyro filter delay in the control band ----
   const delays = filterDelaysForLog(log);
-  entries.push(filterDelayEntry(delays.gyroDelayMs, delays.referenceHz, delays.entries.length));
+  entries.push(filterDelayEntry(delays.gyroDelayMs, delays.referenceHz, delays.entries.filter((e) => e.chain === 'gyro').length));
 
   // ---- Motor balance ----
   const balance = analyzeMotorBalance(log);
@@ -107,7 +107,7 @@ export function buildMergedScorecard(logs: ParsedLog[]): Scorecard {
 
   // ---- Gyro filter delay: configuration-only, the first log stands for all ----
   const delays = filterDelaysForLog(reference);
-  entries.push(filterDelayEntry(delays.gyroDelayMs, delays.referenceHz, delays.entries.length));
+  entries.push(filterDelayEntry(delays.gyroDelayMs, delays.referenceHz, delays.entries.filter((e) => e.chain === 'gyro').length));
 
   // ---- Motor balance: pool via combineMotorBalances ----
   const balances = logs.map((l) => analyzeMotorBalance(l));
@@ -177,7 +177,7 @@ function filterDelayEntry(gyroDelayMs: number, referenceHz: number, filterCount:
     key: 'Gyro filter delay',
     status,
     value: `${gyroDelayMs.toFixed(2)} ms at ${referenceHz} Hz`,
-    detail: `${filterCount} active filter${filterCount === 1 ? '' : 's'}`,
+    detail: `${filterCount} gyro filter${filterCount === 1 ? '' : 's'}`,
   };
 }
 
