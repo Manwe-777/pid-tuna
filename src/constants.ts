@@ -510,12 +510,14 @@ export const BF_LPF_TYPES: Record<string, string> = {
   '3': 'PT3',
 };
 
-/** Dark basemap tiles for the GPS map. */
-export const MAP_TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+/** OpenStreetMap tiles for the GPS map (CARTO's basemaps now need an API key); darkened by CSS in the dark theme. */
+export const MAP_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 export const MAP_TILE_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
-  '&copy; <a href="https://carto.com/attributions">CARTO</a>';
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+/** OpenStreetMap's standard tiles go up to zoom 19. */
+export const MAP_MAX_ZOOM = 19;
 
 /** Betaflight CLI names for header values logged as numbers. */
 const LPF_TYPE_NAMES = ['PT1', 'BIQUAD', 'PT2', 'PT3'];

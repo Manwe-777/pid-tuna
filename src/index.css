@@ -992,6 +992,11 @@
     vertical-align: middle;
   }
 
+  /* OpenStreetMap tiles are light; invert them in the dark theme to match the app. */
+  :root:not([data-theme='light']) .gps-map .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.85);
+  }
+
   .gps-map-wrap {
     position: relative;
     border-radius: 6px;

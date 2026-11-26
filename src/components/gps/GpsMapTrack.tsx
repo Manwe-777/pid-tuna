@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { CircleMarker, MapContainer, Polyline, TileLayer } from 'react-leaflet';
 
-import { MAP_TILE_ATTRIBUTION, MAP_TILE_URL } from '../../constants';
+import { MAP_MAX_ZOOM, MAP_TILE_ATTRIBUTION, MAP_TILE_URL } from '../../constants';
 import { buildValidGpsSamples } from '../../dsp/gps/buildValidGpsSamples';
 import { gpsDefaultMapSmoothSettings } from '../../dsp/gps/gpsDefaultMapSmoothSettings';
 import { gpsSampleTimeRange } from '../../dsp/gps/gpsSampleTimeRange';
@@ -90,7 +90,7 @@ export function GpsMapTrack({
   return (
     <div className="gps-map-wrap" style={{ height }}>
       <MapContainer center={track.center} zoom={14} scrollWheelZoom className="gps-map h-full w-full">
-        <TileLayer attribution={MAP_TILE_ATTRIBUTION} url={MAP_TILE_URL} maxZoom={20} />
+        <TileLayer attribution={MAP_TILE_ATTRIBUTION} url={MAP_TILE_URL} maxZoom={MAP_MAX_ZOOM} />
         <InvalidateSizeOnResize />
         <FitTrackBounds boundsPoints={track.boundsPoints} anchorLat={lat} anchorLon={lon} anchorGpsTime={gpsTime} />
         {track.segments.map((s, idx) => (
