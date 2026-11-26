@@ -24,6 +24,7 @@ src/
     motorBalance.ts    motor stats + per-motor PSDs (exports combineMotorBalances)
     scorecard.ts       triage roll-up (uses combine* helpers when merging)
     latency.ts, battery.ts, gps*.ts, filters.ts, saturation.ts
+    testing/           simulated flights with a known response, for accuracy tests
   parser.ts            blackbox-log adapter, builds ParsedLog incl. `presence` flags
   sliceLog.ts          time-range slice of a ParsedLog
   logs.ts              LogSlot type, slot ID generator, multi-log colour palette
@@ -46,15 +47,23 @@ pnpm tauri:dev         # desktop dev (Rust compile on first run ~2 min)
 
 ```bash
 pnpm typecheck         # tsc -b --noEmit, must be clean
+pnpm test              # vitest, must pass
 pnpm build             # full Vite production build, must succeed
 ```
 
-There is **no automated test suite right now**. Don't add one casually — if you
-do, pick `vitest` (Vite-native, jsdom env) and wire it into `ci.yml` alongside
-typecheck. For DSP iteration we write throwaway Node `.mjs` harnesses (see git
-history for `test-wiener.mjs` shape) — write them under the project root, run
-against a real log on `~/Desktop/LOG*.BFL`, then `rm` when done. Don't commit
-them.
+CI runs all three.
+
+### Tests
+
+- Vitest, node environment. Test files sit next to the code (`thing.test.ts`).
+- DSP accuracy is tested against a simulated drone with a known response
+  (`src/dsp/testing/`): a second-order closed loop with dead time, driven by
+  stick-like setpoint and gyro noise. Assert against the simulated truth, not
+  against the current output.
+- Real-log tests run only when `PIDTUNA_LOG_DIR` points at a folder of
+  blackbox logs; they skip otherwise. Logs are never committed.
+- A known inaccuracy gets a `test.fails` case with the correct assertion, so
+  it shows up until it is fixed. Don't loosen a test to match a bug.
 
 For UI changes, exercise the path in both `pnpm dev` (regular browser) and
 `pnpm tauri:dev` (WKWebView). Behaviour can diverge — the file picker is the
@@ -153,13 +162,11 @@ scorecard row that scores per-axis, exclude yaw the same way.
 
 ## Commit and PR style
 
-- One commit per logical change. Multi-paragraph bodies explaining *why*, not
-  just what. Look at existing commits (`git log --no-merges`) for the shape.
-- `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
-  trailer when an AI did meaningful authoring — current default.
-- Imperative mood subject line ("fix the X" not "fixed the X").
-- Conventional-commits-ish prefixes are used loosely (`feat:`, `ci:`, `docs:`)
-  but not enforced.
+- Conventional Commits (`feat:`, `fix:`, `chore:`, `refactor:`, `style:`,
+  `test:`, `ci:`, `docs:`), imperative subject line.
+- One commit per logical change, with a body explaining *why* when it isn't
+  obvious.
+- No AI attribution: no `Co-Authored-By` or session trailers.
 - Don't rewrite history of pushed commits. Tags are mostly fine to move
   *before* a release is published; once published, never.
 
