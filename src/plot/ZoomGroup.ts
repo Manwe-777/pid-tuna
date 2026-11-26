@@ -1,5 +1,9 @@
 import type { TimeSpan } from '../types';
 
+function sameSpan(a: TimeSpan | null, b: TimeSpan | null): boolean {
+  return a?.min === b?.min && a?.max === b?.max;
+}
+
 /** What the group needs from a uPlot instance. */
 export interface ZoomMember {
   scales: { x?: { min?: number | null; max?: number | null } };
@@ -38,17 +42,20 @@ export class ZoomGroup {
     if (this.syncing) return;
     const { min, max } = from.scales.x ?? {};
     if (min == null || max == null) return;
-    this.current = isFullRange ? null : { min, max };
+    const next = isFullRange ? null : { min, max };
+    const changed = !sameSpan(next, this.current);
+    this.current = next;
 
     for (const m of this.members) if (m !== from) this.apply(m, { min, max });
+    if (changed) this.notify();
   }
 
   /** Sets or clears the selection; an empty span clears it. */
   select(span: TimeSpan | null): void {
     const next = span && span.max > span.min ? span : null;
-    if (next?.min === this.pending?.min && next?.max === this.pending?.max) return;
+    if (sameSpan(next, this.pending)) return;
     this.pending = next;
-    for (const l of this.listeners) l();
+    this.notify();
   }
 
   /** Zooms every plot to the selection and clears it. False when nothing was selected. */
@@ -61,12 +68,16 @@ export class ZoomGroup {
     return true;
   }
 
-  /** For `useSyncExternalStore`: called whenever the selection changes. */
+  /** For `useSyncExternalStore`: called whenever the selection or the zoom changes. */
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
 
     return () => this.listeners.delete(listener);
   };
+
+  private notify() {
+    for (const l of this.listeners) l();
+  }
 
   private apply(member: ZoomMember, range: TimeSpan) {
     this.syncing = true;

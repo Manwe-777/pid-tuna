@@ -1,18 +1,15 @@
-import type { ZoomGroup } from '../../plot/ZoomGroup';
 import type { PlotEvent, ViewerLane } from '../../types';
 import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 
-/** One lane of the log viewer: its title and a plot that zooms with the others. */
+/** One lane of the log viewer: its title and a plot that zooms with the others (they share the tab's sync scope). */
 export function ViewerLanePlot({
   lane,
   time,
   events,
-  zoomGroup,
 }: {
   lane: ViewerLane;
   time: Float32Array;
   events: readonly PlotEvent[];
-  zoomGroup: ZoomGroup;
 }) {
   return (
     <div className="axis-plot">
@@ -28,8 +25,7 @@ export function ViewerLanePlot({
           yLabel={lane.yLabel}
           height={lane.height}
           exportName={`${lane.title} ${lane.yLabel}`}
-          zoomGroup={zoomGroup}
-          syncKey="log-viewer"
+          syncGroup="time"
         />
       ) : (
         <p className="muted">None of the chosen signals are logged for {lane.title.toLowerCase()}.</p>

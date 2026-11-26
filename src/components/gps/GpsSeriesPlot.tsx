@@ -15,6 +15,7 @@ export function GpsSeriesPlot(props: {
     <div className="axis-plot mt-2">
       <h5 className="axis-plot__title text-[0.78rem]">{props.title}</h5>
       <TimeSeriesPlot
+        syncGroup="time"
         time={props.time}
         series={props.series}
         yLabel={props.yLabel}

@@ -2,15 +2,17 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import uPlot, { type AlignedData } from 'uplot';
 
 import { PLOT_COLORS } from '../../constants';
+import { usePlotSync } from '../../hooks/usePlotSync';
 import { useTheme } from '../../hooks/useTheme';
 import { fingerprintSegmentStrokeColors } from '../../plot/fingerprintSegmentStrokeColors';
+import { resetXScale } from '../../plot/resetXScale';
 import { sameArrays } from '../../plot/sameArrays';
 import { type TimeSeriesLive, timeSeriesOptions } from '../../plot/timeSeriesOptions';
 import { timeSeriesStructureKey } from '../../plot/timeSeriesStructureKey';
-import { ZoomGroup } from '../../plot/ZoomGroup';
 import type { PlotArea, PlotBand, PlotEvent, PlotMarker, PlotSeries } from '../../types';
 import { PlotOverlays } from './PlotOverlays';
 import { PngExportButton } from './PngExportButton';
+import { ZoomResetButton } from './ZoomResetButton';
 
 interface TimeSeriesPlotProps {
   /** X-axis values. */
@@ -44,10 +46,11 @@ interface TimeSeriesPlotProps {
   height?: number;
   /** Name for the PNG export; defaults to the title or Y label. */
   exportName?: string;
-  /** Plots that zoom together and share the selection; read when the plot is built. Defaults to its own. */
-  zoomGroup?: ZoomGroup;
-  /** Plots with the same key share the cursor. */
-  syncKey?: string;
+  /**
+   * Plots of the surrounding `PlotSyncScope` with the same name zoom together and share
+   * the selection and cursor. Read when the plot is built.
+   */
+  syncGroup?: string;
 }
 
 export function TimeSeriesPlot({
@@ -67,8 +70,7 @@ export function TimeSeriesPlot({
   showLegend = true,
   height = 320,
   exportName,
-  zoomGroup,
-  syncKey,
+  syncGroup,
 }: TimeSeriesPlotProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
@@ -76,8 +78,7 @@ export function TimeSeriesPlot({
   const theme = useTheme();
   // Where the plot area is after the last draw, for the event hover targets.
   const [eventLayer, setEventLayer] = useState<{ area: PlotArea; over: HTMLElement } | null>(null);
-  const [ownGroup] = useState(() => new ZoomGroup());
-  const group = zoomGroup ?? ownGroup;
+  const { group, syncKey } = usePlotSync(syncGroup);
 
   // The latest prop values, so callbacks (dblclick, Y-autofit, draw hooks) see
   // them without forcing a plot rebuild when they change.
@@ -176,6 +177,7 @@ export function TimeSeriesPlot({
         name={exportName ?? title}
         fallbackName={yLabel ?? 'plot'}
       />
+      <ZoomResetButton group={group} onReset={() => plotRef.current && resetXScale(plotRef.current, xMin, xMax)} />
       <PlotOverlays layer={eventLayer} events={events} group={group} />
     </div>
   );

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { LogEntry, LogSlot, ParsedLog, TabId, TimeRangeSec } from '../../types';
 import { BalanceSection } from '../balance/BalanceSection';
 import { BatterySection } from '../battery/BatterySection';
+import { PlotSyncScope } from '../common/PlotSyncScope';
 import { DiffSummarySection } from '../diff/DiffSummarySection';
 import { FilterSimulatorSection } from '../filters/FilterSimulatorSection';
 import { GpsSection } from '../gps/GpsSection';
@@ -40,7 +41,12 @@ const SECTIONS: Record<TabId, (p: Props) => ReactNode> = {
   diff: (p) => <DiffSummarySection entries={p.entries} />,
 };
 
-/** The active tab's section. */
+/** The active tab's section, inside its own plot sync scope. */
 export function TabContent(props: Props) {
-  return <div className="tab-content">{SECTIONS[props.tab](props)}</div>;
+  return (
+    <div className="tab-content">
+      {/* Keyed by tab: each tab's plots sync among themselves, starting unzoomed. */}
+      <PlotSyncScope key={props.tab}>{SECTIONS[props.tab](props)}</PlotSyncScope>
+    </div>
+  );
 }

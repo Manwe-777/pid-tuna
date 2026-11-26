@@ -42,6 +42,7 @@ export function BatteryLogCard({
         <div className="axis-plot mt-2">
           <h5 className="axis-plot__title text-[0.78rem]">Voltage (V)</h5>
           <TimeSeriesPlot
+            syncGroup="time"
             events={events}
             time={slow.time}
             series={vbatSeries}
@@ -56,6 +57,7 @@ export function BatteryLogCard({
         <div className="axis-plot mt-2">
           <h5 className="axis-plot__title text-[0.78rem]">Current (A)</h5>
           <TimeSeriesPlot
+            syncGroup="time"
             events={events}
             time={slow.time}
             series={currentSeries}

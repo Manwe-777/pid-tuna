@@ -74,6 +74,7 @@ export function SaturationLogCard({
               {a.axisName} — threshold {a.threshold.toFixed(0)}
             </h5>
             <TimeSeriesPlot
+              syncGroup="time"
               events={events}
               time={log.time}
               series={series}

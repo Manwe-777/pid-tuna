@@ -7,8 +7,10 @@ import { drawPlotBands } from './drawPlotBands';
 import { drawPlotEvents } from './drawPlotEvents';
 import { drawPlotMarkers } from './drawPlotMarkers';
 import { drawSegmentStrokeLine } from './drawSegmentStrokeLine';
+import { isFullXRange } from './isFullXRange';
 import { isOutsideSpan } from './isOutsideSpan';
 import { refitYToVisible } from './refitYToVisible';
+import { resetXScale } from './resetXScale';
 import type { ZoomGroup } from './ZoomGroup';
 
 /** Props the plot callbacks read at call time, so changing them doesn't rebuild the plot. */
@@ -44,15 +46,6 @@ interface TimeSeriesLayout {
   syncKey?: string;
 }
 
-/** Whether the X scale shows all the data. */
-function showsAllX(u: uPlot): boolean {
-  const xd = u.data[0];
-  const { min, max } = u.scales.x ?? {};
-  if (!xd?.length || min == null || max == null) return true;
-
-  return min <= xd[0]! && max >= xd[xd.length - 1]!;
-}
-
 function drawSegmentStrokes(u: uPlot, live: TimeSeriesLive) {
   const segs = live.segmentStrokeColors;
   const xd = u.data[0];
@@ -85,6 +78,14 @@ function clickOutsideClears(group: ZoomGroup) {
       return handler(e);
     },
   };
+}
+
+/** Whether the plot shows its whole default X range. */
+function showsAllX(u: uPlot, live: TimeSeriesLive): boolean {
+  const xd = u.data[0];
+  if (!xd?.length) return true;
+
+  return isFullXRange(u.scales.x ?? {}, { first: xd[0]!, last: xd[xd.length - 1]! }, live);
 }
 
 /** Draws the log events and reports where the plot area now is, for their hover targets. */
@@ -151,11 +152,11 @@ export function timeSeriesOptions(layout: TimeSeriesLayout): Options {
         : undefined,
       bind: {
         ...clickOutsideClears(layout.zoomGroup),
-        // Double-click zooms into the selection. Without one it fits the data
-        // again, then re-applies the caller-pinned bounds on the sides that have one.
-        dblclick: (u, _target, reset) => (e) => {
+        // Double-click zooms into the selection. Without one it zooms back out
+        // to the default range.
+        dblclick: (u) => () => {
           if (layout.zoomGroup.zoomToSelection(u)) return null;
-          reset(e);
+          resetXScale(u, live().xMin, live().xMax);
           pin(u);
 
           return null;
@@ -181,7 +182,7 @@ export function timeSeriesOptions(layout: TimeSeriesLayout): Options {
         (u, key) => {
           if (key !== 'x') return;
           refitYToVisible(u, live().xMin, live().xMax);
-          layout.zoomGroup.publish(u, showsAllX(u));
+          layout.zoomGroup.publish(u, showsAllX(u, live()));
         },
       ],
       draw: [

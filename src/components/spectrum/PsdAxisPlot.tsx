@@ -40,8 +40,8 @@ export function PsdAxisPlot({ name, axis, items, multi, nyquist, yMin, yMax, mar
     <div className="axis-plot">
       {title}
       <div className="psd-grid">
-        <TimeSeriesPlot {...common} xLabel="Hz" xMin={0} xMax={nyquist} />
-        <TimeSeriesPlot {...common} xLabel="Hz (sub-100)" xMin={0} xMax={100} />
+        <TimeSeriesPlot {...common} syncGroup="hz" xLabel="Hz" xMin={0} xMax={nyquist} />
+        <TimeSeriesPlot {...common} syncGroup="hz-sub100" xLabel="Hz (sub-100)" xMin={0} xMax={100} />
       </div>
     </div>
   );

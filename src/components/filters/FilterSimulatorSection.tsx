@@ -204,6 +204,7 @@ export function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
           </h3>
           <div className="psd-grid">
             <TimeSeriesPlot
+              syncGroup="hz"
               time={bode.frequencies}
               series={[
                 {
@@ -223,6 +224,7 @@ export function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
               showLegend={false}
             />
             <TimeSeriesPlot
+              syncGroup="hz"
               time={bode.frequencies}
               series={[
                 {
@@ -284,6 +286,7 @@ export function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
               {name}
             </h3>
             <TimeSeriesPlot
+              syncGroup="hz"
               time={psd.rawPsd.frequencies}
               series={series}
               yLabel="dB"

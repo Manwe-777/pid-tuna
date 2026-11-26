@@ -90,3 +90,18 @@ describe('ZoomGroup selection', () => {
     expect(g.selection).toBeNull();
   });
 });
+
+describe('ZoomGroup zoom state', () => {
+  test('listeners hear when the group zooms in and when it zooms back out', () => {
+    const g = new ZoomGroup();
+    const a = plot(g);
+    g.join(a);
+    let calls = 0;
+    g.subscribe(() => calls++);
+    a.zoom(10, 20);
+    expect(g.range).toEqual({ min: 10, max: 20 });
+    a.zoom(0, 100);
+    expect(g.range).toBeNull();
+    expect(calls).toBe(2);
+  });
+});

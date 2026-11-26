@@ -404,6 +404,30 @@
     pointer-events: auto;
   }
 
+  /* Top-right of a zoomed-in plot, left of the PNG button. */
+  .plot-zoom-reset {
+    position: absolute;
+    top: 0.25rem;
+    right: 3rem;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    height: 1.4rem;
+    padding: 0 0.5rem;
+    background: color-mix(in srgb, var(--color-accent) 18%, var(--color-raised));
+    border: 1px solid var(--color-accent);
+    border-radius: 4px;
+    color: var(--color-ink);
+    font-size: 0.72rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .plot-zoom-reset:hover {
+    background: color-mix(in srgb, var(--color-accent) 30%, var(--color-raised));
+  }
+
   /* A dragged-out time selection, waiting for a double-click to zoom into it. */
   .plot-selection-layer {
     position: absolute;
