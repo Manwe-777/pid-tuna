@@ -3,7 +3,7 @@ import type { LogSlot } from '../../types';
 import { LogCard } from './LogCard';
 
 interface SidebarProps {
-  slots: LogSlot[];
+  slots: readonly LogSlot[];
   onAddFile: (file: File) => void;
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;

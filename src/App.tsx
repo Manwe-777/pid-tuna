@@ -1,84 +1,14 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
+
 import { Analyses } from './components/layout/Analyses';
 import { FcMscButton } from './components/layout/FcMscButton';
 import { Sidebar } from './components/layout/Sidebar';
 import { ThemeToggle } from './components/layout/ThemeToggle';
-import { enabledLogs } from './logs/enabledLogs';
-import { newSlotId } from './logs/newSlotId';
-import { parseLog } from './parser/parseLog';
-import type { LogSlot } from './types';
+import { useLogLibrary } from './hooks/useLogLibrary';
 
 export function App() {
-  const [slots, setSlots] = useState<LogSlot[]>([]);
-
-  const updateSlot = useCallback((id: string, patch: Partial<LogSlot>) => {
-    setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
-  }, []);
-
-  const addFile = useCallback(async (file: File) => {
-    const id = newSlotId();
-    // Assign next dash pattern index — count of existing slots (cycles via DASH_PATTERNS).
-    setSlots((prev) => [
-      ...prev,
-      {
-        id,
-        enabled: true,
-        dashIndex: prev.length,
-        state: { kind: 'parsing', fileName: file.name, progress: 0, rows: 0 },
-      },
-    ]);
-    try {
-      const log = await parseLog(file, {
-        onProgress: ({ progress, rows }) =>
-          setSlots((prev) =>
-            prev.map((s) =>
-              s.id === id ? { ...s, state: { kind: 'parsing', fileName: file.name, progress, rows } } : s,
-            ),
-          ),
-      });
-      setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, state: { kind: 'ready', log } } : s)));
-    } catch (err) {
-      setSlots((prev) =>
-        prev.map((s) =>
-          s.id === id
-            ? {
-                ...s,
-                state: {
-                  kind: 'error',
-                  fileName: file.name,
-                  message: err instanceof Error ? err.message : String(err),
-                },
-              }
-            : s,
-        ),
-      );
-    }
-  }, []);
-
-  const toggleSlot = useCallback((id: string) => {
-    setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
-  }, []);
-
-  const removeSlot = useCallback((id: string) => {
-    setSlots((prev) => prev.filter((s) => s.id !== id));
-  }, []);
-
-  const reorderSlots = useCallback((fromId: string, toId: string) => {
-    if (fromId === toId) return;
-    setSlots((prev) => {
-      const from = prev.findIndex((s) => s.id === fromId);
-      const to = prev.findIndex((s) => s.id === toId);
-      if (from < 0 || to < 0) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved!);
-      return next;
-    });
-  }, []);
-
-  void updateSlot;
-
-  const enabled = useMemo(() => enabledLogs(slots), [slots]);
+  const { library, addFile, toggle, remove, reorder } = useLogLibrary();
+  const enabled = useMemo(() => library.enabled, [library]);
 
   return (
     <>
@@ -99,13 +29,7 @@ export function App() {
         </div>
       </header>
       <div className="app-shell">
-        <Sidebar
-          slots={slots}
-          onAddFile={addFile}
-          onToggle={toggleSlot}
-          onRemove={removeSlot}
-          onReorder={reorderSlots}
-        />
+        <Sidebar slots={library.slots} onAddFile={addFile} onToggle={toggle} onRemove={remove} onReorder={reorder} />
         <main className="app">
           {enabled.length > 0 ? (
             <Analyses enabled={enabled} />
