@@ -30,7 +30,8 @@ import {
 } from './dsp/filters';
 import { type FilterDelayEntry } from './dsp/filterDelays';
 import { filterDelaysForLog } from './dsp/filterDelaysForLog';
-import { computeXcorrLatency, type LatencyResult } from './dsp/latency';
+import { type LatencyResult } from './dsp/latency';
+import { latencyForLog } from './dsp/latencyForLog';
 import { analyzeBattery, type BatteryAnalysis } from './dsp/battery';
 import { analyzeGps, type GpsAnalysis } from './dsp/gps';
 import { buildValidGpsSamples } from './dsp/gpsPlayback';
@@ -3348,10 +3349,7 @@ function LatencySection({ entries }: { entries: LogEntry[] }) {
   const perLog = useMemo(() => {
     return entries.map(({ slot, log }) => {
       const axes: AxisLatency[] = AXIS_NAMES.map((_n, axis) => {
-        const sp = log.setpoint[axis]!;
-        const gy = log.gyroFilt[axis]!;
-        const r = computeXcorrLatency(sp, gy, log.setup.sampleRateHz);
-        return { axis, ...r };
+        return { axis, ...latencyForLog(log, axis) };
       });
       const delays = filterDelaysForLog(log);
       return { slot, log, axes, delays };

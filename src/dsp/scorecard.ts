@@ -2,7 +2,8 @@ import { AXIS_NAMES } from '../axes';
 import type { ParsedLog } from '../types';
 import { analyzeBattery, type BatteryAnalysis } from './battery';
 import { filterDelaysForLog } from './filterDelaysForLog';
-import { computeXcorrLatency, type LatencyResult } from './latency';
+import { type LatencyResult } from './latency';
+import { latencyForLog } from './latencyForLog';
 import { analyzeMotorBalance, combineMotorBalances, type BalanceAnalysis } from './motorBalance';
 import { combinePsds, computePsd } from './spectrogram';
 import { combineStepResponses, type StepResponseResult } from './stepResponse';
@@ -39,7 +40,7 @@ export function buildScorecard(log: ParsedLog): Scorecard {
 
   // ---- Tracking latency (per axis, xcorr) ----
   const latencies = AXIS_NAMES.map((_n, axis) =>
-    computeXcorrLatency(log.setpoint[axis]!, log.gyroFilt[axis]!, log.setup.sampleRateHz),
+    latencyForLog(log, axis),
   );
   entries.push(latencyEntry(latencies));
 
@@ -92,7 +93,7 @@ export function buildMergedScorecard(logs: ParsedLog[]): Scorecard {
   // ---- Tracking latency: average reliable per-axis lags across logs ----
   const meanLatencies: LatencyResult[] = AXIS_NAMES.map((_n, axis) => {
     const perLog = logs.map((l) =>
-      computeXcorrLatency(l.setpoint[axis]!, l.gyroFilt[axis]!, l.setup.sampleRateHz),
+      latencyForLog(l, axis),
     );
     const reliable = perLog.filter((l) => l.reliable);
     if (reliable.length === 0) {
