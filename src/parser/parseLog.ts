@@ -1,6 +1,5 @@
 import { type DataParser, FirmwareKind, getWasm, type LogHeaders, Parser, ParserEventKind } from 'blackbox-log';
 
-import { MAX_PARSER_DEBUG_MODE } from '../constants';
 import type {
   Axis3,
   Axis4,
@@ -11,6 +10,8 @@ import type {
   SetupInfo,
   SlowFrameSeries,
 } from '../types';
+import { freeLogFile } from './freeLogFile';
+import { type OriginalHeader, patchHeaders } from './patchHeaders';
 import { rawGyroSource } from './rawGyroSource';
 import { resolveDebugMode } from './resolveDebugMode';
 import { parserState } from './state';
@@ -47,7 +48,7 @@ export async function parseLog(
   // version strings (e.g. "2026.6.0-alpha") and debug modes newer than BF 4.4.
   // Patch both headers while preserving byte length; stash the real values for
   // display.
-  const { patched, originalFirmwareLine, originalDebugMode } = patchHeaders(new Uint8Array(rawBuffer));
+  const { patched, originals } = patchHeaders(new Uint8Array(rawBuffer));
 
   const parser = await getParser();
   const logFile = parser.loadFile(patched);
@@ -87,7 +88,8 @@ export async function parseLog(
   // Setpoint: newer firmwares emit `setpoint[..]`, older emit `rcCommands[..]`.
   const setpointPrefix = cols.has('setpoint[0]') ? 'setpoint' : 'rcCommands';
 
-  const setup = extractSetup(headers, timeArr, originalFirmwareLine, originalDebugMode);
+  // Each flight has its own header; a file whose markers didn't line up falls back to the first.
+  const setup = extractSetup(headers, timeArr, originals[logIndex] ?? originals[0]);
 
   // Collect motors: motor[0], motor[1], ... until missing.
   const motor = indexedColumns(cols, 'motor', rowCount);
@@ -139,7 +141,8 @@ export async function parseLog(
 
   dataParser.free();
   headers.free();
-  logFile.free();
+  freeLogFile(logFile, logIndex);
+
   return result;
 }
 
@@ -483,20 +486,22 @@ function toF32(src: number[] | undefined, length: number): Float32Array {
   return out;
 }
 
-function extractSetup(
-  headers: LogHeaders,
-  time: Float32Array,
-  originalFirmwareLine: string | null,
-  originalDebugMode: number | null,
-): SetupInfo {
+/** Firmware name, version (from the unpatched header when there is one) and major version (0 if unreadable). */
+function firmwareInfo(headers: LogHeaders, original: OriginalHeader | undefined) {
+  const firmwareKind: string = headers.firmwareKind === FirmwareKind.Inav ? 'INAV' : 'Betaflight';
+  const rawLine = original?.firmwareLine ?? headers.firmwareVersion.toString();
+  const firmwareVersion = rawLine.replace(/^(Betaflight|INAV|EmuFlight)\s+/i, '');
+  const major = Number.parseInt(firmwareVersion, 10);
+
+  return { firmwareKind, firmwareVersion, firmwareMajor: Number.isNaN(major) ? 0 : major };
+}
+
+function extractSetup(headers: LogHeaders, time: Float32Array, original: OriginalHeader | undefined): SetupInfo {
   const dtMedian = medianStride(time);
   const sampleRateHz = dtMedian > 0 ? Math.round(1 / dtMedian) : 0;
   const looptimeUs = dtMedian > 0 ? Math.round(dtMedian * 1_000_000) : 0;
 
-  const firmwareKind: string = headers.firmwareKind === FirmwareKind.Inav ? 'INAV' : 'Betaflight';
-  const rawLine = originalFirmwareLine ?? headers.firmwareVersion.toString();
-  const firmwareVersion = rawLine.replace(/^(Betaflight|INAV|EmuFlight)\s+/i, '');
-  const firmwareMajor = Number.parseInt(firmwareVersion, 10);
+  const { firmwareKind, firmwareVersion, firmwareMajor } = firmwareInfo(headers, original);
   const craftName = headers.craftName;
 
   const rawHeaders: Record<string, string> = {};
@@ -510,158 +515,13 @@ function extractSetup(
     firmwareVersion,
     craftName,
     boardInfo: headers.boardInfo,
-    debugMode: resolveDebugMode(
-      originalDebugMode,
-      headers.debugMode,
-      firmwareKind,
-      Number.isNaN(firmwareMajor) ? 0 : firmwareMajor,
-    ),
+    debugMode: resolveDebugMode(original?.debugMode ?? null, headers.debugMode, firmwareKind, firmwareMajor),
     pwmProtocol: headers.pwmProtocol,
     looptimeUs,
     sampleRateHz,
     rawHeaders,
     features,
   };
-}
-
-interface HeaderPatchResult {
-  patched: Uint8Array;
-  /** The full firmware revision string read from the original buffer, e.g. "Betaflight 2026.6.0-alpha (norevision) STM32F405". Null if no header was found. */
-  originalFirmwareLine: string | null;
-  /** The `debug_mode` value read from the original buffer. Null if absent or non-numeric. */
-  originalDebugMode: number | null;
-}
-
-/** Apply every in-place header rewrite the bundled parser needs. */
-function patchHeaders(input: Uint8Array): HeaderPatchResult {
-  const { patched: fwPatched, originalFirmwareLine } = patchFirmwareVersion(input);
-  const { patched, originalDebugMode } = patchDebugMode(fwPatched);
-  return { patched, originalFirmwareLine, originalDebugMode };
-}
-
-const FIRMWARE_HEADER_PREFIX = 'H Firmware revision:';
-
-const DEBUG_MODE_HEADER_PREFIX = 'H debug_mode:';
-
-const HEADER_SCAN_BYTES = 16_384;
-
-// The bundled blackbox-log Rust crate (v0.3.1, pinned by blackbox-log-ts 0.2.2)
-// accepts Betaflight [4.2.0, 4.5.0) and INAV [5.0.0, 5.2.0) ∪ [6.0.0, 6.1.0).
-// 4.4.0 is well inside the BF range. For INAV logs we'd need 5.1.x or 6.0.x.
-const PARSER_FRIENDLY_VERSION = '4.4.0';
-
-/**
- * Rewrite the firmware version inside the header so the deprecated blackbox-log
- * parser will accept it. We only touch the version token; the rest of the line
- * (firmware name, board suffix, etc.) is left alone. Length is preserved so all
- * downstream byte offsets remain valid.
- */
-function patchFirmwareVersion(input: Uint8Array): { patched: Uint8Array; originalFirmwareLine: string | null } {
-  const scanLen = Math.min(input.byteLength, HEADER_SCAN_BYTES);
-  const decoder = new TextDecoder('latin1');
-  const head = decoder.decode(input.subarray(0, scanLen));
-
-  const prefixIdx = head.indexOf(FIRMWARE_HEADER_PREFIX);
-
-  if (prefixIdx < 0) {
-    return { patched: input, originalFirmwareLine: null };
-  }
-
-  const lineStart = prefixIdx + FIRMWARE_HEADER_PREFIX.length;
-  const lineEnd = head.indexOf('\n', lineStart);
-  if (lineEnd < 0) return { patched: input, originalFirmwareLine: null };
-
-  const fullLine = head.slice(lineStart, lineEnd).replace(/\r$/, '');
-
-  // Inside the line, find the first version-shaped token: digits.dots[.-alpha…].
-  // Example: "Betaflight 2026.6.0-alpha (norevision) STM32F405"
-  const versionMatch = /(\d+(?:\.\d+){1,3})(-[\w.]+)?/.exec(fullLine);
-
-  if (!versionMatch) {
-    return { patched: input, originalFirmwareLine: fullLine };
-  }
-
-  const versionToken = versionMatch[0]!; // e.g. "2026.6.0-alpha"
-  const numericParts = versionMatch[1]!.split('.').map((s) => Number.parseInt(s, 10));
-  const major = numericParts[0] ?? 0;
-  const minor = numericParts[1] ?? 0;
-  const hasPrerelease = versionMatch[2] !== undefined;
-
-  // If the version is inside one of the bundled parser's accepted ranges, leave it alone.
-  // Anything else — year-based majors, prereleases, or just newer-than-supported — gets
-  // rewritten to PARSER_FRIENDLY_VERSION so the parser will accept the file.
-  if (!hasPrerelease && isSupportedVersion(fullLine, major, minor)) {
-    return { patched: input, originalFirmwareLine: fullLine };
-  }
-
-  const replacement = PARSER_FRIENDLY_VERSION.padEnd(versionToken.length, ' ');
-  const tokenOffsetInLine = versionMatch.index;
-  const byteOffset = lineStart + tokenOffsetInLine;
-
-  const patched = new Uint8Array(input.byteLength);
-  patched.set(input);
-  const encoder = new TextEncoder();
-  patched.set(encoder.encode(replacement), byteOffset);
-
-  return { patched, originalFirmwareLine: fullLine };
-}
-
-/**
- * Blank out a `debug_mode` the bundled parser doesn't know about.
- *
- * The parser decodes this header against Betaflight 4.4's enum and throws
- * ("invalid value for header `debug_mode`: `97`") on anything past 78, which
- * takes down the whole log — even though the value is a label that has no
- * bearing on how frames are decoded. Newer firmware routinely exceeds 78:
- * `CHIRP` is 97 in BF 2025.12.
- *
- * So we rewrite the value to 0 (`NONE`) and hand the real number back for
- * display. Leading zeros keep the byte length identical ("97" → "00"); Rust's
- * integer parser accepts them, trailing spaces it would not.
- */
-function patchDebugMode(input: Uint8Array): { patched: Uint8Array; originalDebugMode: number | null } {
-  const scanLen = Math.min(input.byteLength, HEADER_SCAN_BYTES);
-  const decoder = new TextDecoder('latin1');
-  const head = decoder.decode(input.subarray(0, scanLen));
-
-  // Anchor on the newline so we can't match `H gyro_debug_mode:`-style headers.
-  const prefixIdx = head.indexOf(`\n${DEBUG_MODE_HEADER_PREFIX}`);
-  if (prefixIdx < 0) return { patched: input, originalDebugMode: null };
-
-  const valueStart = prefixIdx + 1 + DEBUG_MODE_HEADER_PREFIX.length;
-  const lineEnd = head.indexOf('\n', valueStart);
-  if (lineEnd < 0) return { patched: input, originalDebugMode: null };
-
-  const rawValue = head.slice(valueStart, lineEnd).replace(/\r$/, '');
-  if (!/^\d+$/.test(rawValue)) return { patched: input, originalDebugMode: null };
-  const value = Number.parseInt(rawValue, 10);
-
-  // In range — leave it alone so the parser names it for us.
-  if (value <= MAX_PARSER_DEBUG_MODE) return { patched: input, originalDebugMode: value };
-
-  const patched = new Uint8Array(input.byteLength);
-  patched.set(input);
-  const encoder = new TextEncoder();
-  patched.set(encoder.encode('0'.repeat(rawValue.length)), valueStart);
-
-  return { patched, originalDebugMode: value };
-}
-
-/**
- * Bundled blackbox-log Rust crate (v0.3.1) accepted ranges:
- *   Betaflight: [4.2.0, 4.5.0)
- *   INAV:       [5.0.0, 5.2.0) ∪ [6.0.0, 6.1.0)
- * Anything else needs patching even if the version string looks otherwise sane.
- */
-function isSupportedVersion(firmwareLine: string, major: number, minor: number): boolean {
-  if (/^INAV/i.test(firmwareLine)) {
-    if (major === 5) return minor >= 0 && minor < 2;
-    if (major === 6) return minor === 0;
-    return false;
-  }
-
-  // Treat Betaflight/EmuFlight/Cleanflight derivatives the same way.
-  return major === 4 && minor >= 2 && minor < 5;
 }
 
 /** Median of consecutive differences — robust against gaps. */

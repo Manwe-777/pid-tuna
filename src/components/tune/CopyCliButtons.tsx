@@ -2,6 +2,7 @@ import { useCopyText } from '../../hooks/useCopyText';
 import { shortName } from '../../logs/shortName';
 import { tuneCliCommands } from '../../tune/tuneCliCommands';
 import type { LogEntry } from '../../types';
+import { slotFileName } from '../../utils/slotFileName';
 
 function label(copied: boolean, failed: boolean, name: string | null): string {
   if (copied) return 'Copied';
@@ -23,7 +24,10 @@ export function CopyCliButtons({ entries }: { entries: LogEntry[] }) {
           type="button"
           title="Betaflight CLI set commands for this log's PIDs, rates and filters; review, then type save"
           onClick={() =>
-            copy(slot.id, tuneCliCommands(log.setup.rawHeaders, `${log.fileName} (${log.setup.firmwareVersion})`))
+            copy(
+              slot.id,
+              tuneCliCommands(log.setup.rawHeaders, `${slotFileName(slot.state)} (${log.setup.firmwareVersion})`),
+            )
           }
         >
           {label(copied(slot.id), failed(slot.id), multi ? shortName(slot) : null)}

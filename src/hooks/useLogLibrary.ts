@@ -1,14 +1,40 @@
 import { useCallback, useState } from 'react';
 
+import { flightLabel } from '../logs/flightLabel';
 import { LogLibrary } from '../logs/LogLibrary';
 import { newSlotId } from '../logs/newSlotId';
 import { parseLog } from '../parser/parseLog';
 
-/** The loaded logs plus the actions the sidebar needs; parsing runs in the background per file. */
+type Update = (change: (lib: LogLibrary) => void) => void;
+
+/** Parses one flight of a file into a new slot; returns how many flights the file holds (0 on failure). */
+async function loadFlight(update: Update, file: File, logIndex: number, name: string): Promise<number> {
+  const id = newSlotId();
+  update((lib) => lib.add(id, name));
+
+  try {
+    const log = await parseLog(file, {
+      logIndex,
+      onProgress: ({ progress, rows }) => update((lib) => lib.setProgress(id, name, progress, rows)),
+    });
+    update((lib) => lib.setReady(id, log));
+
+    return log.logCount;
+  } catch (err) {
+    update((lib) => lib.setError(id, name, err instanceof Error ? err.message : String(err)));
+
+    return 0;
+  }
+}
+
+/**
+ * The loaded logs plus the actions the sidebar needs. Parsing runs in the
+ * background; every flight in a file becomes its own log, one after another.
+ */
 export function useLogLibrary() {
   const [library, setLibrary] = useState(() => new LogLibrary());
 
-  const update = useCallback((change: (lib: LogLibrary) => void) => {
+  const update = useCallback<Update>((change) => {
     setLibrary((prev) => {
       const next = prev.clone();
       change(next);
@@ -19,17 +45,8 @@ export function useLogLibrary() {
 
   const addFile = useCallback(
     async (file: File) => {
-      const id = newSlotId();
-      update((lib) => lib.add(id, file.name));
-
-      try {
-        const log = await parseLog(file, {
-          onProgress: ({ progress, rows }) => update((lib) => lib.setProgress(id, file.name, progress, rows)),
-        });
-        update((lib) => lib.setReady(id, log));
-      } catch (err) {
-        update((lib) => lib.setError(id, file.name, err instanceof Error ? err.message : String(err)));
-      }
+      const count = await loadFlight(update, file, 0, file.name);
+      for (let i = 1; i < count; i++) await loadFlight(update, file, i, flightLabel(file.name, i, count));
     },
     [update],
   );
