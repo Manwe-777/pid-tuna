@@ -1,213 +1,42 @@
-# Contributing to PIDTuna
+# PIDTuna
 
-Practical guide for anyone (human or AI) making changes to this repo. Keep
-changes small, run the checks below before pushing, and follow the patterns
-that already exist rather than inventing parallel ones.
+Project facts. General conventions (structure, tooling, tests, commits) are in `~/Projects/CLAUDE.md`.
 
-## What this is
+## What it is
 
-A fully client-side React + Vite app that parses Betaflight blackbox logs and
-runs DSP on them. No backend, no auth, no database. Ships in three forms from
-the same source: hosted web app (GitHub Pages), installable PWA (offline via
-service worker), and a Tauri 2 desktop wrapper. See `README.md` for the user-
-facing overview.
+A client-side React app that parses Betaflight blackbox logs and runs DSP on them. No backend. It ships as the GitHub Pages site, an offline PWA and a Tauri 2 desktop app, all from the same source.
 
 ## Layout
 
-```
-src/
-  App.tsx              the whole UI — section components, tab routing
-  components/          small reusable components (TimeSeriesPlot, LogDotPlot, etc.)
-  dsp/                 pure analysis code, one file per concern
-    stepResponse.ts    Wiener deconvolution
-    spectrogram.ts     PSDs / spectrograms (exports combinePsds for pooling)
-    motorBalance.ts    motor stats + per-motor PSDs (exports combineMotorBalances)
-    scorecard.ts       triage roll-up (uses combine* helpers when merging)
-    latency.ts, battery.ts, gps*.ts, filters.ts, saturation.ts
-    testing/           simulated flights with a known response, for accuracy tests
-  parser.ts            blackbox-log adapter, builds ParsedLog incl. `presence` flags
-  sliceLog.ts          time-range slice of a ParsedLog
-  logs.ts              LogSlot type, slot ID generator, multi-log colour palette
-  types.ts             ParsedLog, DataPresence, axis aliases
-  tuneView.ts          extracts PID config from the parsed setup headers
-src-tauri/             Tauri 2 desktop wrapper (Rust + tauri.conf.json)
-public/                static assets (icons, wordmark) — served at site root
-.github/workflows/     ci.yml, build.yml (desktop releases), pages.yml
-```
+- `src/dsp/` — analyses, one function per file, grouped by analysis (`step/`, `spectrum/`, `filters/`, `gps/`, `balance/`, `scorecard/`); `dsp/testing/` holds the simulated drone used by accuracy tests.
+- `src/parser/` — the `blackbox-log` adapter that builds `ParsedLog`.
+- `src/plot/` — canvas and uPlot drawing used by the plot components.
+- `src/logs/` — the `LogLibrary` class and per-log helpers.
+- `src/components/<tab>/` — one folder per tab.
 
-## Running the app
+## Analysis rules
 
-```bash
-pnpm install
-pnpm dev               # web dev server on :5173
-pnpm tauri:dev         # desktop dev (Rust compile on first run ~2 min)
-```
+- `ParsedLog.presence` records which optional fields the log really had. `tabHasData` uses it to disable tabs; never infer presence from all-zero arrays.
+- Results keep the pooled state a merge needs (Welch power for spectra, summed cross-spectra for step response). Merging logs pools that state and re-derives the metrics; never average finished metrics. Mergeable tabs use `combineStepResponses`, `combinePsds`, `combineMotorBalances` and `buildMergedScorecard`, with `MergeLogsToggle` and `makeMergedSlot`.
+- Step response pools cross-spectra (H1), not per-window deconvolutions. The tab and the scorecard share `STEP_DEFAULTS` and `STEP_MASK_DEFAULTS`.
+- Analyses run takeoff to landing (`flightRange`: stick throttle at or above 20% for 0.5 s). Throttle in percent comes from `throttlePercentSeries` (rcCommand[3]).
+- Yaw is shown but never rated: scorecard rows score `RATED_AXES = [0, 1]` only.
 
-## Checks before pushing
+## Tests
 
-```bash
-pnpm typecheck         # tsc -b --noEmit, must be clean
-pnpm test              # vitest, must pass
-pnpm build             # full Vite production build, must succeed
-```
+- Accuracy tests assert against the simulated drone's known response, not against current output. A known inaccuracy is a `test.fails` case.
+- Real-log tests run only with `PIDTUNA_LOG_DIR` set; `pid/` under it holds a 13-flight tuning session. Logs are never committed.
 
-CI runs all three.
+## Parser and platform quirks
 
-### Tests
+- `blackbox-log` 0.2.2 rejects year-numbered firmware versions (e.g. `2026.6.0`); `parseLog` rewrites the header to `4.4.0` in memory, keeping the byte length.
+- `parser/compat.ts` makes `DataView.byteLength` return 0 on detached buffers, which the parser relies on. It must be imported before any `blackbox-log` code; `main.tsx` imports it first.
+- The parser WASM is inlined in its JS, so the bundle is large and the PWA precaches the whole parser.
+- In Tauri the HTML file input is unreliable; `FilePicker` uses the dialog and fs plugins when `window.__TAURI_INTERNALS__` exists. Exercise file picking in both `pnpm dev` and `pnpm tauri:dev`.
+- An old service worker can serve a stale build after a release; a hard reload fixes it.
 
-- Vitest, node environment. Test files sit next to the code (`thing.test.ts`).
-- DSP accuracy is tested against a simulated drone with a known response
-  (`src/dsp/testing/`): a second-order closed loop with dead time, driven by
-  stick-like setpoint and gyro noise. Assert against the simulated truth, not
-  against the current output.
-- Real-log tests run only when `PIDTUNA_LOG_DIR` points at a folder of
-  blackbox logs; they skip otherwise. Logs are never committed.
-- A known inaccuracy gets a `test.fails` case with the correct assertion, so
-  it shows up until it is fixed. Don't loosen a test to match a bug.
+## Paths and versions
 
-For UI changes, exercise the path in both `pnpm dev` (regular browser) and
-`pnpm tauri:dev` (WKWebView). Behaviour can diverge — the file picker is the
-classic example.
-
-## Versioning (semver)
-
-`MAJOR.MINOR.PATCH`. Bump rules for this surface area:
-
-- **MAJOR** — log-schema changes that break older saved analyses, breaking
-  changes to any exported `dsp/*` function signature, scorecard rubric
-  thresholds being moved enough to flip an existing log's status.
-- **MINOR** — new tabs, new merge primitives, new DSP analyses, additive UI.
-- **PATCH** — bug fixes, internal cleanups, dependency bumps, docs.
-
-Three files must be bumped together at release time:
-
-1. `package.json` → drives the web UI's header pill and Tauri's bundle version
-2. `src-tauri/Cargo.toml` → the Rust crate's own version (kept in sync manually)
-3. `src-tauri/Cargo.lock` → contains the crate version too (rebuild or hand-edit)
-
-Then `git tag v<version> && git push origin v<version>` triggers `build.yml`,
-which produces a draft GitHub Release with cross-platform installers attached.
-The `pages.yml` workflow auto-redeploys the hosted web app on every push to
-`main` independently.
-
-## Patterns to follow
-
-These exist because we've already needed them — match them when extending.
-
-### Per-log `presence` flags drive tab availability
-
-`ParsedLog.presence: DataPresence` (defined in `types.ts`, populated in
-`parser.ts`) tracks which optional fields were actually in the source log
-versus zero-filled by the parser. The sidebar / tab bar uses
-`tabHasData(tabId, entries)` in `App.tsx` to dim and disable tabs whose data
-is missing from every loaded log.
-
-If you add a new analysis that depends on a new optional log field:
-
-1. Add a flag to `DataPresence` in `types.ts`.
-2. Populate it in `parser.ts` based on `cols.has(...)` or a sawX-style flag.
-3. Add the tab → flag mapping in `tabHasData()`.
-
-Don't check for "all zeros in the array" at the call site — the presence flag
-is the source of truth.
-
-### Multi-log views ship with a "Merge logs" toggle
-
-Four tabs already do this: **Scorecard**, **Step response**, **Full spectrum**,
-**Motors balance**. Each uses a matching combine primitive from the dsp module:
-
-| Tab            | Primitive                                                                            |
-| -------------- | ------------------------------------------------------------------------------------ |
-| Step response  | `combineStepResponses` (`dsp/stepResponse.ts`) — pools accepted segments             |
-| Full spectrum  | `combinePsds` (`dsp/spectrogram.ts`) — linear-power weighted Welch combine           |
-| Motors balance | `combineMotorBalances` (`dsp/motorBalance.ts`) — pools stats + PSDs, re-derives axes |
-| Scorecard      | `buildMergedScorecard` (`dsp/scorecard.ts`) — composes the three above               |
-
-UI uses the shared `<MergeLogsToggle>` and `makeMergedSlot(entries)` helpers
-in `App.tsx`. When adding another mergeable tab, write a `combineXxx()` in the
-dsp module that follows the same shape (skip mismatched-shape inputs silently,
-re-derive any threshold/status from the pooled result rather than averaging
-flags), then drop the toggle in.
-
-### Base-path handling
-
-The same source ships under three base paths:
-
-| Target                      | Base         | How set                                        |
-| --------------------------- | ------------ | ---------------------------------------------- |
-| Local dev / preview / Tauri | `/`          | Vite default                                   |
-| GitHub Pages                | `/pid-tuna/` | `VITE_BASE_PATH=/pid-tuna/` env in `pages.yml` |
-
-For asset references in `index.html`, use absolute paths starting with `/` —
-Vite rewrites these. **For asset references in TSX**, use
-`${import.meta.env.BASE_URL}<path>` since Vite does _not_ rewrite paths in JSX
-strings. See the header logo in `App.tsx` for the pattern.
-
-### Per-log compute → mean → metrics pipeline
-
-DSP modules expose `compute<X>(perLogInputs, opts)` that returns a result with
-`segments[]` (per-window estimates, for display) and a `mean` estimate the
-metrics come from. Results carry whatever pooled state a merge needs (Welch
-power for spectra, summed cross-spectra for step response), so a combine
-primitive pools that state across logs and re-derives the estimate and metrics
-from the bigger pool. Never average finished per-log metrics.
-
-Step response pools cross-spectra (H1) rather than averaging per-window
-deconvolutions: single windows read low and noisy. The Step response tab and
-the scorecard both use `STEP_DEFAULTS`.
-
-### Yaw is excluded from rating rubrics
-
-Step-response rise / overshoot and tracking-latency status thresholds use
-`RATED_AXES = [0, 1]` (roll + pitch only). Yaw is shown but not scored —
-most pilots don't actively tune it and quiet yaw on a fixed-camera log gives
-noisy values that would unfairly drag scorecards down. If you add a new
-scorecard row that scores per-axis, exclude yaw the same way.
-
-## Commit and PR style
-
-- Conventional Commits (`feat:`, `fix:`, `chore:`, `refactor:`, `style:`,
-  `test:`, `ci:`, `docs:`), imperative subject line.
-- One commit per logical change, with a body explaining _why_ when it isn't
-  obvious.
-- No AI attribution: no `Co-Authored-By` or session trailers.
-- Don't rewrite history of pushed commits. Tags are mostly fine to move
-  _before_ a release is published; once published, never.
-
-## Common gotchas
-
-- **Firmware version patch.** The deprecated `blackbox-log` parser rejects
-  year-numbered firmware versions like `2026.6.0-alpha`. `parser.ts` rewrites
-  the firmware-version header in-memory to `4.4.0` before parsing, preserving
-  byte length. If parsing breaks on a new firmware, check that patch.
-- **DataView compat shim.** `src/compat.ts` patches
-  `DataView.prototype.byteLength` to return `0` on detached buffers instead of
-  throwing, because `blackbox-log` v0.2.2 relies on the historical behaviour
-  to detect WASM memory growth. **Must import before any blackbox-log code.**
-  `main.tsx` does this — keep it that way.
-- **WASM is base64-inlined.** `blackbox-log` v0.2.2 inlines the parser WASM
-  into its JS bundle. That's why our app bundle is ~800 KB and why the PWA
-  service worker can precache the whole parser. No separate `.wasm` request
-  at runtime.
-- **Tauri webview ≠ browser.** The HTML `<input type="file">` dialog doesn't
-  reliably open in WKWebView; `FilePicker.tsx` detects `window.__TAURI_INTERNALS__`
-  and uses the Tauri `dialog` + `fs` plugins instead. Drag-and-drop is captured
-  by the OS before the webview sees it. Keep that branch when changing the
-  file-picker UX.
-- **PWA cache after asset rename.** vite-plugin-pwa hashes asset filenames,
-  so old service workers serve the old bundle. If a user reports stale UI,
-  they need a hard reload (Cmd+Shift+R) or service-worker unregister.
-
-## What not to do
-
-- Don't add a client-side router. The app is single-page; tabs are local
-  state. If you genuinely need URL-shareable views, talk through the design
-  first — naive routing breaks the PWA + Tauri base-path setup.
-- Don't commit `dist/`, `dev-dist/`, `src-tauri/target/`, `src-tauri/gen/`,
-  or `*.tsbuildinfo`. They're gitignored; if your tool spits them out
-  elsewhere, fix that rather than untracking later.
-- Don't introduce a CSS framework. `index.css` is hand-written, ~600 lines.
-  Keep it that way — add classes near the existing ones.
-- Don't add backend / server code. This is and will stay 100% client-side.
-- Don't use `console.log` for anything user-visible. The Console is for
-  developers; surface errors / warnings in the UI itself.
+- Pages serves under `/pid-tuna/` (`VITE_BASE_PATH`); local, preview and Tauri use `/`. Asset paths in TSX use `${import.meta.env.BASE_URL}`, since Vite doesn't rewrite JSX strings.
+- The version lives in git tags. semantic-release cuts it on `main`; builds read `APP_VERSION` or `git describe`, and the desktop build stamps it into `package.json` and `Cargo.toml` (both hold 0.0.0 in git).
+- No client-side router: tabs are local state, and routing would break the PWA and Tauri base paths.
