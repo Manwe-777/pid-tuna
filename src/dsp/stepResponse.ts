@@ -363,7 +363,8 @@ function emptySpectra(fftSize: number, sampleTimeMs: number, regularization: num
 }
 
 function addSpectra(into: StepSpectra, from: StepSpectra): void {
-  for (let i = 0; i < into.crossSpectrum.length; i++) into.crossSpectrum[i] = into.crossSpectrum[i]! + from.crossSpectrum[i]!;
+  for (let i = 0; i < into.crossSpectrum.length; i++)
+    into.crossSpectrum[i] = into.crossSpectrum[i]! + from.crossSpectrum[i]!;
 
   for (let i = 0; i < into.fftSize; i++) {
     into.inputPower[i] = into.inputPower[i]! + from.inputPower[i]!;
@@ -472,7 +473,14 @@ function spreadAround(segments: Float32Array[], mean: Float32Array): Float32Arra
   return out;
 }
 
-const SPREAD_KEYS = ['riseTimeMs', 'overshootPct', 'peakTimeMs', 'settlingTimeMs', 'latencyHalfMs', 'peakResponse'] as const;
+const SPREAD_KEYS = [
+  'riseTimeMs',
+  'overshootPct',
+  'peakTimeMs',
+  'settlingTimeMs',
+  'latencyHalfMs',
+  'peakResponse',
+] as const;
 
 function metricSpread(time: Float32Array, segments: Float32Array[], steadyFrom: number): StepResultSpread {
   if (segments.length < 2) return {};

@@ -42,7 +42,12 @@ describe('tune settings from log headers', () => {
   });
 
   test('pre-4.3 header names still work', () => {
-    const v = view({ gyro_lowpass_hz: '200', dyn_lpf_gyro_min_hz: '200', dyn_lpf_gyro_max_hz: '500', dterm_lpf_hz: '100' });
+    const v = view({
+      gyro_lowpass_hz: '200',
+      dyn_lpf_gyro_min_hz: '200',
+      dyn_lpf_gyro_max_hz: '500',
+      dterm_lpf_hz: '100',
+    });
     expect(v.gyroLpf1Hz).toBe(200);
     expect(v.gyroDynRange).toEqual({ min: 200, max: 500 });
     expect(v.dtermLpf1Hz).toBe(100);

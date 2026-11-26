@@ -43,7 +43,13 @@ export interface FilterDelayContext {
 }
 
 const LPF_KIND: Record<number, BfFilterKind> = { 0: 'pt1', 1: 'biquad', 2: 'pt2', 3: 'pt3' };
-const LPF_LABEL: Record<BfFilterKind, string> = { pt1: 'PT1', biquad: 'Biquad', pt2: 'PT2', pt3: 'PT3', notch: 'Notch' };
+const LPF_LABEL: Record<BfFilterKind, string> = {
+  pt1: 'PT1',
+  biquad: 'Biquad',
+  pt2: 'PT2',
+  pt3: 'PT3',
+  notch: 'Notch',
+};
 const DEFAULT_MOTORS = 4;
 const DEFAULT_RPM_FADE_HZ = 50;
 
@@ -62,14 +68,30 @@ export function computeFilterDelays(view: TuneView, ctx: FilterDelayContext = {}
     if (parts.length > 0) entries.push({ ...e, delayMs, phaseDeg });
   };
 
-  lowpass(add, 'Gyro LPF 1', 'gyro', view.gyroDynRange?.min ?? view.gyroLpf1Hz, view.gyroLpf1Type, gyroHz, view.gyroDynRange != null);
+  lowpass(
+    add,
+    'Gyro LPF 1',
+    'gyro',
+    view.gyroDynRange?.min ?? view.gyroLpf1Hz,
+    view.gyroLpf1Type,
+    gyroHz,
+    view.gyroDynRange != null,
+  );
   lowpass(add, 'Gyro LPF 2', 'gyro', view.gyroLpf2Hz, view.gyroLpf2Type, gyroHz, false);
   staticNotch(add, 'Gyro notch 1', 'gyro', view.gyroNotch1Hz, view.gyroNotch1Cutoff, gyroHz);
   staticNotch(add, 'Gyro notch 2', 'gyro', view.gyroNotch2Hz, view.gyroNotch2Cutoff, gyroHz);
   rpmFilter(add, view, gyroHz, ctx);
   dynamicNotch(add, view, gyroHz);
 
-  lowpass(add, 'D-term LPF 1', 'dterm', view.dtermDynRange?.min ?? view.dtermLpf1Hz, view.dtermLpf1Type, pidHz, view.dtermDynRange != null);
+  lowpass(
+    add,
+    'D-term LPF 1',
+    'dterm',
+    view.dtermDynRange?.min ?? view.dtermLpf1Hz,
+    view.dtermLpf1Type,
+    pidHz,
+    view.dtermDynRange != null,
+  );
   lowpass(add, 'D-term LPF 2', 'dterm', view.dtermLpf2Hz, view.dtermLpf2Type, pidHz, false);
   staticNotch(add, 'D-term notch', 'dterm', view.dtermNotchHz, view.dtermNotchCutoff, pidHz);
 
@@ -93,17 +115,35 @@ function lowpass(
 
   const kind = LPF_KIND[typeId ?? 0] ?? 'pt1';
   add(
-    { label, chain, cutoffHz: hz, type: LPF_LABEL[kind], dynamic, note: dynamic ? 'at its minimum cutoff (most delay)' : undefined },
+    {
+      label,
+      chain,
+      cutoffHz: hz,
+      type: LPF_LABEL[kind],
+      dynamic,
+      note: dynamic ? 'at its minimum cutoff (most delay)' : undefined,
+    },
     [{ kind, hz }],
     loopHz,
   );
 }
 
-function staticNotch(add: Add, label: string, chain: FilterChain, hz: number | undefined, cutoff: number | undefined, loopHz: number): void {
+function staticNotch(
+  add: Add,
+  label: string,
+  chain: FilterChain,
+  hz: number | undefined,
+  cutoff: number | undefined,
+  loopHz: number,
+): void {
   if (!hz || hz <= 0 || !cutoff || cutoff <= 0 || cutoff >= hz) return;
 
   const q = notchQFromCutoff(hz, cutoff);
-  add({ label, chain, cutoffHz: hz, type: `Notch Q ${q.toFixed(1)}`, dynamic: false }, [{ kind: 'notch', hz, q }], loopHz);
+  add(
+    { label, chain, cutoffHz: hz, type: `Notch Q ${q.toFixed(1)}`, dynamic: false },
+    [{ kind: 'notch', hz, q }],
+    loopHz,
+  );
 }
 
 function rpmFilter(add: Add, view: TuneView, loopHz: number, ctx: FilterDelayContext): void {

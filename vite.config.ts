@@ -6,16 +6,15 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // Read the app version from package.json at build time so the UI always
 // reflects the source of truth (Tauri reads the same field via tauri.conf.json).
-const pkg = JSON.parse(
-  readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf-8'),
-) as { version: string };
+const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf-8')) as {
+  version: string;
+};
 
 // Tauri runs the desktop wrapper against this dev server (see src-tauri/tauri.conf.json
 // `devUrl`). Tauri's webview is picky about ports and HMR — keep the port pinned and
 // don't HMR-watch the Rust source tree.
 // Set by `tauri dev` on mobile builds; undefined on desktop dev.
-const env = (globalThis as { process?: { env?: Record<string, string | undefined> } })
-  .process?.env;
+const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
 const host = env?.TAURI_DEV_HOST;
 // Base public path. Default "/" works for local dev, `pnpm preview`, and the
 // Tauri wrappers (Tauri serves files from the protocol root). Override via
@@ -70,9 +69,7 @@ export default defineConfig({
     // dev — this only affects local development.
     cors: true,
     allowedHosts: true,
-    hmr: host
-      ? { protocol: 'ws', host, port: 5174 }
-      : undefined,
+    hmr: host ? { protocol: 'ws', host, port: 5174 } : undefined,
     watch: {
       // Don't try to HMR-reload Rust source files.
       ignored: ['**/src-tauri/**'],

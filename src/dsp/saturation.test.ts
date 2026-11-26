@@ -21,7 +21,9 @@ function fakeLog(firmwareVersion: string, headers: Record<string, string>, iTerm
 
 describe('I-term saturation', () => {
   test('Betaflight 2025+ limits are iterm_windup × pidsum_limit, with yaw on its own sum limit', () => {
-    const a = analyzeSaturation(fakeLog('2025.12.1', { iterm_windup: '80', pidsum_limit: '500', pidsum_limit_yaw: '400' }, () => 0));
+    const a = analyzeSaturation(
+      fakeLog('2025.12.1', { iterm_windup: '80', pidsum_limit: '500', pidsum_limit_yaw: '400' }, () => 0),
+    );
     expect(a.limitSource).toBe('windup');
     expect(a.axes.map((x) => x.limit)).toEqual([400, 400, 320]);
   });

@@ -17,7 +17,11 @@ export interface SyntheticFlightOptions {
 }
 
 /** Setpoint and gyro for one axis of a simulated flight with a known closed-loop response. */
-export function syntheticFlight(opts: SyntheticFlightOptions): { setpoint: Float32Array; gyro: Float32Array; sampleRateHz: number } {
+export function syntheticFlight(opts: SyntheticFlightOptions): {
+  setpoint: Float32Array;
+  gyro: Float32Array;
+  sampleRateHz: number;
+} {
   const sampleRateHz = opts.sampleRateHz ?? 2000;
   const seed = opts.seed ?? 7;
   const setpoint = stickSetpoint({

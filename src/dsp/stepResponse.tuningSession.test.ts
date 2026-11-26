@@ -21,7 +21,10 @@ const cache = new Map<number, Promise<StepMetrics>>();
 function roll(flight: number): Promise<StepMetrics> {
   if (!cache.has(flight)) {
     const file = `LOG${String(flight).padStart(5, '0')}.BFL`;
-    cache.set(flight, parseLog(new File([readFileSync(join(DIR, file))], file)).then((log) => stepResponseForLog(log, 0).metrics));
+    cache.set(
+      flight,
+      parseLog(new File([readFileSync(join(DIR, file))], file)).then((log) => stepResponseForLog(log, 0).metrics),
+    );
   }
 
   return cache.get(flight)!;

@@ -40,14 +40,14 @@ export function buildScorecard(log: ParsedLog): Scorecard {
   const entries: ScoreEntry[] = [];
 
   // ---- Tracking latency (per axis, xcorr) ----
-  const latencies = AXIS_NAMES.map((_n, axis) =>
-    latencyForLog(log, axis),
-  );
+  const latencies = AXIS_NAMES.map((_n, axis) => latencyForLog(log, axis));
   entries.push(latencyEntry(latencies));
 
   // ---- Gyro filter delay in the control band ----
   const delays = filterDelaysForLog(log);
-  entries.push(filterDelayEntry(delays.gyroDelayMs, delays.referenceHz, delays.entries.filter((e) => e.chain === 'gyro').length));
+  entries.push(
+    filterDelayEntry(delays.gyroDelayMs, delays.referenceHz, delays.entries.filter((e) => e.chain === 'gyro').length),
+  );
 
   // ---- Motor balance ----
   const balance = analyzeMotorBalance(log);
@@ -64,9 +64,7 @@ export function buildScorecard(log: ParsedLog): Scorecard {
   }
 
   // ---- Step response (only if any axis detected steps) ----
-  const steps = AXIS_NAMES.map((_n, axis) =>
-    stepResponseForLog(log, axis),
-  );
+  const steps = AXIS_NAMES.map((_n, axis) => stepResponseForLog(log, axis));
   const stepRows = stepScoreEntries(steps);
   for (const row of stepRows) entries.push(row);
 
@@ -93,9 +91,7 @@ export function buildMergedScorecard(logs: ParsedLog[]): Scorecard {
 
   // ---- Tracking latency: average reliable per-axis lags across logs ----
   const meanLatencies: LatencyResult[] = AXIS_NAMES.map((_n, axis) => {
-    const perLog = logs.map((l) =>
-      latencyForLog(l, axis),
-    );
+    const perLog = logs.map((l) => latencyForLog(l, axis));
     const reliable = perLog.filter((l) => l.reliable);
     if (reliable.length === 0) {
       return { lagMs: 0, correlation: 0, reliable: false };
@@ -108,7 +104,9 @@ export function buildMergedScorecard(logs: ParsedLog[]): Scorecard {
 
   // ---- Gyro filter delay: configuration-only, the first log stands for all ----
   const delays = filterDelaysForLog(reference);
-  entries.push(filterDelayEntry(delays.gyroDelayMs, delays.referenceHz, delays.entries.filter((e) => e.chain === 'gyro').length));
+  entries.push(
+    filterDelayEntry(delays.gyroDelayMs, delays.referenceHz, delays.entries.filter((e) => e.chain === 'gyro').length),
+  );
 
   // ---- Motor balance: pool via combineMotorBalances ----
   const balances = logs.map((l) => analyzeMotorBalance(l));
@@ -118,9 +116,7 @@ export function buildMergedScorecard(logs: ParsedLog[]): Scorecard {
   // ---- Noise floor: pool per-axis PSDs, take mid-band mean ----
   if (reference.gyroFilt[0]!.length > 256) {
     const pooledPsds = AXIS_NAMES.map((_n, axis) =>
-      combinePsds(
-        logs.map((l) => computePsd(l.gyroFilt[axis]!, l.setup.sampleRateHz, { windowSize: 1024 })),
-      ),
+      combinePsds(logs.map((l) => computePsd(l.gyroFilt[axis]!, l.setup.sampleRateHz, { windowSize: 1024 }))),
     );
     const noiseRow = noiseFloorEntry(pooledPsds);
     if (noiseRow) entries.push(noiseRow);
@@ -128,11 +124,7 @@ export function buildMergedScorecard(logs: ParsedLog[]): Scorecard {
 
   // ---- Step response: pool segments per axis via combineStepResponses ----
   const pooledSteps: StepResponseResult[] = AXIS_NAMES.map((_n, axis) =>
-    combineStepResponses(
-      logs.map((l) =>
-        stepResponseForLog(l, axis),
-      ),
-    ),
+    combineStepResponses(logs.map((l) => stepResponseForLog(l, axis))),
   );
   for (const row of stepScoreEntries(pooledSteps)) entries.push(row);
 
@@ -164,16 +156,15 @@ function latencyEntry(latencies: LatencyResult[]): ScoreEntry {
     key: 'Tracking latency',
     status,
     value:
-      RATED_AXES
-        .map((i) => `${AXIS_NAMES[i]} ${latencies[i]!.reliable ? latencies[i]!.lagMs.toFixed(1) : '—'}`)
-        .join(' · ') + ' ms',
+      RATED_AXES.map((i) => `${AXIS_NAMES[i]} ${latencies[i]!.reliable ? latencies[i]!.lagMs.toFixed(1) : '—'}`).join(
+        ' · ',
+      ) + ' ms',
     detail: 'Setpoint → gyro delay (cross-correlation)',
   };
 }
 
 function filterDelayEntry(gyroDelayMs: number, referenceHz: number, filterCount: number): ScoreEntry {
-  const status: ScoreStatus =
-    gyroDelayMs < 2.5 ? 'good' : gyroDelayMs < 5 ? 'warn' : 'bad';
+  const status: ScoreStatus = gyroDelayMs < 2.5 ? 'good' : gyroDelayMs < 5 ? 'warn' : 'bad';
   return {
     key: 'Gyro filter delay',
     status,
@@ -185,20 +176,17 @@ function filterDelayEntry(gyroDelayMs: number, referenceHz: number, filterCount:
 function balanceEntry(balance: BalanceAnalysis): ScoreEntry | null {
   if (balance.axes.length > 0) {
     const worst = Math.max(...balance.axes.map((a) => Math.abs(a.deltaPct)));
-    const status: ScoreStatus =
-      worst < 2 ? 'good' : worst < 6 ? 'warn' : 'bad';
+    const status: ScoreStatus = worst < 2 ? 'good' : worst < 6 ? 'warn' : 'bad';
     return {
       key: 'Motor balance',
       status,
-      value: balance.axes
-        .map((a) => `${a.axis} ${a.deltaPct >= 0 ? '+' : ''}${a.deltaPct.toFixed(1)}%`)
-        .join(' · '),
+      value: balance.axes.map((a) => `${a.axis} ${a.deltaPct >= 0 ? '+' : ''}${a.deltaPct.toFixed(1)}%`).join(' · '),
       detail:
         balance.singleMotorOutlier != null
           ? `M${balance.singleMotorOutlier.motorIndex + 1} outlier (${balance.singleMotorOutlier.deltaPct.toFixed(1)}%)`
           : balance.dominantAxis != null
-          ? `${balance.dominantAxis} is the dominant imbalance axis`
-          : 'No dominant axis',
+            ? `${balance.dominantAxis} is the dominant imbalance axis`
+            : 'No dominant axis',
     };
   }
   if (balance.singleMotorOutlier != null) {
@@ -225,8 +213,7 @@ function noiseFloorEntry(psds: { frequencies: Float32Array; psdDb: Float32Array 
   }
   const midBandMean = n > 0 ? sum / n : Number.NaN;
   if (!Number.isFinite(midBandMean)) return null;
-  const status: ScoreStatus =
-    midBandMean < 5 ? 'good' : midBandMean < 15 ? 'warn' : 'bad';
+  const status: ScoreStatus = midBandMean < 5 ? 'good' : midBandMean < 15 ? 'warn' : 'bad';
   return {
     key: 'Noise floor (100-300 Hz)',
     status,
@@ -240,10 +227,7 @@ function batteryEntry(battery: BatteryAnalysis): ScoreEntry | null {
   let status: ScoreStatus = 'na';
   let value = '—';
   if (battery.perCellMin != null) {
-    status =
-      battery.perCellMin >= 3.5 ? 'good'
-        : battery.perCellMin >= 3.3 ? 'warn'
-        : 'bad';
+    status = battery.perCellMin >= 3.5 ? 'good' : battery.perCellMin >= 3.3 ? 'warn' : 'bad';
     value = `${battery.perCellMin.toFixed(2)} V/cell min`;
   } else if (battery.voltageMin != null) {
     value = `${battery.voltageMin.toFixed(2)} V min`;

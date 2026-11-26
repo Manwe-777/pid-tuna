@@ -2,8 +2,16 @@ import { gpsCoordValid } from './gpsPlayback';
 
 /** Discrete viridis-ish stops aligned with leaflet track segments (GPS map + charts). */
 export const GPS_VIRIDIS_STOPS = [
-  '#440154', '#482878', '#3e4989', '#31688e', '#26828e',
-  '#1f9e89', '#35b779', '#6ece58', '#b5de2b', '#fde725',
+  '#440154',
+  '#482878',
+  '#3e4989',
+  '#31688e',
+  '#26828e',
+  '#1f9e89',
+  '#35b779',
+  '#6ece58',
+  '#b5de2b',
+  '#fde725',
 ] as const;
 
 export function gpsViridisColor(c: number, cMin: number, cMax: number, fallback: string): string {
@@ -44,8 +52,7 @@ export function gpsAltitudeViridisSegments(
     const lo0 = lon[i]!;
     const la1 = lat[i + 1]!;
     const lo1 = lon[i + 1]!;
-    const fix =
-      gpsCoordValid(la0, lo0) && gpsCoordValid(la1, lo1);
+    const fix = gpsCoordValid(la0, lo0) && gpsCoordValid(la1, lo1);
 
     if (colorize && fix) {
       const av = (altitude[i]! + altitude[i + 1]!) / 2;

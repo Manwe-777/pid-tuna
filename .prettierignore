@@ -1,0 +1,6 @@
+dist
+dev-dist
+src-tauri/target
+src-tauri/gen
+pnpm-lock.yaml
+reference

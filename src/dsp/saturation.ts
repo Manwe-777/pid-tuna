@@ -52,7 +52,10 @@ const DEFAULT_ITERM_LIMIT = 400;
  */
 export function analyzeSaturation(log: ParsedLog): SaturationAnalysis {
   const { limits, source } = itermLimits(log);
-  const range = flightRange(throttlePercentSeries(log), log.setup.sampleRateHz) ?? { start: 0, end: log.time.length - 1 };
+  const range = flightRange(throttlePercentSeries(log), log.setup.sampleRateHz) ?? {
+    start: 0,
+    end: log.time.length - 1,
+  };
 
   const axes: AxisSaturation[] = AXIS_NAMES.map((name, i) => {
     const iTerm = log.iTerm[i]!;

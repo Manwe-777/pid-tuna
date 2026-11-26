@@ -28,10 +28,13 @@ describe('step response sample mask', () => {
   });
 
   test('a motor pinned at full or minimum output marks the sample unusable', () => {
-    const log = fakeLog([50, 50, 50, 50], [
-      [1000, 2047, 1000, 48],
-      [1000, 1000, 1000, 1000],
-    ]);
+    const log = fakeLog(
+      [50, 50, 50, 50],
+      [
+        [1000, 2047, 1000, 48],
+        [1000, 1000, 1000, 1000],
+      ],
+    );
     expect(Array.from(stepResponseMask(log, { excludeSaturation: true }))).toEqual([1, 0, 1, 0]);
   });
 
@@ -42,7 +45,9 @@ describe('step response sample mask', () => {
 
   test('flight only keeps takeoff to landing, including a throttle cut mid-flight', () => {
     const throttle = [0, 0, 40, 40, 5, 5, 40, 40, 0, 0];
-    expect(Array.from(stepResponseMask(fakeLog(throttle, [], ''), { flightOnly: true }))).toEqual([0, 0, 1, 1, 1, 1, 1, 1, 0, 0]);
+    expect(Array.from(stepResponseMask(fakeLog(throttle, [], ''), { flightOnly: true }))).toEqual([
+      0, 0, 1, 1, 1, 1, 1, 1, 0, 0,
+    ]);
   });
 
   test('with no options every sample is usable', () => {

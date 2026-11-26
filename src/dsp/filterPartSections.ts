@@ -11,7 +11,9 @@ export function filterPartSections(part: FilterPart, loopHz: number): Biquad[] {
   if (w <= 0) return [];
 
   const sections = bfFilterSections(part, loopHz).map((s) =>
-    w >= 1 ? s : { b0: w * s.b0 + (1 - w), b1: w * s.b1 + (1 - w) * s.a1, b2: w * s.b2 + (1 - w) * s.a2, a1: s.a1, a2: s.a2 },
+    w >= 1
+      ? s
+      : { b0: w * s.b0 + (1 - w), b1: w * s.b1 + (1 - w) * s.a1, b2: w * s.b2 + (1 - w) * s.a2, a1: s.a1, a2: s.a2 },
   );
 
   return Array.from({ length: Math.max(1, part.copies ?? 1) }, () => sections).flat();

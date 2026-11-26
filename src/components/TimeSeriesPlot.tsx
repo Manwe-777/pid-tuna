@@ -128,9 +128,7 @@ export function TimeSeriesPlot({
     const chrome = PLOT_COLORS[theme];
 
     const hasSegmentStrokes =
-      segmentStrokeColors != null &&
-      segmentStrokeColors.length === time.length - 1 &&
-      series.length >= 1;
+      segmentStrokeColors != null && segmentStrokeColors.length === time.length - 1 && series.length >= 1;
 
     const opts: Options = {
       width: container.clientWidth,
@@ -172,10 +170,7 @@ export function TimeSeriesPlot({
             stroke: s.stroke,
             width: strokeFirst ? 0 : (s.width ?? 1),
             dash: s.dash,
-            paths:
-              strokeFirst
-                ? () => null
-                : undefined,
+            paths: strokeFirst ? () => null : undefined,
           };
         }),
       ],
@@ -255,13 +250,7 @@ export function TimeSeriesPlot({
             const lineW = firstSeriesStrokeWidthRef.current;
             const xd = u.data[0];
             const yd = u.data[1];
-            if (
-              segs?.length &&
-              xd &&
-              yd &&
-              segs.length === xd.length - 1 &&
-              yd.length === xd.length
-            ) {
+            if (segs?.length && xd && yd && segs.length === xd.length - 1 && yd.length === xd.length) {
               drawSegmentStrokeLine(u, segs, lineW);
             }
             const ms = markersRef.current;
@@ -318,7 +307,10 @@ export function TimeSeriesPlot({
     if (prev && prev.length === next.length) {
       let same = true;
       for (let i = 0; i < next.length; i++) {
-        if (prev[i] !== next[i]) { same = false; break; }
+        if (prev[i] !== next[i]) {
+          same = false;
+          break;
+        }
       }
       if (same) return;
     }

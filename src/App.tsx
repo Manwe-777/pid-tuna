@@ -11,15 +11,7 @@ import { TimeRangeControl } from './components/TimeRangeControl';
 import { TimeSeriesPlot, type PlotBand, type PlotMarker, type PlotSeries } from './components/TimeSeriesPlot';
 import { TuneSettingsPanel } from './components/TuneSettingsPanel';
 import { AXIS_COLORS, AXIS_NAMES } from './axes';
-import {
-  colorFor,
-  DASH_PATTERNS,
-  enabledLogs,
-  newSlotId,
-  shortName,
-  type LogEntry,
-  type LogSlot,
-} from './logs';
+import { colorFor, DASH_PATTERNS, enabledLogs, newSlotId, shortName, type LogEntry, type LogSlot } from './logs';
 import {
   applyFilterChain,
   computeFilterChainResponse,
@@ -75,7 +67,6 @@ import { sliceLog, type TimeRangeSec } from './sliceLog';
 import { buildTuneView } from './tuneView';
 import type { ParsedLog } from './types';
 
-
 export function App() {
   const [slots, setSlots] = useState<LogSlot[]>([]);
 
@@ -83,59 +74,49 @@ export function App() {
     setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }, []);
 
-  const addFile = useCallback(
-    async (file: File) => {
-      const id = newSlotId();
-      // Assign next dash pattern index — count of existing slots (cycles via DASH_PATTERNS).
-      setSlots((prev) => [
-        ...prev,
-        {
-          id,
-          enabled: true,
-          dashIndex: prev.length,
-          state: { kind: 'parsing', fileName: file.name, progress: 0, rows: 0 },
-        },
-      ]);
-      try {
-        const log = await parseLog(file, {
-          onProgress: ({ progress, rows }) =>
-            setSlots((prev) =>
-              prev.map((s) =>
-                s.id === id
-                  ? { ...s, state: { kind: 'parsing', fileName: file.name, progress, rows } }
-                  : s,
-              ),
+  const addFile = useCallback(async (file: File) => {
+    const id = newSlotId();
+    // Assign next dash pattern index — count of existing slots (cycles via DASH_PATTERNS).
+    setSlots((prev) => [
+      ...prev,
+      {
+        id,
+        enabled: true,
+        dashIndex: prev.length,
+        state: { kind: 'parsing', fileName: file.name, progress: 0, rows: 0 },
+      },
+    ]);
+    try {
+      const log = await parseLog(file, {
+        onProgress: ({ progress, rows }) =>
+          setSlots((prev) =>
+            prev.map((s) =>
+              s.id === id ? { ...s, state: { kind: 'parsing', fileName: file.name, progress, rows } } : s,
             ),
-        });
-        setSlots((prev) =>
-          prev.map((s) => (s.id === id ? { ...s, state: { kind: 'ready', log } } : s)),
-        );
-      } catch (err) {
-        setSlots((prev) =>
-          prev.map((s) =>
-            s.id === id
-              ? {
-                  ...s,
-                  state: {
-                    kind: 'error',
-                    fileName: file.name,
-                    message: err instanceof Error ? err.message : String(err),
-                  },
-                }
-              : s,
           ),
-        );
-      }
-    },
-    [],
-  );
+      });
+      setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, state: { kind: 'ready', log } } : s)));
+    } catch (err) {
+      setSlots((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? {
+                ...s,
+                state: {
+                  kind: 'error',
+                  fileName: file.name,
+                  message: err instanceof Error ? err.message : String(err),
+                },
+              }
+            : s,
+        ),
+      );
+    }
+  }, []);
 
-  const toggleSlot = useCallback(
-    (id: string) => {
-      setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
-    },
-    [],
-  );
+  const toggleSlot = useCallback((id: string) => {
+    setSlots((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
+  }, []);
 
   const removeSlot = useCallback((id: string) => {
     setSlots((prev) => prev.filter((s) => s.id !== id));
@@ -161,11 +142,7 @@ export function App() {
   return (
     <>
       <header className="app-header">
-        <img
-          src={`${import.meta.env.BASE_URL}pidtuna-wordmark.svg`}
-          alt="PIDTuna"
-          className="app-header__logo"
-        />
+        <img src={`${import.meta.env.BASE_URL}pidtuna-wordmark.svg`} alt="PIDTuna" className="app-header__logo" />
         <div className="app-header__right">
           <ThemeToggle />
           <FcMscButton />
@@ -245,8 +222,7 @@ const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
  * missing from every log get a dot and are non-clickable.
  */
 function tabHasData(tabId: TabId, entries: LogEntry[]): boolean {
-  const some = (pick: (p: ParsedLog['presence']) => boolean) =>
-    entries.some((e) => pick(e.log.presence));
+  const some = (pick: (p: ParsedLog['presence']) => boolean) => entries.some((e) => pick(e.log.presence));
   switch (tabId) {
     case 'filtering':
     case 'filterSim':
@@ -412,10 +388,7 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
     setChain((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   };
 
-  const hasRaw = useMemo(
-    () => log.gyroRaw.some((arr) => arr.some((v) => v !== 0)),
-    [log],
-  );
+  const hasRaw = useMemo(() => log.gyroRaw.some((arr) => arr.some((v) => v !== 0)), [log]);
 
   // Bode response of the active chain — independent of the log's signal.
   const bode = useMemo(() => {
@@ -449,9 +422,7 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
     return (
       <section className="plot-section">
         <h2>Filter simulator</h2>
-        <p className="muted">
-          Needs raw gyro (`gyroUnfilt`) to simulate filtering. Not present in this log.
-        </p>
+        <p className="muted">Needs raw gyro (`gyroUnfilt`) to simulate filtering. Not present in this log.</p>
       </section>
     );
   }
@@ -460,10 +431,10 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
     <section className="plot-section">
       <h2>Filter simulator</h2>
       <p className="muted">
-        Apply a filter chain to the unfiltered gyro and compare it with the firmware&apos;s filtered
-        gyro. Filters use Betaflight&apos;s own maths. The response curves run at the gyro loop rate (
-        {Math.round(gyroRateHz)} Hz); the simulated spectrum can only run at the logging rate (
-        {Math.round(log.setup.sampleRateHz)} Hz), so it is approximate near the top of the plot.
+        Apply a filter chain to the unfiltered gyro and compare it with the firmware&apos;s filtered gyro. Filters use
+        Betaflight&apos;s own maths. The response curves run at the gyro loop rate ({Math.round(gyroRateHz)} Hz); the
+        simulated spectrum can only run at the logging rate ({Math.round(log.setup.sampleRateHz)} Hz), so it is
+        approximate near the top of the plot.
       </p>
 
       <div className="filter-chain">
@@ -478,16 +449,34 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
           />
         ))}
         <div className="filter-add">
-          <button type="button" onClick={() => addFilter('pt1')}>+ PT1</button>
-          <button type="button" onClick={() => addFilter('pt2')}>+ PT2</button>
-          <button type="button" onClick={() => addFilter('pt3')}>+ PT3</button>
-          <button type="button" onClick={() => addFilter('biquad')}>+ Biquad</button>
-          <button type="button" onClick={() => addFilter('notch')}>+ Notch</button>
-          <button type="button" onClick={() => addFilter('rpm')}>+ RPM filter</button>
-          <button type="button" onClick={() => addFilter('dynNotch')}>+ Dynamic notch</button>
+          <button type="button" onClick={() => addFilter('pt1')}>
+            + PT1
+          </button>
+          <button type="button" onClick={() => addFilter('pt2')}>
+            + PT2
+          </button>
+          <button type="button" onClick={() => addFilter('pt3')}>
+            + PT3
+          </button>
+          <button type="button" onClick={() => addFilter('biquad')}>
+            + Biquad
+          </button>
+          <button type="button" onClick={() => addFilter('notch')}>
+            + Notch
+          </button>
+          <button type="button" onClick={() => addFilter('rpm')}>
+            + RPM filter
+          </button>
+          <button type="button" onClick={() => addFilter('dynNotch')}>
+            + Dynamic notch
+          </button>
           <button
             type="button"
-            onClick={() => setChain(gyroChainFromTune(tune, { motorHz: medianMotorHz(log), motorCount: log.motor.length || undefined }))}
+            onClick={() =>
+              setChain(
+                gyroChainFromTune(tune, { motorHz: medianMotorHz(log), motorCount: log.motor.length || undefined }),
+              )
+            }
             title="Replace the chain with this log's gyro filters: a dynamic lowpass at its minimum cutoff, RPM notches at the median motor frequency, dynamic notches at their minimum"
           >
             Load from log
@@ -498,12 +487,11 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
       <div className="controls">
         <label>
           FFT size:
-          <select
-            value={windowSize}
-            onChange={(e) => setWindowSize(Number.parseInt(e.target.value, 10))}
-          >
+          <select value={windowSize} onChange={(e) => setWindowSize(Number.parseInt(e.target.value, 10))}>
             {PSD_WINDOW_SIZES.map((n) => (
-              <option key={n} value={n}>{n}</option>
+              <option key={n} value={n}>
+                {n}
+              </option>
             ))}
           </select>
         </label>
@@ -535,7 +523,9 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
             max={200}
             step="1"
             value={delayHz}
-            onChange={(e) => setDelayHz(Math.min(200, Math.max(1, Number.parseFloat(e.target.value) || DELAY_REFERENCE_HZ)))}
+            onChange={(e) =>
+              setDelayHz(Math.min(200, Math.max(1, Number.parseFloat(e.target.value) || DELAY_REFERENCE_HZ)))
+            }
             style={{ width: '4rem' }}
           />
           <span className="muted">Hz</span>
@@ -597,7 +587,12 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
       )}
 
       {bode.hasFilters && (
-        <TestSignalPlot chain={chain} loopHz={gyroRateHz} inputColor={SIM_ORIGINAL_COLOR} outputColor={SIM_FILTERED_COLOR} />
+        <TestSignalPlot
+          chain={chain}
+          loopHz={gyroRateHz}
+          inputColor={SIM_ORIGINAL_COLOR}
+          outputColor={SIM_FILTERED_COLOR}
+        />
       )}
 
       {AXIS_NAMES.map((name, axis) => {
@@ -872,24 +867,17 @@ function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
   const effectiveMerge = mergeLogs && canMerge;
   const multi = entries.length > 1 && !effectiveMerge;
   const nyquist = Math.floor(log.setup.sampleRateHz / 2);
-  const [selected, setSelected] = useState<ReadonlySet<SignalKey>>(
-    () => new Set<SignalKey>(['gyroFilt']),
-  );
+  const [selected, setSelected] = useState<ReadonlySet<SignalKey>>(() => new Set<SignalKey>(['gyroFilt']));
   // In multi-log mode, the same `selected` set is constrained to a single key.
   // First entry of `selected` is what we render.
-  const singleSelected: SignalKey = multi
-    ? ([...selected][0] ?? 'gyroFilt')
-    : 'gyroFilt'; // unused in single mode
+  const singleSelected: SignalKey = multi ? ([...selected][0] ?? 'gyroFilt') : 'gyroFilt'; // unused in single mode
   const pickSingle = (key: SignalKey) => setSelected(new Set([key]));
   const [windowSize, setWindowSize] = useState<number>(1024);
   const [yMin, setYMin] = useState<number>(-50);
   const [yMax, setYMax] = useState<number>(20);
 
   // RPM markers state.
-  const hasRpm = useMemo(
-    () => log.eRpm.length > 0 && log.eRpm.some((a) => a.some((v) => v > 0)),
-    [log],
-  );
+  const hasRpm = useMemo(() => log.eRpm.length > 0 && log.eRpm.some((a) => a.some((v) => v > 0)), [log]);
   const [polePairs, setPolePairs] = useState<number>(() => {
     const poles = Number.parseFloat(log.setup.rawHeaders.motor_poles ?? '');
     return poles >= 2 ? Math.round(poles / 2) : 7;
@@ -898,10 +886,11 @@ function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
   const [showDynNotches, setShowDynNotches] = useState(true);
   const dynNotchHz = useMemo(() => dynNotchMedians(log), [log]);
   const [harmonics, setHarmonics] = useState<number>(3);
-  const harmonicNoise = useMemo(() => (hasRpm ? harmonicNoiseForLog(log, polePairs, harmonics) : null), [log, hasRpm, polePairs, harmonics]);
-  const [enabledMotors, setEnabledMotors] = useState<ReadonlySet<number>>(
-    () => new Set(log.eRpm.map((_, i) => i)),
+  const harmonicNoise = useMemo(
+    () => (hasRpm ? harmonicNoiseForLog(log, polePairs, harmonics) : null),
+    [log, hasRpm, polePairs, harmonics],
   );
+  const [enabledMotors, setEnabledMotors] = useState<ReadonlySet<number>>(() => new Set(log.eRpm.map((_, i) => i)));
 
   const { markers: motorMarkers, perMotor } = useMemo(
     () => computeRpmMarkers(log, enabledMotors, polePairs, blades, harmonics),
@@ -947,9 +936,7 @@ function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
   // Which signal definitions are active for plotting?
   const activeDefs = useMemo(
     () =>
-      multi
-        ? SIGNAL_DEFS.filter((d) => d.key === singleSelected)
-        : SIGNAL_DEFS.filter((d) => selected.has(d.key)),
+      multi ? SIGNAL_DEFS.filter((d) => d.key === singleSelected) : SIGNAL_DEFS.filter((d) => selected.has(d.key)),
     [multi, singleSelected, selected],
   );
 
@@ -1015,8 +1002,8 @@ function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
       <h2>Full spectrum (PSD)</h2>
       <p className="muted">
         {effectiveMerge && `Pooling ${entries.length} logs into one weighted average. `}
-        Welch's-method power spectral density. Overlay motor traces over gyro to identify which peaks
-        come from motor harmonics vs. other noise sources.
+        Welch's-method power spectral density. Overlay motor traces over gyro to identify which peaks come from motor
+        harmonics vs. other noise sources.
       </p>
 
       <div className="signal-grid">
@@ -1051,12 +1038,11 @@ function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
       <div className="controls">
         <label>
           FFT size:
-          <select
-            value={windowSize}
-            onChange={(e) => setWindowSize(Number.parseInt(e.target.value, 10))}
-          >
+          <select value={windowSize} onChange={(e) => setWindowSize(Number.parseInt(e.target.value, 10))}>
             {PSD_WINDOW_SIZES.map((n) => (
-              <option key={n} value={n}>{n}</option>
+              <option key={n} value={n}>
+                {n}
+              </option>
             ))}
           </select>
         </label>
@@ -1095,11 +1081,8 @@ function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
               return (
                 <label key={index} className={`rpm-motor${checked ? ' rpm-motor--on' : ''}`}>
                   <input type="checkbox" checked={checked} onChange={() => toggleMotor(index)} />
-                  <span className="signal-chip__swatch" style={{ background: color }} />
-                  M{index + 1}
-                  {meanHz != null && (
-                    <span className="rpm-motor__hz">{meanHz.toFixed(0)} Hz</span>
-                  )}
+                  <span className="signal-chip__swatch" style={{ background: color }} />M{index + 1}
+                  {meanHz != null && <span className="rpm-motor__hz">{meanHz.toFixed(0)} Hz</span>}
                 </label>
               );
             })}
@@ -1160,8 +1143,8 @@ function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
         <details className="harmonic-noise" open>
           <summary>Noise at motor harmonics</summary>
           <p className="muted" style={{ fontSize: '0.78rem' }}>
-            Peak noise within ±20 Hz of each multiple of motor speed (mean ± SD over the flight, takeoff to
-            landing), and how much the gyro filters remove there. Uses {polePairs} pole pairs.
+            Peak noise within ±20 Hz of each multiple of motor speed (mean ± SD over the flight, takeoff to landing),
+            and how much the gyro filters remove there. Uses {polePairs} pole pairs.
           </p>
           <MotorHarmonicTable axes={harmonicNoise} />
         </details>
@@ -1251,28 +1234,63 @@ function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
 
 /** Headers worth showing in tune diff (compact subset of all raw headers). */
 const TUNE_DIFF_KEYS: readonly string[] = [
-  'rollPID', 'pitchPID', 'yawPID',
-  'd_min', 'd_max_roll', 'd_max_pitch', 'd_max_yaw',
-  'rollFF', 'pitchFF', 'yawFF', 'feedforward_roll', 'feedforward_pitch', 'feedforward_yaw',
-  'rc_rates', 'rc_expo', 'rates',
-  'gyro_lpf1_static_hz', 'gyro_lpf1_dyn_hz', 'gyro_lpf1_type',
-  'gyro_lpf2_static_hz', 'gyro_lpf2_type',
-  'gyro_notch_hz', 'gyro_notch_cutoff',
-  'dterm_lpf1_static_hz', 'dterm_lpf1_dyn_hz', 'dterm_lpf1_type',
+  'rollPID',
+  'pitchPID',
+  'yawPID',
+  'd_min',
+  'd_max_roll',
+  'd_max_pitch',
+  'd_max_yaw',
+  'rollFF',
+  'pitchFF',
+  'yawFF',
+  'feedforward_roll',
+  'feedforward_pitch',
+  'feedforward_yaw',
+  'rc_rates',
+  'rc_expo',
+  'rates',
+  'gyro_lpf1_static_hz',
+  'gyro_lpf1_dyn_hz',
+  'gyro_lpf1_type',
+  'gyro_lpf2_static_hz',
+  'gyro_lpf2_type',
+  'gyro_notch_hz',
+  'gyro_notch_cutoff',
+  'dterm_lpf1_static_hz',
+  'dterm_lpf1_dyn_hz',
+  'dterm_lpf1_type',
   'dterm_lpf2_static_hz',
-  'rpm_filter_fade_range_hz', 'rpm_filter_weights',
-  'gyro_lowpass_hz', 'gyro_lowpass_type',
-  'gyro_lowpass2_hz', 'gyro_lowpass2_type',
-  'gyro_notch1_hz', 'gyro_notch1_cutoff',
-  'gyro_notch2_hz', 'gyro_notch2_cutoff',
-  'dyn_lpf_gyro_min_hz', 'dyn_lpf_gyro_max_hz',
-  'dterm_lpf_hz', 'dterm_lpf_type',
-  'dterm_lpf2_hz', 'dterm_lpf2_type',
-  'dterm_notch_hz', 'dterm_notch_cutoff',
-  'dyn_lpf_dterm_min_hz', 'dyn_lpf_dterm_max_hz',
-  'rpm_filter_harmonics', 'rpm_filter_q', 'rpm_filter_min_hz',
-  'dyn_notch_count', 'dyn_notch_min_hz', 'dyn_notch_max_hz', 'dyn_notch_q',
-  'looptime', 'pid_process_denom', 'motor_pwm_protocol',
+  'rpm_filter_fade_range_hz',
+  'rpm_filter_weights',
+  'gyro_lowpass_hz',
+  'gyro_lowpass_type',
+  'gyro_lowpass2_hz',
+  'gyro_lowpass2_type',
+  'gyro_notch1_hz',
+  'gyro_notch1_cutoff',
+  'gyro_notch2_hz',
+  'gyro_notch2_cutoff',
+  'dyn_lpf_gyro_min_hz',
+  'dyn_lpf_gyro_max_hz',
+  'dterm_lpf_hz',
+  'dterm_lpf_type',
+  'dterm_lpf2_hz',
+  'dterm_lpf2_type',
+  'dterm_notch_hz',
+  'dterm_notch_cutoff',
+  'dyn_lpf_dterm_min_hz',
+  'dyn_lpf_dterm_max_hz',
+  'rpm_filter_harmonics',
+  'rpm_filter_q',
+  'rpm_filter_min_hz',
+  'dyn_notch_count',
+  'dyn_notch_min_hz',
+  'dyn_notch_max_hz',
+  'dyn_notch_q',
+  'looptime',
+  'pid_process_denom',
+  'motor_pwm_protocol',
 ];
 
 const NOISE_BANDS: ReadonlyArray<{ label: string; lo: number; hi: number }> = [
@@ -1283,12 +1301,7 @@ const NOISE_BANDS: ReadonlyArray<{ label: string; lo: number; hi: number }> = [
 ];
 
 /** Mean of `psdDb` between [fLo, fHi]. Returns NaN if no bins fall in range. */
-function meanInBand(
-  frequencies: Float32Array,
-  psdDb: Float32Array,
-  fLo: number,
-  fHi: number,
-): number {
+function meanInBand(frequencies: Float32Array, psdDb: Float32Array, fLo: number, fHi: number): number {
   let sum = 0;
   let n = 0;
   for (let i = 0; i < frequencies.length; i++) {
@@ -1317,7 +1330,10 @@ function formatLogStartLabel(log: ParsedLog): string | null {
   if (ms == null) return null;
   const d = new Date(ms);
   return d.toLocaleString(undefined, {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
@@ -1333,18 +1349,13 @@ function DiffSummarySection({ entries }: { entries: LogEntry[] }) {
     return entries;
   }, [entries]);
 
-  const steps = useMemo(
-    () => ordered.map(({ slot, log }) => ({ slot, axes: computeAxisSteps(log) })),
-    [ordered],
-  );
+  const steps = useMemo(() => ordered.map(({ slot, log }) => ({ slot, axes: computeAxisSteps(log) })), [ordered]);
 
   const psds = useMemo(
     () =>
       ordered.map(({ slot, log }) => ({
         slot,
-        axes: AXIS_NAMES.map((_n, i) =>
-          computePsd(log.gyroFilt[i]!, log.setup.sampleRateHz, { windowSize: 1024 }),
-        ),
+        axes: AXIS_NAMES.map((_n, i) => computePsd(log.gyroFilt[i]!, log.setup.sampleRateHz, { windowSize: 1024 })),
       })),
     [ordered],
   );
@@ -1354,8 +1365,8 @@ function DiffSummarySection({ entries }: { entries: LogEntry[] }) {
       <section className="plot-section">
         <h2>Diff summary</h2>
         <p className="muted">
-          Load and enable a second log in the sidebar to compare. Drag log cards in the sidebar to
-          set chronological order (used when logs don&apos;t carry a start-time header).
+          Load and enable a second log in the sidebar to compare. Drag log cards in the sidebar to set chronological
+          order (used when logs don&apos;t carry a start-time header).
         </p>
       </section>
     );
@@ -1367,68 +1378,43 @@ function DiffSummarySection({ entries }: { entries: LogEntry[] }) {
     <section className="plot-section">
       <h2>Diff summary</h2>
       <p className="muted">
-        {allTimed
-          ? 'Logs sorted chronologically by start datetime.'
-          : 'Logs in sidebar order — drag cards to reorder.'}
-        {' '}Values compared to the prior log:
-        {' '}<span className="diff-tok--up">green</span> = increased,
-        {' '}<span className="diff-tok--down">red</span> = decreased.
+        {allTimed ? 'Logs sorted chronologically by start datetime.' : 'Logs in sidebar order — drag cards to reorder.'}{' '}
+        Values compared to the prior log: <span className="diff-tok--up">green</span> = increased,{' '}
+        <span className="diff-tok--down">red</span> = decreased.
       </p>
 
       <div className="diff-section">
         <h3>Tune settings</h3>
         {ordered.map((entry, i) => (
-          <TuneDiffBlock
-            key={entry.slot.id}
-            entry={entry}
-            prev={i > 0 ? ordered[i - 1]! : null}
-          />
+          <TuneDiffBlock key={entry.slot.id} entry={entry} prev={i > 0 ? ordered[i - 1]! : null} />
         ))}
       </div>
 
       <div className="diff-section">
         <h3>Step response</h3>
         {steps.map((s, i) => (
-          <StepDiffBlock
-            key={s.slot.id}
-            current={s}
-            prev={i > 0 ? steps[i - 1]! : null}
-          />
+          <StepDiffBlock key={s.slot.id} current={s} prev={i > 0 ? steps[i - 1]! : null} />
         ))}
       </div>
 
       <div className="diff-section">
         <h3>Filtered gyro noise floor</h3>
         {psds.map((p, i) => (
-          <NoiseDiffBlock
-            key={p.slot.id}
-            current={p}
-            prev={i > 0 ? psds[i - 1]! : null}
-          />
+          <NoiseDiffBlock key={p.slot.id} current={p} prev={i > 0 ? psds[i - 1]! : null} />
         ))}
       </div>
     </section>
   );
 }
 
-function DiffBlockHeader({
-  slot,
-  log,
-  prev,
-}: {
-  slot: LogSlot;
-  log: ParsedLog | null;
-  prev: LogSlot | null;
-}) {
+function DiffBlockHeader({ slot, log, prev }: { slot: LogSlot; log: ParsedLog | null; prev: LogSlot | null }) {
   const stamp = log ? formatLogStartLabel(log) : null;
   return (
     <h4 className="diff-log__head">
       <span className="diff-log__chip" style={{ background: colorFor(slot) }} />
       <span className="diff-log__name">{shortName(slot)}</span>
       {stamp && <span className="diff-log__stamp">{stamp}</span>}
-      <span className="diff-log__vs">
-        {prev ? `vs ${shortName(prev)}` : 'baseline'}
-      </span>
+      <span className="diff-log__vs">{prev ? `vs ${shortName(prev)}` : 'baseline'}</span>
     </h4>
   );
 }
@@ -1438,20 +1424,16 @@ function TuneDiffBlock({ entry, prev }: { entry: LogEntry; prev: LogEntry | null
   const ph = prev?.log.setup.rawHeaders;
   const isBaseline = prev == null;
 
-  const rows = TUNE_DIFF_KEYS
-    .map((key) => ({ key, value: h[key], prev: ph?.[key] }))
-    .filter((r) => {
-      if (isBaseline) return r.value !== undefined && r.value !== '';
-      return (r.value ?? '') !== (r.prev ?? '');
-    });
+  const rows = TUNE_DIFF_KEYS.map((key) => ({ key, value: h[key], prev: ph?.[key] })).filter((r) => {
+    if (isBaseline) return r.value !== undefined && r.value !== '';
+    return (r.value ?? '') !== (r.prev ?? '');
+  });
 
   return (
     <div className="diff-log">
       <DiffBlockHeader slot={entry.slot} log={entry.log} prev={prev?.slot ?? null} />
       {rows.length === 0 ? (
-        <p className="muted diff-log__none">
-          {isBaseline ? 'No tune settings logged.' : 'No setting changes.'}
-        </p>
+        <p className="muted diff-log__none">{isBaseline ? 'No tune settings logged.' : 'No setting changes.'}</p>
       ) : (
         <table className="diff-table">
           <tbody>
@@ -1461,9 +1443,7 @@ function TuneDiffBlock({ entry, prev }: { entry: LogEntry; prev: LogEntry | null
                 <td>
                   <ComparedTokens value={r.value} prev={r.prev} dim={isBaseline} />
                 </td>
-                {!isBaseline && (
-                  <td className="diff-table__was muted">{r.prev ?? '—'}</td>
-                )}
+                {!isBaseline && <td className="diff-table__was muted">{r.prev ?? '—'}</td>}
               </tr>
             ))}
           </tbody>
@@ -1496,9 +1476,27 @@ function StepDiffBlock({
                   </span>
                 </th>
                 <td className="diff-table__metrics">
-                  <ComparedNumber value={c.riseTimeMs} prev={p?.riseTimeMs ?? null} unit="ms" label="rise" dim={!prev} />
-                  <ComparedNumber value={c.overshootPct} prev={p?.overshootPct ?? null} unit="%" label="over" dim={!prev} />
-                  <ComparedNumber value={c.settlingTimeMs} prev={p?.settlingTimeMs ?? null} unit="ms" label="settle" dim={!prev} />
+                  <ComparedNumber
+                    value={c.riseTimeMs}
+                    prev={p?.riseTimeMs ?? null}
+                    unit="ms"
+                    label="rise"
+                    dim={!prev}
+                  />
+                  <ComparedNumber
+                    value={c.overshootPct}
+                    prev={p?.overshootPct ?? null}
+                    unit="%"
+                    label="over"
+                    dim={!prev}
+                  />
+                  <ComparedNumber
+                    value={c.settlingTimeMs}
+                    prev={p?.settlingTimeMs ?? null}
+                    unit="ms"
+                    label="settle"
+                    dim={!prev}
+                  />
                 </td>
               </tr>
             );
@@ -1563,15 +1561,7 @@ function NoiseDiffBlock({
 }
 
 /** Renders a comma-separated value, coloring each numeric token vs the prior value's same position. */
-function ComparedTokens({
-  value,
-  prev,
-  dim,
-}: {
-  value: string | undefined;
-  prev: string | undefined;
-  dim: boolean;
-}) {
+function ComparedTokens({ value, prev, dim }: { value: string | undefined; prev: string | undefined; dim: boolean }) {
   if (value === undefined || value === '') return <span className="muted">—</span>;
   if (dim) return <span>{value}</span>;
   const vTokens = value.split(',');
@@ -1615,11 +1605,7 @@ function ComparedNumber({
 }) {
   if (value == null) return <span className="muted">—</span>;
   const valueStr = `${value.toFixed(decimals)} ${unit}`;
-  const cls = !dim && prev != null
-    ? value > prev ? 'diff-tok--up'
-    : value < prev ? 'diff-tok--down'
-    : ''
-    : '';
+  const cls = !dim && prev != null ? (value > prev ? 'diff-tok--up' : value < prev ? 'diff-tok--down' : '') : '';
   return (
     <span className="diff-metric">
       {label && <span className="diff-metric__label">{label}</span>}
@@ -1653,9 +1639,7 @@ function PidTermsSection({ entries }: { entries: LogEntry[] }) {
   const primary = entries[0]!;
   const multi = entries.length > 1;
 
-  const [selected, setSelected] = useState<ReadonlySet<PidTermKey>>(
-    () => new Set<PidTermKey>(['pterm', 'iterm']),
-  );
+  const [selected, setSelected] = useState<ReadonlySet<PidTermKey>>(() => new Set<PidTermKey>(['pterm', 'iterm']));
   const singleSelected: PidTermKey = multi ? ([...selected][0] ?? 'pterm') : 'pterm';
 
   const toggleTerm = (key: PidTermKey) => {
@@ -1679,9 +1663,7 @@ function PidTermsSection({ entries }: { entries: LogEntry[] }) {
 
   const activeDefs = useMemo(
     () =>
-      multi
-        ? PID_TERM_DEFS.filter((d) => d.key === singleSelected)
-        : PID_TERM_DEFS.filter((d) => selected.has(d.key)),
+      multi ? PID_TERM_DEFS.filter((d) => d.key === singleSelected) : PID_TERM_DEFS.filter((d) => selected.has(d.key)),
     [multi, singleSelected, selected],
   );
 
@@ -1750,12 +1732,7 @@ function PidTermsSection({ entries }: { entries: LogEntry[] }) {
               {name}
             </h3>
             {series.length > 0 ? (
-              <TimeSeriesPlot
-                time={primary.log.time}
-                series={series}
-                yLabel="output"
-                height={220}
-              />
+              <TimeSeriesPlot time={primary.log.time} series={series} yLabel="output" height={220} />
             ) : (
               <p className="muted">No data for selected terms on this axis.</p>
             )}
@@ -1785,18 +1762,12 @@ function SaturationSection({ entries }: { entries: LogEntry[] }) {
     <section className="plot-section">
       <h2>I-term saturation</h2>
       <p className="muted">
-        Highlights time spans where I-term hit (or came close to) its configured limit per axis.
-        Sustained saturation means the controller ran out of authority — usually a sign of an
-        underpowered or unbalanced craft, or aggressive maneuvering beyond what the tune can handle.
+        Highlights time spans where I-term hit (or came close to) its configured limit per axis. Sustained saturation
+        means the controller ran out of authority — usually a sign of an underpowered or unbalanced craft, or aggressive
+        maneuvering beyond what the tune can handle.
       </p>
       {analyses.map(({ slot, log, analysis }) => (
-        <SaturationLogCard
-          key={slot.id}
-          slot={slot}
-          log={log}
-          analysis={analysis}
-          multi={multi}
-        />
+        <SaturationLogCard key={slot.id} slot={slot} log={log} analysis={analysis} multi={multi} />
       ))}
     </section>
   );
@@ -1814,7 +1785,10 @@ function SaturationLogCard({
   multi: boolean;
 }) {
   const yaw = analysis.axes[2]?.limit;
-  const limits = yaw != null && yaw !== analysis.itermLimit ? `${analysis.itermLimit.toFixed(0)} (yaw ${yaw.toFixed(0)})` : analysis.itermLimit.toFixed(0);
+  const limits =
+    yaw != null && yaw !== analysis.itermLimit
+      ? `${analysis.itermLimit.toFixed(0)} (yaw ${yaw.toFixed(0)})`
+      : analysis.itermLimit.toFixed(0);
   const limitNote =
     analysis.limitSource === 'windup'
       ? `limit ${limits} = iterm_windup × pidsum_limit · takeoff to landing`
@@ -1831,18 +1805,11 @@ function SaturationLogCard({
 
       <div className="battery-stats">
         {analysis.axes.map((a) => {
-          const cls =
-            a.fraction >= 0.05 ? 'diff-tok--down'
-              : a.fraction >= 0.01 ? 'diff-tok--changed'
-              : 'diff-tok--up';
+          const cls = a.fraction >= 0.05 ? 'diff-tok--down' : a.fraction >= 0.01 ? 'diff-tok--changed' : 'diff-tok--up';
           return (
             <div key={a.axisIndex} className="battery-stat">
-              <span className="battery-stat__label">
-                {a.axisName.toUpperCase()}
-              </span>
-              <span className={`battery-stat__value ${cls}`}>
-                {(a.fraction * 100).toFixed(1)}%
-              </span>
+              <span className="battery-stat__label">{a.axisName.toUpperCase()}</span>
+              <span className={`battery-stat__value ${cls}`}>{(a.fraction * 100).toFixed(1)}%</span>
               <span className="scorecard-detail">
                 peak {a.peakAbs.toFixed(0)} · longest {a.longestRunSec.toFixed(2)}s · {a.runs.length} runs
               </span>
@@ -1918,10 +1885,10 @@ function BalanceSection({ entries }: { entries: LogEntry[] }) {
       <h2>Motor balance</h2>
       <p className="muted">
         {effectiveMerge && `Pooling ${entries.length} logs into one combined view. `}
-        Per-motor command stats and noise PSD, takeoff to landing. Output is measured above the
-        motor&apos;s zero point, so DShot and PWM read alike. A motor whose mean output is meaningfully
-        above the others is fighting harder — often a bent prop, weak motor, or off-centre weight. Spikes on
-        one motor&apos;s PSD that aren&apos;t on the others point to that motor specifically.
+        Per-motor command stats and noise PSD, takeoff to landing. Output is measured above the motor&apos;s zero point,
+        so DShot and PWM read alike. A motor whose mean output is meaningfully above the others is fighting harder —
+        often a bent prop, weak motor, or off-centre weight. Spikes on one motor&apos;s PSD that aren&apos;t on the
+        others point to that motor specifically.
       </p>
 
       <div className="controls" style={{ marginBottom: '0.5rem' }}>
@@ -1945,10 +1912,9 @@ function BalanceSection({ entries }: { entries: LogEntry[] }) {
       ))}
 
       <p className="muted" style={{ fontSize: '0.78rem', marginTop: '0.5rem' }}>
-        Axes are projections of the per-motor mean onto pitch / roll / yaw using the default
-        Quad-X mixer (M1=RR/CW, M2=FR/CCW, M3=RL/CCW, M4=FL/CW): pitch is rear minus front, roll is
-        right minus left, yaw is CCW minus CW motors (flipped for reversed props). Interpret against
-        your own motor mapping.
+        Axes are projections of the per-motor mean onto pitch / roll / yaw using the default Quad-X mixer (M1=RR/CW,
+        M2=FR/CCW, M3=RL/CCW, M4=FL/CW): pitch is rear minus front, roll is right minus left, yaw is CCW minus CW motors
+        (flipped for reversed props). Interpret against your own motor mapping.
       </p>
     </section>
   );
@@ -1972,13 +1938,11 @@ function BalanceAxisStrip({
         const isDominant = a.axis === dominantAxis;
         const sign = a.deltaPct >= 0 ? '+' : '';
         return (
-          <span
-            key={a.axis}
-            className={`balance-axis${isDominant ? ' balance-axis--dom' : ''}`}
-          >
+          <span key={a.axis} className={`balance-axis${isDominant ? ' balance-axis--dom' : ''}`}>
             <span className="balance-axis__label">{a.axis}</span>
             <span className="balance-axis__value">
-              {sign}{a.deltaPct.toFixed(1)}%
+              {sign}
+              {a.deltaPct.toFixed(1)}%
             </span>
           </span>
         );
@@ -2097,8 +2061,8 @@ function BatterySection({ entries }: { entries: LogEntry[] }) {
       <section className="plot-section">
         <h2>Battery</h2>
         <p className="muted">
-          No vbat or amperage telemetry in any loaded log. Check that the BF Power tab has voltage
-          and current meters enabled, and that <code>vbatLatest</code> / <code>amperageLatest</code>
+          No vbat or amperage telemetry in any loaded log. Check that the BF Power tab has voltage and current meters
+          enabled, and that <code>vbatLatest</code> / <code>amperageLatest</code>
           are in the blackbox field whitelist.
         </p>
       </section>
@@ -2109,11 +2073,10 @@ function BatterySection({ entries }: { entries: LogEntry[] }) {
     <section className="plot-section">
       <h2>Battery</h2>
       <p className="muted">
-        Pack health under load. Internal resistance comes from voltage against current, with the slow
-        discharge over the flight removed; sag is that resistance times the high-load current (mean of
-        the top 25% of readings) and the peak current. Cell count follows Betaflight: resting voltage
-        divided by the maximum cell voltage, rounded down, plus one. Min and max voltage ignore
-        glitches shorter than half a second.
+        Pack health under load. Internal resistance comes from voltage against current, with the slow discharge over the
+        flight removed; sag is that resistance times the high-load current (mean of the top 25% of readings) and the
+        peak current. Cell count follows Betaflight: resting voltage divided by the maximum cell voltage, rounded down,
+        plus one. Min and max voltage ignore glitches shorter than half a second.
       </p>
 
       {analyses.map(({ slot, log, analysis }) => (
@@ -2147,36 +2110,26 @@ function BatteryLogCard({
       <h4 className="diff-log__head">
         {multi && <span className="diff-log__chip" style={{ background: colorFor(slot) }} />}
         <span className="diff-log__name">{shortName(slot)}</span>
-        {analysis.cellCount != null && (
-          <span className="diff-log__vs">{analysis.cellCount}S pack</span>
-        )}
+        {analysis.cellCount != null && <span className="diff-log__vs">{analysis.cellCount}S pack</span>}
       </h4>
 
       <BatteryStats analysis={analysis} />
 
       {vbatSeries.length > 0 && (
         <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
-          <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>Voltage (V)</h5>
-          <TimeSeriesPlot
-            time={slow.time}
-            series={vbatSeries}
-            yLabel="V"
-            height={180}
-            showLegend={false}
-          />
+          <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
+            Voltage (V)
+          </h5>
+          <TimeSeriesPlot time={slow.time} series={vbatSeries} yLabel="V" height={180} showLegend={false} />
         </div>
       )}
 
       {currentSeries.length > 0 && (
         <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
-          <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>Current (A)</h5>
-          <TimeSeriesPlot
-            time={slow.time}
-            series={currentSeries}
-            yLabel="A"
-            height={180}
-            showLegend={false}
-          />
+          <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
+            Current (A)
+          </h5>
+          <TimeSeriesPlot time={slow.time} series={currentSeries} yLabel="A" height={180} showLegend={false} />
         </div>
       )}
     </div>
@@ -2191,14 +2144,13 @@ function BatteryStats({ analysis }: { analysis: BatteryAnalysis }) {
     rows.push({ label: 'V min', value: fmtV(analysis.voltageMin) });
     if (analysis.perCellMin != null) {
       const cls =
-        analysis.perCellMin < 3.3 ? 'diff-tok--down'
-          : analysis.perCellMin < 3.5 ? 'diff-tok--changed'
-          : 'diff-tok--up';
+        analysis.perCellMin < 3.3 ? 'diff-tok--down' : analysis.perCellMin < 3.5 ? 'diff-tok--changed' : 'diff-tok--up';
       rows.push({ label: 'V/cell min', value: `${analysis.perCellMin.toFixed(2)} V`, cls });
     }
     if (analysis.sagUnderLoadV != null) {
       rows.push({ label: 'Sag under load', value: `${analysis.sagUnderLoadV.toFixed(2)} V` });
-      if (analysis.sagAtPeakV != null) rows.push({ label: 'Sag at peak current', value: `${analysis.sagAtPeakV.toFixed(2)} V` });
+      if (analysis.sagAtPeakV != null)
+        rows.push({ label: 'Sag at peak current', value: `${analysis.sagAtPeakV.toFixed(2)} V` });
       if (analysis.internalResistanceMohm != null) {
         rows.push({ label: 'Internal resistance', value: `${analysis.internalResistanceMohm.toFixed(0)} mΩ` });
       }
@@ -2257,8 +2209,8 @@ function GpsSection({
       <section className="plot-section">
         <h2>GPS</h2>
         <p className="muted">
-          No GPS frames in any loaded log. The flight controller&apos;s GPS feature must be enabled
-          and the receiver must have a fix at log time.
+          No GPS frames in any loaded log. The flight controller&apos;s GPS feature must be enabled and the receiver
+          must have a fix at log time.
         </p>
       </section>
     );
@@ -2268,23 +2220,16 @@ function GpsSection({
     <section className="plot-section">
       <h2>GPS</h2>
       <p className="muted">
-        Follow the route on the map — green and red dots are the ends of this window. Playback walks
-        the path over time; the arrow shows which way you were moving along the line (from the GPS
-        track shape). Altitude colors the track when it&apos;s in the log. The GPS tab uses the time
-        bar above intersected with the flight: it hides the usual pre-lock plateau (e.g. altitude
-        stuck at zero) so plots start where the receiver becomes useful, without changing other
-        tabs. The map applies a fixed light smoothing on lat/lon for display only (altitude/speed
-        plots stay on raw latch samples).
+        Follow the route on the map — green and red dots are the ends of this window. Playback walks the path over time;
+        the arrow shows which way you were moving along the line (from the GPS track shape). Altitude colors the track
+        when it&apos;s in the log. The GPS tab uses the time bar above intersected with the flight: it hides the usual
+        pre-lock plateau (e.g. altitude stuck at zero) so plots start where the receiver becomes useful, without
+        changing other tabs. The map applies a fixed light smoothing on lat/lon for display only (altitude/speed plots
+        stay on raw latch samples).
       </p>
       {analyses.map(({ slot, log, analysis }) =>
         analysis.hasFix ? (
-          <GpsLogCard
-            key={slot.id}
-            slot={slot}
-            log={log}
-            analysis={analysis}
-            multi={multi}
-          />
+          <GpsLogCard key={slot.id} slot={slot} log={log} analysis={analysis} multi={multi} />
         ) : (
           <div key={slot.id} className="diff-log">
             <h4 className="diff-log__head">
@@ -2345,20 +2290,15 @@ function GpsLogCard({
 
   const altitudeSegmentStrokeColors = useMemo(() => {
     if (analysis.maxAltitudeM == null || log.gps.altitude.length < 2) return undefined;
-    return gpsAltitudeViridisSegments(
-      log.gps.lat,
-      log.gps.lon,
-      log.gps.altitude,
-      '#5fa8ff',
-    );
+    return gpsAltitudeViridisSegments(log.gps.lat, log.gps.lon, log.gps.altitude, '#5fa8ff');
   }, [analysis.maxAltitudeM, log.gps.lat, log.gps.lon, log.gps.altitude]);
 
-  const altSeries: PlotSeries[] = analysis.maxAltitudeM != null
-    ? [{ label: 'altitude', values: log.gps.altitude, stroke: '#5fa8ff', width: 1.5 }]
-    : [];
-  const speedSeries: PlotSeries[] = analysis.maxSpeedMs != null
-    ? [{ label: 'speed', values: log.gps.speed, stroke: '#ffaa5d', width: 1.5 }]
-    : [];
+  const altSeries: PlotSeries[] =
+    analysis.maxAltitudeM != null
+      ? [{ label: 'altitude', values: log.gps.altitude, stroke: '#5fa8ff', width: 1.5 }]
+      : [];
+  const speedSeries: PlotSeries[] =
+    analysis.maxSpeedMs != null ? [{ label: 'speed', values: log.gps.speed, stroke: '#ffaa5d', width: 1.5 }] : [];
 
   return (
     <div className="diff-log">
@@ -2380,24 +2320,23 @@ function GpsLogCard({
         />
         <GpsStat
           label="Max speed"
-          value={analysis.maxSpeedMs != null
-            ? `${analysis.maxSpeedMs.toFixed(1)} m/s · ${(analysis.maxSpeedMs * 3.6).toFixed(0)} km/h`
-            : '—'}
+          value={
+            analysis.maxSpeedMs != null
+              ? `${analysis.maxSpeedMs.toFixed(1)} m/s · ${(analysis.maxSpeedMs * 3.6).toFixed(0)} km/h`
+              : '—'
+          }
         />
         <GpsStat
           label="Avg speed"
-          value={analysis.meanSpeedMs != null
-            ? `${analysis.meanSpeedMs.toFixed(1)} m/s`
-            : '—'}
+          value={analysis.meanSpeedMs != null ? `${analysis.meanSpeedMs.toFixed(1)} m/s` : '—'}
         />
-        <GpsStat
-          label="Sats min"
-          value={analysis.minSats != null ? `${analysis.minSats}` : '—'}
-        />
+        <GpsStat label="Sats min" value={analysis.minSats != null ? `${analysis.minSats}` : '—'} />
       </div>
 
       <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
-        <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>Ground track</h5>
+        <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
+          Ground track
+        </h5>
         <GpsMapTrack
           gpsTime={log.gps.time}
           lat={log.gps.lat}
@@ -2416,7 +2355,9 @@ function GpsLogCard({
 
       {altSeries.length > 0 && (
         <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
-          <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>Altitude (m)</h5>
+          <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
+            Altitude (m)
+          </h5>
           <TimeSeriesPlot
             time={log.gps.time}
             series={altSeries}
@@ -2431,7 +2372,9 @@ function GpsLogCard({
 
       {speedSeries.length > 0 && (
         <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
-          <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>Speed (m/s)</h5>
+          <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
+            Speed (m/s)
+          </h5>
           <TimeSeriesPlot
             time={log.gps.time}
             series={speedSeries}
@@ -2566,11 +2509,8 @@ function MotorsSection({ entries }: { entries: LogEntry[] }) {
                 checked={selectedMotor === idx}
                 onChange={() => setSelectedMotor(idx)}
               />
-              <span
-                className="signal-chip__swatch"
-                style={{ background: MOTOR_COLORS[idx % MOTOR_COLORS.length] }}
-              />
-              M{idx + 1}
+              <span className="signal-chip__swatch" style={{ background: MOTOR_COLORS[idx % MOTOR_COLORS.length] }} />M
+              {idx + 1}
             </label>
           ))}
         </div>
@@ -2578,37 +2518,18 @@ function MotorsSection({ entries }: { entries: LogEntry[] }) {
 
       <div className="axis-plot">
         <h3 className="axis-plot__title">Throttle command</h3>
-        <TimeSeriesPlot
-          time={primary.log.time}
-          series={throttleSeries}
-          yLabel="PWM"
-          height={180}
-        />
+        <TimeSeriesPlot time={primary.log.time} series={throttleSeries} yLabel="PWM" height={180} />
       </div>
 
       <div className="axis-plot">
-        <h3 className="axis-plot__title">
-          Motor output{multi ? ` — M${selectedMotor + 1}` : 's'}
-        </h3>
-        <TimeSeriesPlot
-          time={primary.log.time}
-          series={motorSeries}
-          yLabel="PWM"
-          height={220}
-        />
+        <h3 className="axis-plot__title">Motor output{multi ? ` — M${selectedMotor + 1}` : 's'}</h3>
+        <TimeSeriesPlot time={primary.log.time} series={motorSeries} yLabel="PWM" height={220} />
       </div>
 
       {hasERpm && (
         <div className="axis-plot">
-          <h3 className="axis-plot__title">
-            eRPM{multi ? ` — M${selectedMotor + 1}` : ''}
-          </h3>
-          <TimeSeriesPlot
-            time={primary.log.time}
-            series={erpmSeries}
-            yLabel="eRPM/100"
-            height={200}
-          />
+          <h3 className="axis-plot__title">eRPM{multi ? ` — M${selectedMotor + 1}` : ''}</h3>
+          <TimeSeriesPlot time={primary.log.time} series={erpmSeries} yLabel="eRPM/100" height={200} />
         </div>
       )}
     </section>
@@ -2664,13 +2585,7 @@ const SCORECARD_JUMP: Record<string, TabId> = {
   'Battery sag': 'battery',
 };
 
-function ScorecardSection({
-  entries,
-  onJump,
-}: {
-  entries: LogEntry[];
-  onJump: (tab: TabId) => void;
-}) {
+function ScorecardSection({ entries, onJump }: { entries: LogEntry[]; onJump: (tab: TabId) => void }) {
   const [mergeLogs, setMergeLogs] = useState(false);
   const canMerge = entries.length > 1;
   const effectiveMerge = mergeLogs && canMerge;
@@ -2693,8 +2608,8 @@ function ScorecardSection({
       <h2>Scorecard</h2>
       <p className="muted">
         {effectiveMerge && `Showing combined scorecard pooled across ${entries.length} logs. `}
-        Triage view — green is fine, yellow worth a look, red worth digging into. Click any row to
-        jump to the matching tab. Thresholds are rules of thumb for typical FPV builds.
+        Triage view — green is fine, yellow worth a look, red worth digging into. Click any row to jump to the matching
+        tab. Thresholds are rules of thumb for typical FPV builds.
       </p>
 
       <div className="controls" style={{ marginBottom: '0.5rem' }}>
@@ -2724,9 +2639,7 @@ function ScorecardSummary({ entries }: { entries: ScoreEntry[] }) {
   for (const e of entries) counts[e.status]++;
   return (
     <span className="balance-axis-strip">
-      {counts.bad > 0 && (
-        <span className="balance-tag balance-tag--warn">{counts.bad} bad</span>
-      )}
+      {counts.bad > 0 && <span className="balance-tag balance-tag--warn">{counts.bad} bad</span>}
       {counts.warn > 0 && (
         <span
           className="balance-tag"
@@ -2735,20 +2648,12 @@ function ScorecardSummary({ entries }: { entries: ScoreEntry[] }) {
           {counts.warn} warn
         </span>
       )}
-      {counts.good > 0 && (
-        <span className="balance-tag balance-tag--ok">{counts.good} ok</span>
-      )}
+      {counts.good > 0 && <span className="balance-tag balance-tag--ok">{counts.good} ok</span>}
     </span>
   );
 }
 
-function ScorecardRow({
-  entry,
-  onJump,
-}: {
-  entry: ScoreEntry;
-  onJump: (tab: TabId) => void;
-}) {
+function ScorecardRow({ entry, onJump }: { entry: ScoreEntry; onJump: (tab: TabId) => void }) {
   const target = SCORECARD_JUMP[entry.key];
   const clickable = target != null;
   return (
@@ -2831,8 +2736,8 @@ function FilteringSection({ entries }: { entries: LogEntry[] }) {
       <section className="plot-section">
         <h2>Raw vs filtered gyro</h2>
         <p className="muted">
-          Unfiltered gyro is not present in these logs. Enable <code>gyroUnfilt</code> in the
-          blackbox <code>debug_mode</code> to see this view.
+          Unfiltered gyro is not present in these logs. Enable <code>gyroUnfilt</code> in the blackbox{' '}
+          <code>debug_mode</code> to see this view.
         </p>
       </section>
     );
@@ -2907,14 +2812,7 @@ const WINDOW_SIZES = [256, 512, 1024, 2048] as const;
  * X domain is time, throttle %, or motor RPM depending on the mode; "Error vs
  * Setpoint" swaps the whole thing for a tracking-error density map.
  */
-type SpectralMode =
-  | 'freqTime'
-  | 'freqThrottle'
-  | 'freqRpm'
-  | 'psdTime'
-  | 'psdThrottle'
-  | 'psdRpm'
-  | 'errorSetpoint';
+type SpectralMode = 'freqTime' | 'freqThrottle' | 'freqRpm' | 'psdTime' | 'psdThrottle' | 'psdRpm' | 'errorSetpoint';
 
 const SPECTRAL_MODES: ReadonlyArray<{ id: SpectralMode; label: string }> = [
   { id: 'freqTime', label: 'Frequency' },
@@ -2930,8 +2828,7 @@ const isTimeMode = (m: SpectralMode) => m === 'freqTime' || m === 'psdTime';
 const isRpmMode = (m: SpectralMode) => m === 'freqRpm' || m === 'psdRpm';
 const isThrottleMode = (m: SpectralMode) => m === 'freqThrottle' || m === 'psdThrottle';
 const isBinnedMode = (m: SpectralMode) => isRpmMode(m) || isThrottleMode(m);
-const modeValueKind = (m: SpectralMode): SpectralValueMode =>
-  m.startsWith('psd') ? 'psd' : 'magnitude';
+const modeValueKind = (m: SpectralMode): SpectralValueMode => (m.startsWith('psd') ? 'psd' : 'magnitude');
 
 /** Robust [floor, ceil] dB window for the PSD colour scale, shared across axes
  *  so their heatmaps are directly comparable. */
@@ -3022,8 +2919,7 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
   }, [rpm]);
   const rpmHzMax = useMemo(() => (rpm ? rpmAxisMax(rpm) / 60 : 0), [rpm]);
 
-  const signalFor = (i: number) =>
-    effectiveSource === 'raw' ? log.gyroRaw[i]! : log.gyroFilt[i]!;
+  const signalFor = (i: number) => (effectiveSource === 'raw' ? log.gyroRaw[i]! : log.gyroFilt[i]!);
   const isAll = axis === ALL_AXIS;
   const [compensateLag, setCompensateLag] = useState(true);
   const axisName = isAll ? 'All axes' : AXIS_NAMES[axis]!;
@@ -3034,9 +2930,15 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
     if (!timeMode) return null;
     const hopSize = Math.max(1, Math.min(windowSize >> 1, Math.round(rate * 0.015)));
     if (isAll) {
-      const per = [0, 1, 2].map((i) =>
-        computeSpectrogram(signalFor(i), rate, { windowSize, hopSize, mode: 'psd' }));
-      return { ...per[0]!, magnitudes: combineAxisPowerDb(per.map((p) => p.magnitudes), valueMode), valueMode };
+      const per = [0, 1, 2].map((i) => computeSpectrogram(signalFor(i), rate, { windowSize, hopSize, mode: 'psd' }));
+      return {
+        ...per[0]!,
+        magnitudes: combineAxisPowerDb(
+          per.map((p) => p.magnitudes),
+          valueMode,
+        ),
+        valueMode,
+      };
     }
     return computeSpectrogram(signalFor(axis), rate, { windowSize, hopSize, mode: valueMode });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3050,8 +2952,16 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
     const domainMax = rpmMode ? rpmHzMax : 100;
     if (isAll) {
       const per = [0, 1, 2].map((i) =>
-        computeBinnedSpectrogram(signalFor(i), domainSig, rate, { mode: 'psd', domainMin: 0, domainMax }));
-      return { ...per[0]!, magnitudes: combineAxisPowerDb(per.map((p) => p.magnitudes), valueMode), valueMode };
+        computeBinnedSpectrogram(signalFor(i), domainSig, rate, { mode: 'psd', domainMin: 0, domainMax }),
+      );
+      return {
+        ...per[0]!,
+        magnitudes: combineAxisPowerDb(
+          per.map((p) => p.magnitudes),
+          valueMode,
+        ),
+        valueMode,
+      };
     }
     return computeBinnedSpectrogram(signalFor(axis), domainSig, rate, {
       mode: valueMode,
@@ -3151,7 +3061,8 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
       </h2>
       {others.length > 0 && (
         <p className="muted">
-          Heatmaps can&apos;t overlay — showing the first enabled log only. Use the Full spectrum tab to compare logs as line traces.
+          Heatmaps can&apos;t overlay — showing the first enabled log only. Use the Full spectrum tab to compare logs as
+          line traces.
         </p>
       )}
 
@@ -3160,7 +3071,9 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
           Mode:
           <select value={mode} onChange={(e) => setMode(e.target.value as SpectralMode)}>
             {SPECTRAL_MODES.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}</option>
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
             ))}
           </select>
         </label>
@@ -3169,7 +3082,9 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
           <select value={axis} onChange={(e) => setAxis(Number.parseInt(e.target.value, 10))}>
             <option value={ALL_AXIS}>All axes</option>
             {AXIS_NAMES.map((n, i) => (
-              <option key={n} value={i}>{n}</option>
+              <option key={n} value={i}>
+                {n}
+              </option>
             ))}
           </select>
         </label>
@@ -3182,7 +3097,9 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
               disabled={!hasRaw}
             >
               <option value="filt">Filtered (gyroADC)</option>
-              <option value="raw" disabled={!hasRaw}>Raw (gyroUnfilt){hasRaw ? '' : ' — not logged'}</option>
+              <option value="raw" disabled={!hasRaw}>
+                Raw (gyroUnfilt){hasRaw ? '' : ' — not logged'}
+              </option>
             </select>
           </label>
         )}
@@ -3191,7 +3108,9 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
             Window:
             <select value={windowSize} onChange={(e) => setWindowSize(Number.parseInt(e.target.value, 10))}>
               {WINDOW_SIZES.map((n) => (
-                <option key={n} value={n}>{n}</option>
+                <option key={n} value={n}>
+                  {n}
+                </option>
               ))}
             </select>
           </label>
@@ -3203,7 +3122,9 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
               {[250, 500, 750, 1000, nyquist]
                 .filter((v, i, a) => v <= nyquist && a.indexOf(v) === i)
                 .map((v) => (
-                  <option key={v} value={v}>{v} Hz</option>
+                  <option key={v} value={v}>
+                    {v} Hz
+                  </option>
                 ))}
             </select>
           </label>
@@ -3234,7 +3155,10 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
               <button
                 type="button"
                 className="step-btn-reset"
-                onClick={() => { setDbMin(null); setDbMax(null); }}
+                onClick={() => {
+                  setDbMin(null);
+                  setDbMax(null);
+                }}
               >
                 Auto
               </button>
@@ -3246,11 +3170,10 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
       {mode === 'errorSetpoint' && (
         <>
           <p className="muted">
-            Tracking-error density, takeoff to landing: error = setpoint − gyro (deg/s) against commanded
-            setpoint. The orange line is the mean error at each setpoint. A cloud centred on the dashed
-            error = 0 line means gyro reaches setpoint; a line tilting up to the right means it falls
-            short at high rates. With latency compensated, the stick-to-gyro delay is taken out first, so
-            what remains is tracking, not lag.
+            Tracking-error density, takeoff to landing: error = setpoint − gyro (deg/s) against commanded setpoint. The
+            orange line is the mean error at each setpoint. A cloud centred on the dashed error = 0 line means gyro
+            reaches setpoint; a line tilting up to the right means it falls short at high rates. With latency
+            compensated, the stick-to-gyro delay is taken out first, so what remains is tracking, not lag.
           </p>
           <div className="controls">
             <label title="Compare setpoint with gyro shifted back by the measured tracking latency">
@@ -3358,9 +3281,7 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
         />
       )}
 
-      {mode === 'errorSetpoint' && density && (
-        <DensityPlot data={density} title={axisName} height={HEATMAP_HEIGHT} />
-      )}
+      {mode === 'errorSetpoint' && density && <DensityPlot data={density} title={axisName} height={HEATMAP_HEIGHT} />}
     </section>
   );
 }
@@ -3406,9 +3327,8 @@ function LatencySection({ entries }: { entries: LogEntry[] }) {
     <section className="plot-section">
       <h2>Latency</h2>
       <p className="muted">
-        Setpoint→gyro tracking delay via cross-correlation — works on any flight data
-        (no clean step needed). The filter breakdown below shows how much delay each filter
-        adds in the band the PID loop controls.
+        Setpoint→gyro tracking delay via cross-correlation — works on any flight data (no clean step needed). The filter
+        breakdown below shows how much delay each filter adds in the band the PID loop controls.
       </p>
 
       <div className="diff-section">
@@ -3446,8 +3366,8 @@ function LatencySection({ entries }: { entries: LogEntry[] }) {
           </tbody>
         </table>
         <p className="muted" style={{ fontSize: '0.78rem', marginTop: '0.5rem' }}>
-          Faded values had low correlation or low stick activity in the window — widen the time
-          range or pick a more active flight segment.
+          Faded values had low correlation or low stick activity in the window — widen the time range or pick a more
+          active flight segment.
         </p>
       </div>
 
@@ -3460,7 +3380,9 @@ function LatencySection({ entries }: { entries: LogEntry[] }) {
             max={200}
             step="1"
             value={delayHz}
-            onChange={(e) => setDelayHz(Math.min(200, Math.max(1, Number.parseFloat(e.target.value) || DELAY_REFERENCE_HZ)))}
+            onChange={(e) =>
+              setDelayHz(Math.min(200, Math.max(1, Number.parseFloat(e.target.value) || DELAY_REFERENCE_HZ)))
+            }
             style={{ width: '4rem' }}
             aria-label="Frequency the delay is reported at"
           />{' '}
@@ -3483,10 +3405,10 @@ function LatencySection({ entries }: { entries: LogEntry[] }) {
           </div>
         ))}
         <p className="muted" style={{ fontSize: '0.78rem', marginTop: '0.5rem' }}>
-          Computed with Betaflight&apos;s filter maths: gyro filters at the gyro loop rate, D-term
-          filters at the PID loop rate. Gyro filters delay every PID term; D-term filters only add to
-          the D path. Dynamic filters are shown where they add the most delay, and RPM notches at the
-          log&apos;s median motor frequency when RPM telemetry is logged.
+          Computed with Betaflight&apos;s filter maths: gyro filters at the gyro loop rate, D-term filters at the PID
+          loop rate. Gyro filters delay every PID term; D-term filters only add to the D path. Dynamic filters are shown
+          where they add the most delay, and RPM notches at the log&apos;s median motor frequency when RPM telemetry is
+          logged.
         </p>
       </div>
     </section>
@@ -3501,11 +3423,7 @@ function LatencyCell({ result }: { result: LatencyResult }) {
       </span>
     );
   }
-  return (
-    <span title={`Correlation ${result.correlation.toFixed(2)}`}>
-      {result.lagMs.toFixed(1)} ms
-    </span>
-  );
+  return <span title={`Correlation ${result.correlation.toFixed(2)}`}>{result.lagMs.toFixed(1)} ms</span>;
 }
 
 function FilterDelayTable({ entries }: { entries: FilterDelayEntry[] }) {
@@ -3564,7 +3482,9 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
   const computed = useMemo<StepCurveSet[]>(() => {
     if (settings.splitBy !== 'none' && entries[0]) {
       const { log } = entries[0];
-      const perAxis = AXIS_NAMES.map((_n, i) => stepResponseBands(log, i, settings.splitBy as StepBandKind, analysisOptions));
+      const perAxis = AXIS_NAMES.map((_n, i) =>
+        stepResponseBands(log, i, settings.splitBy as StepBandKind, analysisOptions),
+      );
       return perAxis[0]!.map((band, b) => ({
         id: `band-${b}`,
         label: band.label,
@@ -3623,13 +3543,16 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
     <section className="plot-section">
       <h2>Step response</h2>
       <p className="muted">
-        {settings.splitBy !== 'none' && entries[0] && `Bands from ${shortName(entries[0].slot)}, by ${settings.splitBy === 'stick' ? 'average stick input per window' : 'stick throttle'}. `}
-        {settings.splitBy === 'none' && effectiveMerge && `Pooling windows from ${entries.length} logs into one estimate. `}
+        {settings.splitBy !== 'none' &&
+          entries[0] &&
+          `Bands from ${shortName(entries[0].slot)}, by ${settings.splitBy === 'stick' ? 'average stick input per window' : 'stick throttle'}. `}
+        {settings.splitBy === 'none' &&
+          effectiveMerge &&
+          `Pooling windows from ${entries.length} logs into one estimate. `}
         {multi && settings.splitBy === 'none' && 'Each log uses its own dash pattern. '}
-        How gyro follows a 1 deg/s step in setpoint, estimated from the whole flight by pooling the
-        setpoint → gyro spectra of overlapping windows. The bold line is the estimate; a level below
-        1 means gyro falls short of setpoint. Faint lines are single windows scaled to the same level,
-        to show how much the shape varies.
+        How gyro follows a 1 deg/s step in setpoint, estimated from the whole flight by pooling the setpoint → gyro
+        spectra of overlapping windows. The bold line is the estimate; a level below 1 means gyro falls short of
+        setpoint. Faint lines are single windows scaled to the same level, to show how much the shape varies.
       </p>
 
       <StepControls
@@ -3674,9 +3597,8 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
 
       {!anyDetected && (
         <p className="muted">
-          No usable windows. If <strong>windows</strong> above is 0, the time range is too short
-          for the chosen window length — widen the range or shorten the window. Otherwise lower the
-          stick-input or throttle thresholds.
+          No usable windows. If <strong>windows</strong> above is 0, the time range is too short for the chosen window
+          length — widen the range or shorten the window. Otherwise lower the stick-input or throttle thresholds.
         </p>
       )}
 
@@ -3757,7 +3679,13 @@ function StepResponseAxisPanel({
         out.push({ label: '', values: lo, stroke: bandColor, width: 1, dash: [3, 3] });
         out.push({ label: '', values: hi, stroke: bandColor, width: 1, dash: [3, 3] });
       }
-      out.push({ label: multi ? label : 'Estimate', values: mean, stroke: color, width: 2, dash: multi && dash.length ? dash : undefined });
+      out.push({
+        label: multi ? label : 'Estimate',
+        values: mean,
+        stroke: color,
+        width: 2,
+        dash: multi && dash.length ? dash : undefined,
+      });
     }
     return out;
   }, [perLog, time.length, axisColor, multi, showSegments, showSpread]);
@@ -3830,8 +3758,8 @@ function StepResponseAxisPanel({
       {!empty && showFrequency && frequencyEntries.length > 0 && (
         <div className="step-freq">
           <div className="step-freq__caption muted">
-            Frequency response — solid: tracking |T| (−3 dB marks the bandwidth); dashed: disturbance
-            sensitivity |1 − T| (above 0 dB, disturbances get amplified).
+            Frequency response — solid: tracking |T| (−3 dB marks the bandwidth); dashed: disturbance sensitivity |1 −
+            T| (above 0 dB, disturbances get amplified).
           </div>
           <StepFrequencyPlot entries={frequencyEntries} />
         </div>
@@ -3840,16 +3768,13 @@ function StepResponseAxisPanel({
   );
 }
 
-function StepMetricsBadges({
-  metrics,
-  count,
-}: {
-  metrics: import('./dsp/stepResponse').StepMetrics;
-  count: number;
-}) {
+function StepMetricsBadges({ metrics, count }: { metrics: import('./dsp/stepResponse').StepMetrics; count: number }) {
   return (
     <span className="step-metrics">
-      <span className="step-metrics__item"><span className="step-metrics__k">n</span>{count}</span>
+      <span className="step-metrics__item">
+        <span className="step-metrics__k">n</span>
+        {count}
+      </span>
       <span className="step-metrics__item">
         <span className="step-metrics__k">rise</span>
         {metrics.riseTimeMs != null ? `${metrics.riseTimeMs.toFixed(1)} ms` : '—'}
@@ -3882,7 +3807,9 @@ function LogSummary({ log }: { log: ParsedLog }) {
       <h2>{log.fileName}</h2>
       <dl>
         <dt>Firmware</dt>
-        <dd>{setup.firmwareKind} {setup.firmwareVersion}</dd>
+        <dd>
+          {setup.firmwareKind} {setup.firmwareVersion}
+        </dd>
         {setup.craftName && (
           <>
             <dt>Craft</dt>
@@ -3890,13 +3817,17 @@ function LogSummary({ log }: { log: ParsedLog }) {
           </>
         )}
         <dt>Log</dt>
-        <dd>{log.logIndex + 1} of {log.logCount}</dd>
+        <dd>
+          {log.logIndex + 1} of {log.logCount}
+        </dd>
         <dt>Duration</dt>
         <dd>{durationSec.toFixed(2)} s</dd>
         <dt>Samples</dt>
         <dd>{log.time.length.toLocaleString()}</dd>
         <dt>Sample rate</dt>
-        <dd>{setup.sampleRateHz.toLocaleString()} Hz (looptime {setup.looptimeUs} µs)</dd>
+        <dd>
+          {setup.sampleRateHz.toLocaleString()} Hz (looptime {setup.looptimeUs} µs)
+        </dd>
         <dt>Motors</dt>
         <dd>{log.motor.length}</dd>
       </dl>

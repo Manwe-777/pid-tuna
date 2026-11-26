@@ -69,10 +69,7 @@ export function FcMscButton() {
       try {
         response = await port.read(8, 1500);
       } catch (readErr) {
-        console.warn(
-          '[MSC] no response after MSC request (FC likely rebooted before ACK):',
-          readErr,
-        );
+        console.warn('[MSC] no response after MSC request (FC likely rebooted before ACK):', readErr);
       }
       if (response) {
         try {
@@ -172,28 +169,19 @@ async function acquirePort(): Promise<FcPort> {
   throw new Error('No USB serial transport available in this runtime.');
 }
 
-function FcMscPanel({
-  phase,
-  onConnect,
-  onClose,
-}: {
-  phase: Phase;
-  onConnect: () => void;
-  onClose: () => void;
-}) {
+function FcMscPanel({ phase, onConnect, onClose }: { phase: Phase; onConnect: () => void; onClose: () => void }) {
   switch (phase.kind) {
     case 'idle':
       return (
         <PanelLayout title="Pull logs straight off the FC" onClose={onClose}>
           <p className="muted">
-            Plug your Betaflight FC into USB, then click <strong>Connect</strong>. PIDTuna will
-            ask the FC to enter mass-storage mode and mount its SD card / onboard flash as a
-            removable drive — find it in {isMacLike() ? 'Finder' : 'your file explorer'}, copy
-            the <code>.BBL</code> files off, and eject the drive when you&apos;re done.
+            Plug your Betaflight FC into USB, then click <strong>Connect</strong>. PIDTuna will ask the FC to enter
+            mass-storage mode and mount its SD card / onboard flash as a removable drive — find it in{' '}
+            {isMacLike() ? 'Finder' : 'your file explorer'}, copy the <code>.BBL</code> files off, and eject the drive
+            when you&apos;re done.
           </p>
           <p className="muted" style={{ fontSize: '0.8rem' }}>
-            Nothing is written to the FC. The only command sent is a one-byte request to reboot
-            into mass-storage mode.
+            Nothing is written to the FC. The only command sent is a one-byte request to reboot into mass-storage mode.
           </p>
           <div className="fc-msc__actions">
             <button type="button" className="fc-msc__primary" onClick={onConnect}>
@@ -223,22 +211,17 @@ function FcMscPanel({
     case 'success':
       return (
         <PanelLayout title="✓ FC is in mass-storage mode" onClose={onClose}>
-          <p>
-            The FC just rebooted and should appear as a removable drive within a few seconds.
-          </p>
+          <p>The FC just rebooted and should appear as a removable drive within a few seconds.</p>
           <ol className="fc-msc__steps">
             <li>Open {isMacLike() ? 'Finder' : 'File Explorer'} and look for a new USB drive.</li>
             <li>
-              Copy the <code>.BBL</code> files (usually under <code>LOGS/</code>) somewhere
-              local.
+              Copy the <code>.BBL</code> files (usually under <code>LOGS/</code>) somewhere local.
             </li>
             <li>
-              <strong>Eject</strong> the drive (don&apos;t just unplug it) — that triggers the
-              FC to reboot back to flight mode.
+              <strong>Eject</strong> the drive (don&apos;t just unplug it) — that triggers the FC to reboot back to
+              flight mode.
             </li>
-            <li>
-              Drag the copied logs into PIDTuna&apos;s sidebar to analyse them.
-            </li>
+            <li>Drag the copied logs into PIDTuna&apos;s sidebar to analyse them.</li>
           </ol>
         </PanelLayout>
       );
@@ -247,9 +230,8 @@ function FcMscPanel({
         <PanelLayout title="Couldn’t switch the FC" onClose={onClose}>
           <p className="fc-msc__error">{phase.message}</p>
           <p className="muted" style={{ fontSize: '0.8rem' }}>
-            Common causes: the FC is in bootloader / DFU mode, no SD card present, Blackbox set
-            to a destination other than SD or flash, or the USB driver isn&apos;t installed
-            (Windows users may need the STM32 VCP driver).
+            Common causes: the FC is in bootloader / DFU mode, no SD card present, Blackbox set to a destination other
+            than SD or flash, or the USB driver isn&apos;t installed (Windows users may need the STM32 VCP driver).
           </p>
           <div className="fc-msc__actions">
             <button type="button" className="fc-msc__primary" onClick={onConnect}>
@@ -262,8 +244,8 @@ function FcMscPanel({
       return (
         <PanelLayout title="USB connect needs Chrome, Edge, or the desktop app" onClose={onClose}>
           <p>
-            This browser doesn&apos;t expose <code>navigator.serial</code>, which is what
-            PIDTuna uses to talk to the FC. Two options:
+            This browser doesn&apos;t expose <code>navigator.serial</code>, which is what PIDTuna uses to talk to the
+            FC. Two options:
           </p>
           <ul className="fc-msc__steps">
             <li>
@@ -272,11 +254,7 @@ function FcMscPanel({
             </li>
             <li>
               Or download the <strong>desktop app</strong> from the{' '}
-              <a
-                href="https://github.com/Manwe-777/pid-tuna/releases/latest"
-                target="_blank"
-                rel="noreferrer noopener"
-              >
+              <a href="https://github.com/Manwe-777/pid-tuna/releases/latest" target="_blank" rel="noreferrer noopener">
                 latest release
               </a>{' '}
               — it uses native USB serial and works on Firefox/Safari users&apos; machines too.
@@ -287,26 +265,12 @@ function FcMscPanel({
   }
 }
 
-function PanelLayout({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
+function PanelLayout({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <>
       <div className="fc-msc__panel-head">
         <span className="fc-msc__panel-title">{title}</span>
-        <button
-          type="button"
-          className="fc-msc__close"
-          onClick={onClose}
-          aria-label="Close"
-          title="Close"
-        >
+        <button type="button" className="fc-msc__close" onClick={onClose} aria-label="Close" title="Close">
           ✕
         </button>
       </div>

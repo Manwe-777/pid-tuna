@@ -7,7 +7,13 @@ import { notchQFromCutoff } from './notchQFromCutoff';
 import type { TuneView } from '../tuneView';
 
 const FS = 4000;
-const spec = (type: FilterSpec['type'], cutoffHz: number, bandwidth = 40): FilterSpec => ({ id: type, enabled: true, type, cutoffHz, bandwidth });
+const spec = (type: FilterSpec['type'], cutoffHz: number, bandwidth = 40): FilterSpec => ({
+  id: type,
+  enabled: true,
+  type,
+  cutoffHz,
+  bandwidth,
+});
 
 function sineGainDb(chain: FilterSpec[], hz: number): number {
   const n = FS * 2;
@@ -19,11 +25,14 @@ function sineGainDb(chain: FilterSpec[], hz: number): number {
 }
 
 describe('filter simulator', () => {
-  test.each(['pt1', 'pt2', 'pt3', 'biquad'] as const)('a %s applied to a sine attenuates it as its response curve says', (type) => {
-    const chain = [spec(type, 150)];
-    const curve = computeFilterChainResponse(chain, FS, Float32Array.of(400)).magnitudeDb[0]!;
-    expect(sineGainDb(chain, 400)).toBeCloseTo(curve, 1);
-  });
+  test.each(['pt1', 'pt2', 'pt3', 'biquad'] as const)(
+    'a %s applied to a sine attenuates it as its response curve says',
+    (type) => {
+      const chain = [spec(type, 150)];
+      const curve = computeFilterChainResponse(chain, FS, Float32Array.of(400)).magnitudeDb[0]!;
+      expect(sineGainDb(chain, 400)).toBeCloseTo(curve, 1);
+    },
+  );
 
   test('a notch removes a tone at its centre', () => {
     expect(sineGainDb([spec('notch', 200, 40)], 200)).toBeLessThan(-30);
@@ -41,10 +50,23 @@ describe('filter simulator', () => {
 });
 
 describe('loading the log’s gyro filters into the simulator', () => {
-  const base = { hasPid: false, pidByAxis: [], hasRates: false, rcRates: [], rcExpo: [], superRates: [], rpmWeights: [] } as TuneView;
+  const base = {
+    hasPid: false,
+    pidByAxis: [],
+    hasRates: false,
+    rcRates: [],
+    rcExpo: [],
+    superRates: [],
+    rpmWeights: [],
+  } as TuneView;
 
   test('a dynamic lowpass loads at its minimum cutoff with its type', () => {
-    const chain = gyroChainFromTune({ ...base, gyroDynRange: { min: 250, max: 500 }, gyroLpf1Type: 2, gyroLpf2Hz: 500 });
+    const chain = gyroChainFromTune({
+      ...base,
+      gyroDynRange: { min: 250, max: 500 },
+      gyroLpf1Type: 2,
+      gyroLpf2Hz: 500,
+    });
     expect(chain.map((f) => [f.type, f.cutoffHz])).toEqual([
       ['pt2', 250],
       ['pt1', 500],
@@ -67,7 +89,8 @@ describe('loading the log’s gyro filters into the simulator', () => {
       dynNotchQ: 300,
     };
     const ctx = { motorHz: 180, motorCount: 4 };
-    const sim = computeFilterChainResponse(gyroChainFromTune(view, ctx), 8000, Float32Array.of(DELAY_REFERENCE_HZ)).phaseDelayMs[0]!;
+    const sim = computeFilterChainResponse(gyroChainFromTune(view, ctx), 8000, Float32Array.of(DELAY_REFERENCE_HZ))
+      .phaseDelayMs[0]!;
     expect(sim).toBeCloseTo(computeFilterDelays(view, ctx).gyroDelayMs, 6);
   });
 

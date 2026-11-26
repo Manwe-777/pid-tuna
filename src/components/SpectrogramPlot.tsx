@@ -163,9 +163,7 @@ function draw(
   // Determine displayed frequency range (cropped to maxFreqHz if specified).
   const nyquist = data.frequencies[data.frequencies.length - 1] ?? 0;
   const fMax = opts.maxFreqHz != null ? Math.min(opts.maxFreqHz, nyquist) : nyquist;
-  const fStep = data.frequencies.length > 1
-    ? (data.frequencies[1]! - data.frequencies[0]!)
-    : 0;
+  const fStep = data.frequencies.length > 1 ? data.frequencies[1]! - data.frequencies[0]! : 0;
   const maxBin = fStep > 0 ? Math.min(data.freqBins - 1, Math.round(fMax / fStep)) : data.freqBins - 1;
   const visibleFreqBins = maxBin + 1;
   const displayedFMax = data.frequencies[maxBin] ?? fMax;
@@ -212,15 +210,7 @@ function draw(
   drawYAxis(ctx, MARGIN.left, MARGIN.top, plotH, 0, displayedFMax, 'Hz');
 
   // Colorbar.
-  drawColorbar(
-    ctx,
-    width - MARGIN.right + 14,
-    MARGIN.top,
-    12,
-    plotH,
-    opts.floorDb,
-    opts.ceilDb,
-  );
+  drawColorbar(ctx, width - MARGIN.right + 14, MARGIN.top, 12, plotH, opts.floorDb, opts.ceilDb);
 
   return {
     left: MARGIN.left,

@@ -12,7 +12,14 @@ const FAST = { naturalHz: 18, damping: 0.6, delaySamples: 8 };
 
 describe('step response by throttle band', () => {
   test('a drone that is sluggish at low throttle and snappy at high throttle shows it band by band', () => {
-    const sp = stickSetpoint({ seconds: 120, sampleRateHz: FS, amplitude: 500, holdMs: [100, 500], smoothingHz: 10, seed: 3 });
+    const sp = stickSetpoint({
+      seconds: 120,
+      sampleRateHz: FS,
+      amplitude: 500,
+      holdMs: [100, 500],
+      smoothingHz: 10,
+      seed: 3,
+    });
     const half = sp.length / 2;
     const gyro = new Float32Array(sp.length);
     gyro.set(simulateClosedLoop(sp.subarray(0, half), FS, SLOW), 0);
@@ -31,7 +38,14 @@ describe('step response by throttle band', () => {
 
 describe('step response by stick input band', () => {
   test('a drone that saturates on big moves falls short only in the large-input band', () => {
-    const sp = stickSetpoint({ seconds: 120, sampleRateHz: FS, amplitude: 700, holdMs: [100, 500], smoothingHz: 10, seed: 4 });
+    const sp = stickSetpoint({
+      seconds: 120,
+      sampleRateHz: FS,
+      amplitude: 700,
+      holdMs: [100, 500],
+      smoothingHz: 10,
+      seed: 4,
+    });
     const limited = sp.map((v) => Math.max(-300, Math.min(300, v)));
     const gyro = simulateClosedLoop(limited, FS, FAST);
     const throttle = new Float32Array(sp.length).fill(40);
@@ -44,8 +58,17 @@ describe('step response by stick input band', () => {
   });
 
   test('bands are labelled with their range and an open top band', () => {
-    const sp = stickSetpoint({ seconds: 10, sampleRateHz: FS, amplitude: 300, holdMs: [100, 500], smoothingHz: 10, seed: 5 });
-    const labels = stepResponseBands(syntheticLog(sp, sp, new Float32Array(sp.length).fill(40), FS), 0, 'stick').map((b) => b.label);
+    const sp = stickSetpoint({
+      seconds: 10,
+      sampleRateHz: FS,
+      amplitude: 300,
+      holdMs: [100, 500],
+      smoothingHz: 10,
+      seed: 5,
+    });
+    const labels = stepResponseBands(syntheticLog(sp, sp, new Float32Array(sp.length).fill(40), FS), 0, 'stick').map(
+      (b) => b.label,
+    );
     expect(labels).toEqual(['20–100 deg/s', '100–250 deg/s', '250+ deg/s']);
   });
 });

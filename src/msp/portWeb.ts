@@ -18,13 +18,15 @@ import { FC_USB_FILTERS, type FcPort } from './port';
 export async function openWebSerialPort(): Promise<FcPort> {
   // Web Serial isn't in lib.dom.d.ts yet — cast through unknown and feature
   // the slice of the API we actually use.
-  const serial = (navigator as unknown as {
-    serial: {
-      requestPort(options: {
-        filters: Array<{ usbVendorId: number; usbProductId: number }>;
-      }): Promise<SerialPortLike>;
-    };
-  }).serial;
+  const serial = (
+    navigator as unknown as {
+      serial: {
+        requestPort(options: {
+          filters: Array<{ usbVendorId: number; usbProductId: number }>;
+        }): Promise<SerialPortLike>;
+      };
+    }
+  ).serial;
   const filters = FC_USB_FILTERS.map((f) => ({
     usbVendorId: f.vendorId,
     usbProductId: f.productId,
@@ -106,7 +108,9 @@ class WebSerialFcPort implements FcPort {
         }
         try {
           this.reader.releaseLock();
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
         this.reader = null;
       }
       await this.port.close();

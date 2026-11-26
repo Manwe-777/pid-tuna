@@ -6,7 +6,10 @@ import { analyzeMotorBalance } from './motorBalance';
 const FS = 100;
 
 /** 10 s log, flying from 2 s to 8 s. Each motor sits at its given output (0–1 of the range) in flight and at idle on the ground. */
-function fakeLog(levels: number[], opts: { motorOutput?: [number, number]; headers?: Record<string, string> } = {}): ParsedLog {
+function fakeLog(
+  levels: number[],
+  opts: { motorOutput?: [number, number]; headers?: Record<string, string> } = {},
+): ParsedLog {
   const [lo, hi] = opts.motorOutput ?? [48, 2047];
   const n = 10 * FS;
   const flying = (i: number) => i >= 2 * FS && i < 8 * FS;

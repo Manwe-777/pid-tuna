@@ -142,7 +142,9 @@ body {
   padding: 0.12rem 0.45rem;
   border: 1px solid var(--border);
   border-radius: 999px;
-  transition: color 100ms ease, border-color 100ms ease;
+  transition:
+    color 100ms ease,
+    border-color 100ms ease;
 }
 
 .app-header__version:hover {
@@ -163,7 +165,10 @@ body {
   border: 1px solid var(--border-2);
   cursor: pointer;
   padding: 0;
-  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease;
 }
 
 .theme-toggle:hover {
@@ -198,8 +203,12 @@ body {
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  transition: border-color 120ms ease, color 120ms ease, background 120ms ease,
-    box-shadow 120ms ease, opacity 120ms ease;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background 120ms ease,
+    box-shadow 120ms ease,
+    opacity 120ms ease;
 }
 
 .fc-msc__button:hover:not(:disabled) {
@@ -683,7 +692,9 @@ body {
   font-size: 0.9rem;
   cursor: pointer;
   margin-bottom: -1px;
-  transition: color 100ms ease, border-color 100ms ease;
+  transition:
+    color 100ms ease,
+    border-color 100ms ease;
 }
 
 .tab-bar__tab:hover {
@@ -726,7 +737,9 @@ body {
   border-radius: 8px;
   text-align: center;
   cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
   background: var(--surface-inset);
 }
 
@@ -1824,7 +1837,9 @@ code {
   font-family: inherit;
   color: inherit;
   cursor: pointer;
-  transition: background 80ms ease, border-color 80ms ease;
+  transition:
+    background 80ms ease,
+    border-color 80ms ease;
 }
 
 .scorecard-row:hover:not(:disabled) {
@@ -1836,10 +1851,18 @@ code {
   cursor: default;
 }
 
-.scorecard-row--good { border-left-color: var(--good); }
-.scorecard-row--warn { border-left-color: var(--warn); }
-.scorecard-row--bad  { border-left-color: var(--bad); }
-.scorecard-row--na   { border-left-color: var(--text-disabled); }
+.scorecard-row--good {
+  border-left-color: var(--good);
+}
+.scorecard-row--warn {
+  border-left-color: var(--warn);
+}
+.scorecard-row--bad {
+  border-left-color: var(--bad);
+}
+.scorecard-row--na {
+  border-left-color: var(--text-disabled);
+}
 
 .scorecard-dot {
   flex-shrink: 0;
@@ -1849,10 +1872,18 @@ code {
   margin-top: 0.35rem;
 }
 
-.scorecard-dot--good { background: var(--good); }
-.scorecard-dot--warn { background: var(--warn); }
-.scorecard-dot--bad  { background: var(--bad); }
-.scorecard-dot--na   { background: var(--text-disabled); }
+.scorecard-dot--good {
+  background: var(--good);
+}
+.scorecard-dot--warn {
+  background: var(--warn);
+}
+.scorecard-dot--bad {
+  background: var(--bad);
+}
+.scorecard-dot--na {
+  background: var(--text-disabled);
+}
 
 .scorecard-text {
   display: flex;

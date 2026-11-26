@@ -7,7 +7,8 @@ export function trueStepMetrics(plant: ClosedLoopPlant, sampleRateHz: number) {
 
   const cross = (target: number): number => {
     for (let i = 1; i < y.length; i++) {
-      if (y[i - 1]! < target && y[i]! >= target) return (i - 1 + (target - y[i - 1]!) / (y[i]! - y[i - 1]!)) * msPerSample;
+      if (y[i - 1]! < target && y[i]! >= target)
+        return (i - 1 + (target - y[i - 1]!) / (y[i]! - y[i - 1]!)) * msPerSample;
     }
 
     return Number.NaN;

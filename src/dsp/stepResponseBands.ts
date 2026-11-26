@@ -34,7 +34,8 @@ export function stepResponseBands(
   for (let i = 0; i + 1 < edges.length; i++) {
     const from = edges[i]!;
     const to = edges[i + 1]!;
-    const range = kind === 'stick' ? { minExcitation: from, maxExcitation: to } : { minThrottle: from, maxThrottle: to };
+    const range =
+      kind === 'stick' ? { minExcitation: from, maxExcitation: to } : { minThrottle: from, maxThrottle: to };
     const unit = kind === 'stick' ? 'deg/s' : '%';
     const label = Number.isFinite(to) ? `${from}–${to} ${unit}` : `${from}+ ${unit}`;
     bands.push({ label, from, to, result: stepResponseForLog(log, axis, { ...options, ...range }) });

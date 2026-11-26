@@ -84,7 +84,10 @@ function hannWeight(d: number, half: number): number {
 }
 
 /** Mean lat/lon of valid fixes — shared projection for spline densification + smoothing runs. */
-export function gpsDisplayProjection(lat: Float32Array, lon: Float32Array): {
+export function gpsDisplayProjection(
+  lat: Float32Array,
+  lon: Float32Array,
+): {
   centerLat: number;
   centerLon: number;
   mPerDegLon: number;
@@ -110,13 +113,7 @@ export function gpsDisplayProjection(lat: Float32Array, lon: Float32Array): {
   };
 }
 
-function toXY(
-  lat: number,
-  lon: number,
-  centerLat: number,
-  centerLon: number,
-  mPerDegLon: number,
-): V2 {
+function toXY(lat: number, lon: number, centerLat: number, centerLon: number, mPerDegLon: number): V2 {
   return {
     x: (lon - centerLon) * mPerDegLon,
     y: (lat - centerLat) * M_PER_DEG_LAT,
@@ -124,10 +121,7 @@ function toXY(
 }
 
 function toLatLon(p: V2, centerLat: number, centerLon: number, mPerDegLon: number): [number, number] {
-  return [
-    p.y / M_PER_DEG_LAT + centerLat,
-    p.x / mPerDegLon + centerLon,
-  ];
+  return [p.y / M_PER_DEG_LAT + centerLat, p.x / mPerDegLon + centerLon];
 }
 
 /** Uniform Catmull–Rom between p1 and p2 (in meters). */
@@ -136,17 +130,17 @@ function catmullRom(p0: V2, p1: V2, p2: V2, p3: V2, t: number): V2 {
   const t3 = t2 * t;
   return {
     x:
-      0.5
-      * ((2 * p1.x)
-        + (-p0.x + p2.x) * t
-        + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2
-        + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+      0.5 *
+      (2 * p1.x +
+        (-p0.x + p2.x) * t +
+        (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+        (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
     y:
-      0.5
-      * ((2 * p1.y)
-        + (-p0.y + p2.y) * t
-        + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2
-        + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
+      0.5 *
+      (2 * p1.y +
+        (-p0.y + p2.y) * t +
+        (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+        (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
   };
 }
 
@@ -354,8 +348,8 @@ function smoothOnePass(
         const idx = k + d;
         if (idx < i || idx >= j) continue;
         const w = hannWeight(d, half);
-        sx += ((srcLon[idx]! - cLon) * mPerDegLon) * w;
-        sy += ((srcLat[idx]! - cLat) * M_PER_DEG_LAT) * w;
+        sx += (srcLon[idx]! - cLon) * mPerDegLon * w;
+        sy += (srcLat[idx]! - cLat) * M_PER_DEG_LAT * w;
         sw += w;
       }
       if (sw <= 1e-9) continue;
@@ -373,7 +367,11 @@ function smoothOnePass(
  * Map-only spatial smoothing: bidirectional EWMA in meters (against stair-step GEO noise), optional
  * light Hann afterward. Preserves invalid rows via the usual valid-fix mask from raw inputs.
  */
-export function smoothLonLatForMap(lat: Float32Array, lon: Float32Array, settings: GpsMapSmoothSettings): {
+export function smoothLonLatForMap(
+  lat: Float32Array,
+  lon: Float32Array,
+  settings: GpsMapSmoothSettings,
+): {
   lat: Float32Array;
   lon: Float32Array;
 } {

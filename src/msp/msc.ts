@@ -61,9 +61,7 @@ export function parseMscResponse(bytes: Uint8Array): MscResponse {
     throw new Error(`MSP response too short (${bytes.length} bytes; need 8)`);
   }
   if (bytes[0] !== MAGIC_DOLLAR || bytes[1] !== MAGIC_M || bytes[2] !== DIRECTION_FROM_FC) {
-    throw new Error(
-      `Bad MSP magic: ${[bytes[0], bytes[1], bytes[2]].map((b) => `0x${b!.toString(16)}`).join(' ')}`,
-    );
+    throw new Error(`Bad MSP magic: ${[bytes[0], bytes[1], bytes[2]].map((b) => `0x${b!.toString(16)}`).join(' ')}`);
   }
   const size = bytes[3]!;
   const cmd = bytes[4]!;

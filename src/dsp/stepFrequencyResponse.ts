@@ -47,7 +47,10 @@ const CONFIDENCE_FALLBACK_HZ = 30;
  * Closed-loop frequency response T(f) = Sxy / Sxx from pooled spectra, smoothed
  * over ±1 Hz, up to 100 Hz, with bandwidth, sensitivity peak and coherence.
  */
-export function stepFrequencyResponse(spectra: StepSpectra): { response: FrequencyResponse; metrics: FrequencyMetrics } {
+export function stepFrequencyResponse(spectra: StepSpectra): {
+  response: FrequencyResponse;
+  metrics: FrequencyMetrics;
+} {
   const { fftSize, sampleTimeMs } = spectra;
   const df = 1000 / (sampleTimeMs * fftSize);
   const bins = Math.min(fftSize / 2, Math.floor(MAX_HZ / df) + 1);
@@ -110,7 +113,14 @@ export function stepFrequencyResponse(spectra: StepSpectra): { response: Frequen
 
 function frequencyMetrics(r: FrequencyResponse, valid: boolean): FrequencyMetrics {
   if (!valid || r.frequencies.length < 3) {
-    return { bandwidthHz: null, sensitivityPeakDb: null, sensitivityPeakHz: null, confidence: null, crossoverHz: null, phaseMarginDeg: null };
+    return {
+      bandwidthHz: null,
+      sensitivityPeakDb: null,
+      sensitivityPeakHz: null,
+      confidence: null,
+      crossoverHz: null,
+      phaseMarginDeg: null,
+    };
   }
 
   let bandwidthHz: number | null = null;
@@ -121,7 +131,8 @@ function frequencyMetrics(r: FrequencyResponse, valid: boolean): FrequencyMetric
       const a = r.magnitudeDb[k - 1]!;
       const b = r.magnitudeDb[k]!;
       const frac = a === b ? 0 : (a + 3) / (a - b);
-      bandwidthHz = r.frequencies[k - 1]! + Math.min(1, Math.max(0, frac)) * (r.frequencies[k]! - r.frequencies[k - 1]!);
+      bandwidthHz =
+        r.frequencies[k - 1]! + Math.min(1, Math.max(0, frac)) * (r.frequencies[k]! - r.frequencies[k - 1]!);
       break;
     }
   }
@@ -183,7 +194,10 @@ function phaseMargin(r: FrequencyResponse): { crossoverHz: number | null; phaseM
     let margin = 180 + (Math.atan2(b.im, b.re) * 180) / Math.PI;
     if (margin > 360) margin -= 360;
 
-    return { crossoverHz: r.frequencies[k - 1]! + frac * (r.frequencies[k]! - r.frequencies[k - 1]!), phaseMarginDeg: margin };
+    return {
+      crossoverHz: r.frequencies[k - 1]! + frac * (r.frequencies[k]! - r.frequencies[k - 1]!),
+      phaseMarginDeg: margin,
+    };
   }
 
   return { crossoverHz: null, phaseMarginDeg: null };

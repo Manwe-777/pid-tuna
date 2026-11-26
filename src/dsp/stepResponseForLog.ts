@@ -9,7 +9,11 @@ export type StepLogOptions = StepResponseOptions & StepMaskOptions;
 
 /** Step response for one axis of a log, from takeoff to landing, skipping moments with a motor pinned. */
 export function stepResponseForLog(log: ParsedLog, axis: number, options: StepLogOptions = {}): StepResponseResult {
-  const { flightOnly, minThrottle, maxThrottle, excludeSaturation, ...stepOptions } = { ...STEP_DEFAULTS, ...STEP_MASK_DEFAULTS, ...options };
+  const { flightOnly, minThrottle, maxThrottle, excludeSaturation, ...stepOptions } = {
+    ...STEP_DEFAULTS,
+    ...STEP_MASK_DEFAULTS,
+    ...options,
+  };
   const mask = stepResponseMask(log, { flightOnly, minThrottle, maxThrottle, excludeSaturation });
 
   return computeStepResponse(log.setpoint[axis]!, log.gyroFilt[axis]!, log.setup.looptimeUs, { ...stepOptions, mask });

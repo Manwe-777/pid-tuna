@@ -22,8 +22,7 @@ export function sliceLog(log: ParsedLog, range: TimeRangeSec): ParsedLog {
   }
   const slice = (a: Float32Array) => a.slice(i0, i1);
   const triplet = (t: Axis3): Axis3 => [slice(t[0]), slice(t[1]), slice(t[2])] as const;
-  const quad = (t: Axis4): Axis4 =>
-    [slice(t[0]), slice(t[1]), slice(t[2]), slice(t[3])] as const;
+  const quad = (t: Axis4): Axis4 => [slice(t[0]), slice(t[1]), slice(t[2]), slice(t[3])] as const;
   return {
     ...log,
     time: slice(log.time),
@@ -61,8 +60,12 @@ function sliceGps(gps: GpsFrameSeries, range: TimeRangeSec): GpsFrameSeries {
   const i1 = upperBound(gps.time, range.end);
   if (i0 >= i1) {
     return {
-      time: new Float32Array(), lat: new Float32Array(), lon: new Float32Array(),
-      altitude: new Float32Array(), speed: new Float32Array(), numSat: new Float32Array(),
+      time: new Float32Array(),
+      lat: new Float32Array(),
+      lon: new Float32Array(),
+      altitude: new Float32Array(),
+      speed: new Float32Array(),
+      numSat: new Float32Array(),
     };
   }
   return {

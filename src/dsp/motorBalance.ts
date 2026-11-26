@@ -59,10 +59,7 @@ export interface BalanceAnalysis {
  * mapping. Also computes a PSD of each motor command so per-motor oscillations
  * show up as spikes.
  */
-export function analyzeMotorBalance(
-  log: ParsedLog,
-  options: { psdWindow?: number } = {},
-): BalanceAnalysis {
+export function analyzeMotorBalance(log: ParsedLog, options: { psdWindow?: number } = {}): BalanceAnalysis {
   const sampleRate = log.setup.sampleRateHz;
   const psdWindow = options.psdWindow ?? 1024;
   const range = flightRange(throttlePercentSeries(log), sampleRate) ?? { start: 0, end: log.time.length - 1 };
@@ -152,8 +149,14 @@ export function combineMotorBalances(analyses: BalanceAnalysis[]): BalanceAnalys
       pwmMeanSum += m.pwmMean;
       pwmStdSum += m.pwmStd;
       relLoadSum += m.relativeLoad;
-      if (m.meanERpm != null) { erpmSum += m.meanERpm; erpmCount++; }
-      if (m.erpmCv != null) { erpmCvSum += m.erpmCv; erpmCvCount++; }
+      if (m.meanERpm != null) {
+        erpmSum += m.meanERpm;
+        erpmCount++;
+      }
+      if (m.erpmCv != null) {
+        erpmCvSum += m.erpmCv;
+        erpmCvCount++;
+      }
     }
     motors.push({
       motorIndex: i,
@@ -202,7 +205,10 @@ const SINGLE_OUTLIER_THRESHOLD_PCT = 3;
  * For non-4-motor frames we skip axis projection and only attempt single-motor
  * outlier detection.
  */
-function analyzeImbalance(motors: MotorStats[], yawReversed = false): {
+function analyzeImbalance(
+  motors: MotorStats[],
+  yawReversed = false,
+): {
   axes: AxisImbalance[];
   dominantAxis: AxisKind | null;
   singleMotorOutlier: { motorIndex: number; deltaPct: number } | null;
@@ -226,9 +232,9 @@ function analyzeImbalance(motors: MotorStats[], yawReversed = false): {
   const pct = (delta: number) => (delta / overall) * 100;
 
   const axes: AxisImbalance[] = [
-    { axis: 'pitch', deltaPct: pct((m1 + m3) - (m2 + m4)) / 2 },
-    { axis: 'roll',  deltaPct: pct((m1 + m2) - (m3 + m4)) / 2 },
-    { axis: 'yaw',   deltaPct: (yawReversed ? -1 : 1) * pct((m2 + m3) - (m1 + m4)) / 2 },
+    { axis: 'pitch', deltaPct: pct(m1 + m3 - (m2 + m4)) / 2 },
+    { axis: 'roll', deltaPct: pct(m1 + m2 - (m3 + m4)) / 2 },
+    { axis: 'yaw', deltaPct: ((yawReversed ? -1 : 1) * pct(m2 + m3 - (m1 + m4))) / 2 },
   ];
 
   let dominantAxis: AxisKind | null = null;
@@ -280,4 +286,3 @@ function meanStd(x: Float32Array): { mean: number; std: number } {
   }
   return { mean, std: Math.sqrt(s2 / x.length) };
 }
-

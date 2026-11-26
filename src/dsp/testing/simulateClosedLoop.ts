@@ -11,7 +11,11 @@ export interface ClosedLoopPlant {
 const SUBSTEPS = 16;
 
 /** Second-order closed loop with dead time, integrated with substeps for accuracy. */
-export function simulateClosedLoop(input: ArrayLike<number>, sampleRateHz: number, plant: ClosedLoopPlant): Float32Array {
+export function simulateClosedLoop(
+  input: ArrayLike<number>,
+  sampleRateHz: number,
+  plant: ClosedLoopPlant,
+): Float32Array {
   const wn = 2 * Math.PI * plant.naturalHz;
   const zeta = plant.damping;
   const gain = plant.gain ?? 1;

@@ -19,7 +19,12 @@ export function StepFrequencyPlot({ entries }: { entries: StepFrequencyEntry[] }
     if (!reference) return [];
 
     return entries.flatMap((e) => [
-      { label: `${e.label} tracking`, values: fit(e.response.magnitudeDb, reference.length), stroke: e.color, width: 2 },
+      {
+        label: `${e.label} tracking`,
+        values: fit(e.response.magnitudeDb, reference.length),
+        stroke: e.color,
+        width: 2,
+      },
       {
         label: `${e.label} sensitivity`,
         values: fit(e.response.sensitivityDb, reference.length),

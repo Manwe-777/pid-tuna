@@ -1,20 +1,8 @@
 import 'leaflet/dist/leaflet.css';
-import {
-  MapContainer,
-  TileLayer,
-  Polyline,
-  CircleMarker,
-  Marker,
-  useMap,
-} from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useEffect, useMemo, useRef } from 'react';
-import {
-  buildValidGpsSamples,
-  gpsCoordValid,
-  headingAlongTrack,
-  interpolateGps,
-} from '../dsp/gpsPlayback';
+import { buildValidGpsSamples, gpsCoordValid, headingAlongTrack, interpolateGps } from '../dsp/gpsPlayback';
 import {
   denseLonLatChord,
   gpsDisplayProjection,
@@ -42,14 +30,14 @@ export interface GpsMapTrackProps {
 
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 const TILE_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> '
-  + '&copy; <a href="https://carto.com/attributions">CARTO</a>';
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
+  '&copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 const DRONE_SVG =
-  '<svg width="26" height="26" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
-  + '<path d="M12 2.5 L19 17.5 H14.8 L12 13.9 L9.2 17.5 H5 L12 2.5 Z" '
-  + 'fill="#5fa8ff" stroke="#e8eef8" stroke-width="1.25" stroke-linejoin="round"/>'
-  + '</svg>';
+  '<svg width="26" height="26" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+  '<path d="M12 2.5 L19 17.5 H14.8 L12 13.9 L9.2 17.5 H5 L12 2.5 Z" ' +
+  'fill="#5fa8ff" stroke="#e8eef8" stroke-width="1.25" stroke-linejoin="round"/>' +
+  '</svg>';
 
 function fmtPlaybackClock(secFromStart: number): string {
   const s = Math.max(0, secFromStart);
@@ -123,9 +111,7 @@ function PlaybackDroneMarker({
       L.divIcon({
         className: 'gps-drone-marker',
         html:
-          `<div class="gps-drone-marker__rotate" style="transform:rotate(${headingDeg}deg)">`
-          + DRONE_SVG
-          + '</div>',
+          `<div class="gps-drone-marker__rotate" style="transform:rotate(${headingDeg}deg)">` + DRONE_SVG + '</div>',
         iconSize: [34, 34],
         iconAnchor: [17, 17],
       }),
@@ -167,10 +153,7 @@ export function GpsMapTrack({
     [lat, lon, smoothSettings],
   );
 
-  const samples = useMemo(
-    () => buildValidGpsSamples(gpsTime, latDisp, lonDisp),
-    [gpsTime, latDisp, lonDisp],
-  );
+  const samples = useMemo(() => buildValidGpsSamples(gpsTime, latDisp, lonDisp), [gpsTime, latDisp, lonDisp]);
 
   const tMin = samples[0]?.t ?? 0;
   const tMax = samples[samples.length - 1]?.t ?? 0;
@@ -198,19 +181,9 @@ export function GpsMapTrack({
     return () => cancelAnimationFrame(raf);
   }, [playing, tMin, tMax, playbackSpeed, onPlaybackTChange]);
 
-  const speedLabel =
-    playbackSpeed === 1 ? '1×' : playbackSpeed === 2 ? '2×' : '4×';
+  const speedLabel = playbackSpeed === 1 ? '1×' : playbackSpeed === 2 ? '2×' : '4×';
 
-  const {
-    segments,
-    boundsPoints,
-    startMark,
-    endMark,
-    center,
-    legendMin,
-    legendMax,
-    showLegend,
-  } = useMemo(() => {
+  const { segments, boundsPoints, startMark, endMark, center, legendMin, legendMax, showLegend } = useMemo(() => {
     let startMarkInner: [number, number] | null = null;
     let endMarkInner: [number, number] | null = null;
     for (let i = 0; i < latDisp.length; i++) {
@@ -296,15 +269,9 @@ export function GpsMapTrack({
     };
   }, [latDisp, lonDisp, altitude, stroke, smoothSettings]);
 
-  const dronePos = useMemo(
-    () => interpolateGps(samples, playbackT),
-    [samples, playbackT],
-  );
+  const dronePos = useMemo(() => interpolateGps(samples, playbackT), [samples, playbackT]);
 
-  const headingDeg = useMemo(
-    () => headingAlongTrack(samples, playbackT),
-    [samples, playbackT],
-  );
+  const headingDeg = useMemo(() => headingAlongTrack(samples, playbackT), [samples, playbackT]);
 
   if (segments.length === 0) {
     return (
@@ -314,8 +281,7 @@ export function GpsMapTrack({
     );
   }
 
-  const droneLatLng: [number, number] | null =
-    dronePos != null ? [dronePos[0], dronePos[1]] : null;
+  const droneLatLng: [number, number] | null = dronePos != null ? [dronePos[0], dronePos[1]] : null;
 
   return (
     <div className="gps-map-wrap" style={{ height }}>
@@ -328,18 +294,9 @@ export function GpsMapTrack({
       >
         <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_URL} maxZoom={20} />
         <InvalidateSizeOnResize />
-        <FitTrackBounds
-          boundsPoints={boundsPoints}
-          anchorLat={lat}
-          anchorLon={lon}
-          anchorGpsTime={gpsTime}
-        />
+        <FitTrackBounds boundsPoints={boundsPoints} anchorLat={lat} anchorLon={lon} anchorGpsTime={gpsTime} />
         {segments.map((s, idx) => (
-          <Polyline
-            key={idx}
-            positions={s.positions}
-            pathOptions={{ color: s.color, weight: 3, opacity: 0.92 }}
-          />
+          <Polyline key={idx} positions={s.positions} pathOptions={{ color: s.color, weight: 3, opacity: 0.92 }} />
         ))}
         {startMark && (
           <CircleMarker
@@ -365,12 +322,7 @@ export function GpsMapTrack({
             }}
           />
         )}
-        <PlaybackDroneMarker
-          position={droneLatLng}
-          headingDeg={headingDeg}
-          followWhilePlaying
-          playing={playing}
-        />
+        <PlaybackDroneMarker position={droneLatLng} headingDeg={headingDeg} followWhilePlaying playing={playing} />
       </MapContainer>
 
       {showLegend && legendMin != null && legendMax != null && (
@@ -418,9 +370,7 @@ export function GpsMapTrack({
             type="button"
             className="gps-playback__speed"
             title="Playback speed"
-            onClick={() =>
-              onPlaybackSpeedChange(playbackSpeed === 1 ? 2 : playbackSpeed === 2 ? 4 : 1)
-            }
+            onClick={() => onPlaybackSpeedChange(playbackSpeed === 1 ? 2 : playbackSpeed === 2 ? 4 : 1)}
           >
             {speedLabel}
           </button>

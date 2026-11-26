@@ -4,7 +4,11 @@ import { filterTestSignal } from './filterTestSignal';
 import { computeFilterChainResponse, DEFAULT_FILTER_SPECS, type FilterSpec } from './filters';
 
 const LOOP = 8000;
-const spec = (over: Partial<FilterSpec>): FilterSpec => ({ ...DEFAULT_FILTER_SPECS[over.type ?? 'pt1'], id: 'x', ...over });
+const spec = (over: Partial<FilterSpec>): FilterSpec => ({
+  ...DEFAULT_FILTER_SPECS[over.type ?? 'pt1'],
+  id: 'x',
+  ...over,
+});
 
 describe('filter test signals', () => {
   test('a PT1 step response follows 1 − (1 − k)^(n+1)', () => {
@@ -56,8 +60,16 @@ describe('RPM and dynamic notch blocks', () => {
   });
 
   test('two dynamic notches delay twice as much as one', () => {
-    const one = computeFilterChainResponse([spec({ type: 'dynNotch', cutoffHz: 150, count: 1 })], LOOP, Float32Array.of(25)).phaseDelayMs[0]!;
-    const two = computeFilterChainResponse([spec({ type: 'dynNotch', cutoffHz: 150, count: 2 })], LOOP, Float32Array.of(25)).phaseDelayMs[0]!;
+    const one = computeFilterChainResponse(
+      [spec({ type: 'dynNotch', cutoffHz: 150, count: 1 })],
+      LOOP,
+      Float32Array.of(25),
+    ).phaseDelayMs[0]!;
+    const two = computeFilterChainResponse(
+      [spec({ type: 'dynNotch', cutoffHz: 150, count: 2 })],
+      LOOP,
+      Float32Array.of(25),
+    ).phaseDelayMs[0]!;
     expect(two).toBeCloseTo(2 * one, 6);
   });
 });

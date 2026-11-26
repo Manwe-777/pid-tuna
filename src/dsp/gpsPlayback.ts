@@ -9,11 +9,7 @@ export function gpsCoordValid(la: number, lo: number): boolean {
   return Number.isFinite(la) && Number.isFinite(lo) && !(la === 0 && lo === 0);
 }
 
-export function buildValidGpsSamples(
-  gpsTime: Float32Array,
-  lat: Float32Array,
-  lon: Float32Array,
-): GpsSample[] {
+export function buildValidGpsSamples(gpsTime: Float32Array, lat: Float32Array, lon: Float32Array): GpsSample[] {
   const out: GpsSample[] = [];
   for (let i = 0; i < gpsTime.length; i++) {
     const la = lat[i]!;

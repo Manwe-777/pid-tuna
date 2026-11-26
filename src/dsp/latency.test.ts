@@ -6,7 +6,14 @@ import { stickSetpoint } from './testing/stickSetpoint';
 
 describe('cross-correlation tracking latency', () => {
   const FS = 2000;
-  const sp = stickSetpoint({ seconds: 30, sampleRateHz: FS, amplitude: 500, holdMs: [80, 400], smoothingHz: 30, seed: 3 });
+  const sp = stickSetpoint({
+    seconds: 30,
+    sampleRateHz: FS,
+    amplitude: 500,
+    holdMs: [80, 400],
+    smoothingHz: 30,
+    seed: 3,
+  });
 
   test('gyro that copies setpoint 5 ms late reads as 5 ms of lag, within a tenth of a sample', () => {
     const gy = new Float32Array(sp.length);
@@ -33,7 +40,14 @@ describe('cross-correlation tracking latency', () => {
 describe('tracking latency on real flight time only', () => {
   test('masked ground time with gyro unrelated to setpoint does not move the lag by more than a quarter sample', () => {
     const FS = 2000;
-    const sp = stickSetpoint({ seconds: 30, sampleRateHz: FS, amplitude: 500, holdMs: [80, 400], smoothingHz: 30, seed: 4 });
+    const sp = stickSetpoint({
+      seconds: 30,
+      sampleRateHz: FS,
+      amplitude: 500,
+      holdMs: [80, 400],
+      smoothingHz: 30,
+      seed: 4,
+    });
     const gy = new Float32Array(sp.length);
     for (let i = 12; i < sp.length; i++) gy[i] = sp[i - 12]!;
     const ground = 20000;
@@ -48,7 +62,14 @@ describe('tracking latency on real flight time only', () => {
 
   test('a long log is fast enough to compute in a browser', () => {
     const FS = 8000;
-    const sp = stickSetpoint({ seconds: 120, sampleRateHz: FS, amplitude: 500, holdMs: [80, 400], smoothingHz: 30, seed: 5 });
+    const sp = stickSetpoint({
+      seconds: 120,
+      sampleRateHz: FS,
+      amplitude: 500,
+      holdMs: [80, 400],
+      smoothingHz: 30,
+      seed: 5,
+    });
     const t0 = performance.now();
     computeXcorrLatency(sp, sp, FS);
     expect(performance.now() - t0).toBeLessThan(2000);

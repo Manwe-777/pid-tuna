@@ -24,7 +24,8 @@ function analogPtnDelayMs(fc: number, order: number, f = DELAY_REFERENCE_HZ): nu
   return ((order * Math.atan(f / (fc * k))) / (2 * Math.PI * f)) * 1000;
 }
 
-const within = (actual: number, expected: number, frac: number) => expect(Math.abs(actual / expected - 1)).toBeLessThan(frac);
+const within = (actual: number, expected: number, frac: number) =>
+  expect(Math.abs(actual / expected - 1)).toBeLessThan(frac);
 
 describe('filter delay breakdown', () => {
   test.each([
@@ -105,7 +106,10 @@ describe('filter delay matches PIDtoolbox’s filter simulator', () => {
   });
 
   test('all notches together: 1.641 ms, 14.77° of lag', () => {
-    const parts = [...rpmNotchParts(150, 3, 5, 100, 50, [100, 100, 100], 4, LOOP), { kind: 'notch' as const, hz: 500, q: 5 }];
+    const parts = [
+      ...rpmNotchParts(150, 3, 5, 100, 50, [100, 100, 100], 4, LOOP),
+      { kind: 'notch' as const, hz: 500, q: 5 },
+    ];
     const d = partsDelay(parts, LOOP, 25);
     expect(d.delayMs).toBeCloseTo(1.641, 3);
     expect(-d.phaseDeg).toBeCloseTo(14.77, 1);

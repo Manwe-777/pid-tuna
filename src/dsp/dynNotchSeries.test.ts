@@ -6,11 +6,24 @@ import { dynNotchSeries } from './dynNotchSeries';
 import { motorHzSeries } from './motorHzSeries';
 
 const fake = (debugMode: string, debug: number[][], extra: Partial<ParsedLog> = {}) =>
-  ({ setup: { debugMode, rawHeaders: {} }, debug: debug.map((d) => Float32Array.from(d)), time: new Float32Array(3), eRpm: [], ...extra }) as unknown as ParsedLog;
+  ({
+    setup: { debugMode, rawHeaders: {} },
+    debug: debug.map((d) => Float32Array.from(d)),
+    time: new Float32Array(3),
+    eRpm: [],
+    ...extra,
+  }) as unknown as ParsedLog;
 
 describe('dynamic notch frequencies', () => {
   test('FFT_FREQ debug channels 1 and up are notch centres; channel 0 is not', () => {
-    const notches = dynNotchSeries(fake('FFT_FREQ', [[999, 999, 999], [150, 160, 170], [300, 310, 0], [0, 0, 0]]));
+    const notches = dynNotchSeries(
+      fake('FFT_FREQ', [
+        [999, 999, 999],
+        [150, 160, 170],
+        [300, 310, 0],
+        [0, 0, 0],
+      ]),
+    );
     expect(notches!.map((n) => Array.from(n))).toEqual([
       [150, 160, 170],
       [300, 310, 0],
@@ -18,7 +31,14 @@ describe('dynamic notch frequencies', () => {
   });
 
   test('other debug modes do not produce notch lines', () => {
-    expect(dynNotchSeries(fake('GYRO_SCALED', [[1, 2, 3], [150, 160, 170]]))).toBeNull();
+    expect(
+      dynNotchSeries(
+        fake('GYRO_SCALED', [
+          [1, 2, 3],
+          [150, 160, 170],
+        ]),
+      ),
+    ).toBeNull();
   });
 });
 
@@ -39,6 +59,14 @@ describe('motor rotation frequency', () => {
 
 describe('median dynamic notch frequencies', () => {
   test('each notch reports the median of its active values', () => {
-    expect(dynNotchMedians(fake('FFT_FREQ', [[0, 0, 0, 0], [150, 0, 170, 160], [300, 320, 310, 0]]))).toEqual([160, 310]);
+    expect(
+      dynNotchMedians(
+        fake('FFT_FREQ', [
+          [0, 0, 0, 0],
+          [150, 0, 170, 160],
+          [300, 320, 310, 0],
+        ]),
+      ),
+    ).toEqual([160, 310]);
   });
 });

@@ -7,7 +7,9 @@ export function medianMotorHz(log: ParsedLog): number | undefined {
   const rpm = motorRpmSeries(log, poles > 0 ? poles / 2 : DEFAULT_POLE_PAIRS);
   if (!rpm) return undefined;
 
-  const spinning = Array.from(rpm).filter((v) => v > 0).sort((a, b) => a - b);
+  const spinning = Array.from(rpm)
+    .filter((v) => v > 0)
+    .sort((a, b) => a - b);
   if (spinning.length === 0) return undefined;
 
   return spinning[spinning.length >> 1]! / 60;

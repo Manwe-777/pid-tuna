@@ -2,9 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "enables the default permissions",
-  "windows": [
-    "main"
-  ],
+  "windows": ["main"],
   "permissions": [
     "core:default",
     "dialog:default",
@@ -13,9 +11,7 @@
     "fs:allow-read-file",
     {
       "identifier": "fs:scope",
-      "allow": [
-        { "path": "**" }
-      ]
+      "allow": [{ "path": "**" }]
     }
   ]
 }

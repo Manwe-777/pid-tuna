@@ -3,7 +3,8 @@ import { describe, expect, test } from 'vitest';
 import { computeBinnedSpectrogram, computePsd } from './spectrogram';
 
 const FS = 2000;
-const tone = (n: number, hz: number, offset = 0) => Float32Array.from({ length: n }, (_, i) => offset + Math.sin((2 * Math.PI * hz * i) / FS));
+const tone = (n: number, hz: number, offset = 0) =>
+  Float32Array.from({ length: n }, (_, i) => offset + Math.sin((2 * Math.PI * hz * i) / FS));
 
 describe('power spectra', () => {
   test('a constant offset does not raise the low-frequency bins', () => {

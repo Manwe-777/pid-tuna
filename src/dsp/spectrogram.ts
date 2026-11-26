@@ -259,12 +259,7 @@ export function computeBinnedSpectrogram(
     valueMode: mode,
   });
 
-  if (
-    signal.length < segmentLen ||
-    domain.length !== signal.length ||
-    sampleRateHz <= 0 ||
-    span <= 0
-  ) {
+  if (signal.length < segmentLen || domain.length !== signal.length || sampleRateHz <= 0 || span <= 0) {
     return empty();
   }
 
@@ -399,11 +394,7 @@ export interface PsdResult {
  * convert to dB. Returns absolute dB (not normalized to peak) so traces from
  * different signals can be compared on the same axis.
  */
-export function computePsd(
-  signal: Float32Array,
-  sampleRateHz: number,
-  options: PsdOptions = {},
-): PsdResult {
+export function computePsd(signal: Float32Array, sampleRateHz: number, options: PsdOptions = {}): PsdResult {
   const windowSize = options.windowSize ?? 1024;
   const overlap = options.overlap ?? 0.5;
   const floorDb = options.floorDb ?? -200;
@@ -506,13 +497,7 @@ export function combinePsds(results: PsdResult[], floorDb = -200): PsdResult {
   return { frequencies: ref.frequencies, psdDb, numWindows: totalWindows };
 }
 
-function boxFilter2D(
-  mat: Float32Array,
-  rows: number,
-  cols: number,
-  kRows: number,
-  kCols: number,
-): Float32Array {
+function boxFilter2D(mat: Float32Array, rows: number, cols: number, kRows: number, kCols: number): Float32Array {
   if (kRows <= 1 && kCols <= 1) return mat.slice();
   const tmp = new Float32Array(rows * cols);
   // Horizontal pass.

@@ -83,7 +83,13 @@ export function BinnedSpecPlot({
   };
 
   return (
-    <div className="plot" ref={containerRef} style={{ position: 'relative', padding: 0 }} onMouseMove={onMove} onMouseLeave={onLeave}>
+    <div
+      className="plot"
+      ref={containerRef}
+      style={{ position: 'relative', padding: 0 }}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+    >
       <canvas ref={canvasRef} style={{ display: 'block' }} />
       <canvas ref={overlayRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
     </div>
@@ -134,7 +140,7 @@ function draw(
   // Displayed frequency range (X axis).
   const nyquist = data.frequencies[data.frequencies.length - 1] ?? 0;
   const fMax = opts.maxFreqHz != null ? Math.min(opts.maxFreqHz, nyquist) : nyquist;
-  const fStep = data.frequencies.length > 1 ? (data.frequencies[1]! - data.frequencies[0]!) : 0;
+  const fStep = data.frequencies.length > 1 ? data.frequencies[1]! - data.frequencies[0]! : 0;
   const maxFreqBin = fStep > 0 ? Math.min(data.freqBins - 1, Math.round(fMax / fStep)) : data.freqBins - 1;
   const visibleFreqBins = maxFreqBin + 1;
   const displayedFMax = data.frequencies[maxFreqBin] ?? fMax;
@@ -191,9 +197,7 @@ function draw(
     yMin,
     yMax,
     fmtX: (v) => `${v.toFixed(0)} Hz`,
-    fmtY: opts.yLabel.includes('%')
-      ? (v) => `${v.toFixed(0)}%`
-      : (v) => `${v.toFixed(0)} Hz`,
+    fmtY: opts.yLabel.includes('%') ? (v) => `${v.toFixed(0)}%` : (v) => `${v.toFixed(0)} Hz`,
   };
 }
 

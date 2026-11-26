@@ -29,10 +29,7 @@ export function throttlePercentSeries(log: ParsedLog): Float32Array {
  * mechanical RPM = eRPM_logged * 100 / polePairs (mirrors `computeRpmMarkers`).
  * Returns null if no motor has usable eRPM data.
  */
-export function motorRpmSeries(
-  log: ParsedLog,
-  polePairs: number = DEFAULT_POLE_PAIRS,
-): Float32Array | null {
+export function motorRpmSeries(log: ParsedLog, polePairs: number = DEFAULT_POLE_PAIRS): Float32Array | null {
   const motors = log.eRpm.filter((a) => a.length === log.time.length && a.some((v) => v > 0));
   if (motors.length === 0 || polePairs <= 0) return null;
 

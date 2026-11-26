@@ -17,7 +17,13 @@ const MARGIN = { top: 28, right: 24, bottom: 40, left: 60 } as const;
  * (deg/s), colour = log sample density (viridis). Reference lines at error = 0
  * (ideal tracking) and setpoint = 0. Dark by design, like the other heatmaps.
  */
-export function DensityPlot({ data, title, xLabel = 'setpoint (deg/s)', yLabel = 'error (deg/s)', height = 300 }: DensityPlotProps) {
+export function DensityPlot({
+  data,
+  title,
+  xLabel = 'setpoint (deg/s)',
+  yLabel = 'error (deg/s)',
+  height = 300,
+}: DensityPlotProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -65,7 +71,13 @@ export function DensityPlot({ data, title, xLabel = 'setpoint (deg/s)', yLabel =
   };
 
   return (
-    <div className="plot" ref={containerRef} style={{ position: 'relative', padding: 0 }} onMouseMove={onMove} onMouseLeave={onLeave}>
+    <div
+      className="plot"
+      ref={containerRef}
+      style={{ position: 'relative', padding: 0 }}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+    >
       <canvas ref={canvasRef} style={{ display: 'block' }} />
       <canvas ref={overlayRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
     </div>
@@ -121,10 +133,16 @@ function draw(
       const idx = (imgY * data.xBins + xb) * 4;
       if (v <= 0) {
         // Leave empty cells at the plot background colour.
-        px[idx] = 15; px[idx + 1] = 20; px[idx + 2] = 27; px[idx + 3] = 255;
+        px[idx] = 15;
+        px[idx + 1] = 20;
+        px[idx + 2] = 27;
+        px[idx + 3] = 255;
       } else {
         const [r, g, b] = viridis(v);
-        px[idx] = r; px[idx + 1] = g; px[idx + 2] = b; px[idx + 3] = 255;
+        px[idx] = r;
+        px[idx + 1] = g;
+        px[idx + 2] = b;
+        px[idx + 3] = 255;
       }
     }
   }

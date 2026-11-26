@@ -12,7 +12,10 @@ function pack(startV: number, headers: Record<string, string> = { vbatcellvoltag
   const n = 1200;
   const time = Float32Array.from({ length: n }, (_, i) => i / 10);
   const amperage = Float32Array.from({ length: n }, () => (rand() < 0.3 ? 40 + rand() * 50 : 3 + rand() * 10));
-  const vbat = Float32Array.from({ length: n }, (_, i) => startV - (3 * i) / n - R * amperage[i]! + (rand() - 0.5) * 0.02);
+  const vbat = Float32Array.from(
+    { length: n },
+    (_, i) => startV - (3 * i) / n - R * amperage[i]! + (rand() - 0.5) * 0.02,
+  );
 
   return { slow: { time, vbat, amperage }, setup: { rawHeaders: headers } } as unknown as ParsedLog;
 }

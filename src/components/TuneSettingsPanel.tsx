@@ -21,7 +21,6 @@ const NOTCH_TYPE: Record<string, string> = {
   '1': 'PT1',
 };
 
-
 export function TuneSettingsPanel({ entries }: TuneSettingsPanelProps) {
   const views = useMemo(() => entries.map(({ slot, log }) => ({ slot, view: buildTuneView(log) })), [entries]);
   const primary = views[0]!;
@@ -41,119 +40,109 @@ export function TuneSettingsPanel({ entries }: TuneSettingsPanelProps) {
       </h2>
 
       <div className="tune-row">
-      {/* PIDF table */}
-      <div className="tune-block">
-        <h3>PIDF</h3>
-        {view.hasPid ? (
-          <table className="tune-table">
-            <thead>
-              <tr>
-                <th></th>
-                <th>P</th>
-                <th>I</th>
-                <th>D</th>
-                <th>D Max</th>
-                <th>F</th>
-              </tr>
-            </thead>
-            <tbody>
-              {AXIS_NAMES.map((name, i) => {
-                const primaryRow = primary.view.pidByAxis[i]!;
-                const primaryCols = [primaryRow.p, primaryRow.i, primaryRow.d, primaryRow.dMax, primaryRow.f];
-                return (
-                  <Fragment key={name}>
-                    {views.map(({ slot, view }, vi) => {
-                      const row = view.pidByAxis[i]!;
-                      const cols = [row.p, row.i, row.d, row.dMax, row.f];
-                      const isPrimary = vi === 0;
-                      return (
-                        <tr key={slot.id} className={isPrimary ? undefined : 'tune-cmp__row-b'}>
-                          {vi === 0 && (
-                            <th rowSpan={views.length}>
-                              <span className="axis-chip" style={{ background: AXIS_COLORS[i] }}>
-                                {name.toUpperCase()}
-                              </span>
-                            </th>
-                          )}
-                          {multi && <td className="tune-cmp__label">{shortName(slot)}</td>}
-                          {cols.map((v, c) => (
-                            <td
-                              key={c}
-                              className={!isPrimary && v !== primaryCols[c] ? 'tune-cmp__diff' : undefined}
-                            >
-                              {formatNum(v)}
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <p className="muted">Not in headers.</p>
-        )}
-      </div>
+        {/* PIDF table */}
+        <div className="tune-block">
+          <h3>PIDF</h3>
+          {view.hasPid ? (
+            <table className="tune-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>P</th>
+                  <th>I</th>
+                  <th>D</th>
+                  <th>D Max</th>
+                  <th>F</th>
+                </tr>
+              </thead>
+              <tbody>
+                {AXIS_NAMES.map((name, i) => {
+                  const primaryRow = primary.view.pidByAxis[i]!;
+                  const primaryCols = [primaryRow.p, primaryRow.i, primaryRow.d, primaryRow.dMax, primaryRow.f];
+                  return (
+                    <Fragment key={name}>
+                      {views.map(({ slot, view }, vi) => {
+                        const row = view.pidByAxis[i]!;
+                        const cols = [row.p, row.i, row.d, row.dMax, row.f];
+                        const isPrimary = vi === 0;
+                        return (
+                          <tr key={slot.id} className={isPrimary ? undefined : 'tune-cmp__row-b'}>
+                            {vi === 0 && (
+                              <th rowSpan={views.length}>
+                                <span className="axis-chip" style={{ background: AXIS_COLORS[i] }}>
+                                  {name.toUpperCase()}
+                                </span>
+                              </th>
+                            )}
+                            {multi && <td className="tune-cmp__label">{shortName(slot)}</td>}
+                            {cols.map((v, c) => (
+                              <td key={c} className={!isPrimary && v !== primaryCols[c] ? 'tune-cmp__diff' : undefined}>
+                                {formatNum(v)}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <p className="muted">Not in headers.</p>
+          )}
+        </div>
 
-      {/* Rates table */}
-      <div className="tune-block tune-block--no-divider">
-        <h3>Rates</h3>
-        {view.hasRates ? (
-          <table className="tune-table">
-            <thead>
-              <tr>
-                <th></th>
-                <th>RC rate</th>
-                <th>Expo</th>
-                <th>Super</th>
-              </tr>
-            </thead>
-            <tbody>
-              {AXIS_NAMES.map((name, i) => {
-                const primaryCols = [
-                  primary.view.rcRates[i],
-                  primary.view.rcExpo[i],
-                  primary.view.superRates[i],
-                ];
-                return (
-                  <Fragment key={name}>
-                    {views.map(({ slot, view }, vi) => {
-                      const cols = [view.rcRates[i], view.rcExpo[i], view.superRates[i]];
-                      const isPrimary = vi === 0;
-                      return (
-                        <tr key={slot.id} className={isPrimary ? undefined : 'tune-cmp__row-b'}>
-                          {vi === 0 && (
-                            <th rowSpan={views.length}>
-                              <span className="axis-chip" style={{ background: AXIS_COLORS[i] }}>
-                                {name.toUpperCase()}
-                              </span>
-                            </th>
-                          )}
-                          {multi && <td className="tune-cmp__label">{shortName(slot)}</td>}
-                          {cols.map((v, c) => (
-                            <td
-                              key={c}
-                              className={!isPrimary && v !== primaryCols[c] ? 'tune-cmp__diff' : undefined}
-                            >
-                              {formatNum(v)}
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <p className="muted">Not in headers.</p>
-        )}
+        {/* Rates table */}
+        <div className="tune-block tune-block--no-divider">
+          <h3>Rates</h3>
+          {view.hasRates ? (
+            <table className="tune-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>RC rate</th>
+                  <th>Expo</th>
+                  <th>Super</th>
+                </tr>
+              </thead>
+              <tbody>
+                {AXIS_NAMES.map((name, i) => {
+                  const primaryCols = [primary.view.rcRates[i], primary.view.rcExpo[i], primary.view.superRates[i]];
+                  return (
+                    <Fragment key={name}>
+                      {views.map(({ slot, view }, vi) => {
+                        const cols = [view.rcRates[i], view.rcExpo[i], view.superRates[i]];
+                        const isPrimary = vi === 0;
+                        return (
+                          <tr key={slot.id} className={isPrimary ? undefined : 'tune-cmp__row-b'}>
+                            {vi === 0 && (
+                              <th rowSpan={views.length}>
+                                <span className="axis-chip" style={{ background: AXIS_COLORS[i] }}>
+                                  {name.toUpperCase()}
+                                </span>
+                              </th>
+                            )}
+                            {multi && <td className="tune-cmp__label">{shortName(slot)}</td>}
+                            {cols.map((v, c) => (
+                              <td key={c} className={!isPrimary && v !== primaryCols[c] ? 'tune-cmp__diff' : undefined}>
+                                {formatNum(v)}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <p className="muted">Not in headers.</p>
+          )}
+        </div>
       </div>
-
-      </div>{/* /tune-row */}
+      {/* /tune-row */}
 
       {/* Filter chain */}
       <div className="tune-block">
@@ -206,16 +195,28 @@ export function TuneSettingsPanel({ entries }: TuneSettingsPanelProps) {
         {view.dynNotchCount != null || view.dynNotchMin != null ? (
           <ul className="tune-list">
             {view.dynNotchCount != null && (
-              <li><span className="tune-list__k">Count</span><span className="tune-list__v">{view.dynNotchCount}</span></li>
+              <li>
+                <span className="tune-list__k">Count</span>
+                <span className="tune-list__v">{view.dynNotchCount}</span>
+              </li>
             )}
             {view.dynNotchMin != null && (
-              <li><span className="tune-list__k">Min freq</span><span className="tune-list__v">{view.dynNotchMin} Hz</span></li>
+              <li>
+                <span className="tune-list__k">Min freq</span>
+                <span className="tune-list__v">{view.dynNotchMin} Hz</span>
+              </li>
             )}
             {view.dynNotchMax != null && (
-              <li><span className="tune-list__k">Max freq</span><span className="tune-list__v">{view.dynNotchMax} Hz</span></li>
+              <li>
+                <span className="tune-list__k">Max freq</span>
+                <span className="tune-list__v">{view.dynNotchMax} Hz</span>
+              </li>
             )}
             {view.dynNotchQ != null && (
-              <li><span className="tune-list__k">Q</span><span className="tune-list__v">{view.dynNotchQ}</span></li>
+              <li>
+                <span className="tune-list__k">Q</span>
+                <span className="tune-list__v">{view.dynNotchQ}</span>
+              </li>
             )}
           </ul>
         ) : (
@@ -226,20 +227,42 @@ export function TuneSettingsPanel({ entries }: TuneSettingsPanelProps) {
       <div className="tune-block">
         <h3>Hardware / firmware</h3>
         <ul className="tune-list">
-          <li><span className="tune-list__k">Firmware</span><span className="tune-list__v">{log.setup.firmwareKind} {log.setup.firmwareVersion}</span></li>
+          <li>
+            <span className="tune-list__k">Firmware</span>
+            <span className="tune-list__v">
+              {log.setup.firmwareKind} {log.setup.firmwareVersion}
+            </span>
+          </li>
           {log.setup.boardInfo && (
-            <li><span className="tune-list__k">Board</span><span className="tune-list__v">{log.setup.boardInfo}</span></li>
+            <li>
+              <span className="tune-list__k">Board</span>
+              <span className="tune-list__v">{log.setup.boardInfo}</span>
+            </li>
           )}
           {log.setup.pwmProtocol && (
-            <li><span className="tune-list__k">PWM</span><span className="tune-list__v">{log.setup.pwmProtocol}</span></li>
+            <li>
+              <span className="tune-list__k">PWM</span>
+              <span className="tune-list__v">{log.setup.pwmProtocol}</span>
+            </li>
           )}
           {log.setup.debugMode && (
-            <li><span className="tune-list__k">Debug mode</span><span className="tune-list__v">{log.setup.debugMode}</span></li>
+            <li>
+              <span className="tune-list__k">Debug mode</span>
+              <span className="tune-list__v">{log.setup.debugMode}</span>
+            </li>
           )}
           {log.setup.features.length > 0 && (
-            <li><span className="tune-list__k">Features</span><span className="tune-list__v">{log.setup.features.join(', ')}</span></li>
+            <li>
+              <span className="tune-list__k">Features</span>
+              <span className="tune-list__v">{log.setup.features.join(', ')}</span>
+            </li>
           )}
-          <li><span className="tune-list__k">Loop / sample</span><span className="tune-list__v">{log.setup.looptimeUs} µs / {log.setup.sampleRateHz.toLocaleString()} Hz</span></li>
+          <li>
+            <span className="tune-list__k">Loop / sample</span>
+            <span className="tune-list__v">
+              {log.setup.looptimeUs} µs / {log.setup.sampleRateHz.toLocaleString()} Hz
+            </span>
+          </li>
         </ul>
       </div>
 

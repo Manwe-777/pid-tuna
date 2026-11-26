@@ -54,7 +54,9 @@ export function LogDotPlot({
   const AXIS_LABEL_FILL = chrome.label;
 
   const { effYMin, effYMax, yTicks } = useMemo(() => {
-    const extents = dots.flatMap((d) => (d.value == null ? [] : [d.value - (d.spread ?? 0), d.value + (d.spread ?? 0)]));
+    const extents = dots.flatMap((d) =>
+      d.value == null ? [] : [d.value - (d.spread ?? 0), d.value + (d.spread ?? 0)],
+    );
     let lo: number;
     let hi: number;
     if (extents.length === 0) {
@@ -72,7 +74,10 @@ export function LogDotPlot({
         lo = Math.min(lo, referenceY - pad);
         hi = Math.max(hi, referenceY + pad);
       }
-      if (hi - lo < 1e-6) { lo -= 0.5; hi += 0.5; }
+      if (hi - lo < 1e-6) {
+        lo -= 0.5;
+        hi += 0.5;
+      }
     }
     return { effYMin: lo, effYMax: hi, yTicks: niceTicks(lo, hi, 5) };
   }, [dots, yMin, yMax, referenceY]);
@@ -92,43 +97,19 @@ export function LogDotPlot({
 
   return (
     <svg width={width} height={height} className="log-dot-plot">
-      <text
-        x={PAD.left}
-        y={14}
-        fill={chrome.title}
-        fontSize="12"
-        fontWeight="600"
-      >
-        {title}{unit ? ` (${unit})` : ''}
+      <text x={PAD.left} y={14} fill={chrome.title} fontSize="12" fontWeight="600">
+        {title}
+        {unit ? ` (${unit})` : ''}
       </text>
 
-      <rect
-        x={PAD.left}
-        y={PAD.top}
-        width={innerW}
-        height={innerH}
-        fill="none"
-        stroke={chrome.grid}
-      />
+      <rect x={PAD.left} y={PAD.top} width={innerW} height={innerH} fill="none" stroke={chrome.grid} />
 
       {yTicks.map((t) => {
         const y = yPos(t);
         return (
           <g key={`y-${t}`}>
-            <line
-              x1={PAD.left}
-              x2={PAD.left + innerW}
-              y1={y}
-              y2={y}
-              stroke={chrome.grid}
-            />
-            <text
-              x={PAD.left - 4}
-              y={y + 3}
-              fill={chrome.tick}
-              fontSize="10"
-              textAnchor="end"
-            >
+            <line x1={PAD.left} x2={PAD.left + innerW} y1={y} y2={y} stroke={chrome.grid} />
+            <text x={PAD.left - 4} y={y + 3} fill={chrome.tick} fontSize="10" textAnchor="end">
               {formatTick(t)}
             </text>
           </g>
@@ -152,35 +133,16 @@ export function LogDotPlot({
         if (d.value == null) {
           return (
             <g key={i}>
-              <text
-                x={x}
-                y={tickY}
-                fill={AXIS_TICK_FILL}
-                fontSize="10"
-                textAnchor="middle"
-              >
+              <text x={x} y={tickY} fill={AXIS_TICK_FILL} fontSize="10" textAnchor="middle">
                 {i + 1}
               </text>
-              <circle
-                cx={x}
-                cy={chartBottom - 4}
-                r={3}
-                fill="none"
-                stroke={chrome.axisLine}
-                strokeDasharray="2 2"
-              />
+              <circle cx={x} cy={chartBottom - 4} r={3} fill="none" stroke={chrome.axisLine} strokeDasharray="2 2" />
             </g>
           );
         }
         return (
           <g key={i}>
-            <text
-              x={x}
-              y={tickY}
-              fill={AXIS_TICK_FILL}
-              fontSize="10"
-              textAnchor="middle"
-            >
+            <text x={x} y={tickY} fill={AXIS_TICK_FILL} fontSize="10" textAnchor="middle">
               {i + 1}
             </text>
             {d.spread != null && d.spread > 0 && (
@@ -198,13 +160,7 @@ export function LogDotPlot({
         );
       })}
 
-      <text
-        x={PAD.left + innerW / 2}
-        y={chartBottom + 30}
-        fill={AXIS_LABEL_FILL}
-        fontSize="10"
-        textAnchor="middle"
-      >
+      <text x={PAD.left + innerW / 2} y={chartBottom + 30} fill={AXIS_LABEL_FILL} fontSize="10" textAnchor="middle">
         {xLabel}
       </text>
     </svg>

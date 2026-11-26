@@ -62,7 +62,10 @@ export function analyzeBattery(log: ParsedLog): BatteryAnalysis {
     }
     if (readings.length > 0) {
       // Half-second median filter: single-sample glitches would otherwise set the min and max.
-      const smooth = medianFilter(readings.map((r) => r.v), halfSecondWidth(readings));
+      const smooth = medianFilter(
+        readings.map((r) => r.v),
+        halfSecondWidth(readings),
+      );
       const rest = median(readings.filter((r) => r.t - readings[0]!.t <= 1).map((r) => r.v));
       const vMin = Math.min(...smooth);
       voltageStart = readings[0]!.v;
@@ -99,7 +102,7 @@ export function analyzeBattery(log: ParsedLog): BatteryAnalysis {
       if (ai > peak) peak = ai;
       n++;
       if (i > 0) {
-        const dt = (t[i]! - t[i - 1]!);
+        const dt = t[i]! - t[i - 1]!;
         if (dt > 0 && dt < 5 /* clamp suspicious gaps */) {
           const ap = a[i - 1]!;
           if (Number.isFinite(ap)) charge += ((ai + ap) / 2) * dt;
@@ -110,7 +113,7 @@ export function analyzeBattery(log: ParsedLog): BatteryAnalysis {
       meanCurrentA = sum / n;
       rmsCurrentA = Math.sqrt(sumSq / n);
       peakCurrentA = peak;
-      mAhUsed = (charge / 3.6); // A·s → mAh
+      mAhUsed = charge / 3.6; // A·s → mAh
     }
   }
 
@@ -183,9 +186,15 @@ function fitInternalResistance(slow: SlowFrameSeries): number | null {
   const mt = rows.reduce((s, r) => s + r[0], 0) / n;
   const ma = rows.reduce((s, r) => s + r[1], 0) / n;
   const mv = rows.reduce((s, r) => s + r[2], 0) / n;
-  let stt = 0, saa = 0, sta = 0, stv = 0, sav = 0;
+  let stt = 0,
+    saa = 0,
+    sta = 0,
+    stv = 0,
+    sav = 0;
   for (const [t, a, v] of rows) {
-    const dt = t - mt, da = a - ma, dv = v - mv;
+    const dt = t - mt,
+      da = a - ma,
+      dv = v - mv;
     stt += dt * dt;
     saa += da * da;
     sta += dt * da;
@@ -203,7 +212,9 @@ function fitInternalResistance(slow: SlowFrameSeries): number | null {
 
 /** Mean current over the top 25% of readings. */
 function highLoadCurrent(amps: Float32Array): number {
-  const xs = Array.from(amps).filter(Number.isFinite).sort((a, b) => a - b);
+  const xs = Array.from(amps)
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b);
   const top = xs.slice(Math.floor(xs.length * 0.75));
 
   return top.length > 0 ? top.reduce((s, x) => s + x, 0) / top.length : 0;

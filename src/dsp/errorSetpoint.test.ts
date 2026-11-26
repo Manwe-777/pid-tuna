@@ -5,7 +5,14 @@ import { stickSetpoint } from './testing/stickSetpoint';
 
 const FS = 2000;
 const LAG = 12;
-const sp = stickSetpoint({ seconds: 60, sampleRateHz: FS, amplitude: 600, holdMs: [80, 400], smoothingHz: 10, seed: 3 });
+const sp = stickSetpoint({
+  seconds: 60,
+  sampleRateHz: FS,
+  amplitude: 600,
+  holdMs: [80, 400],
+  smoothingHz: 10,
+  seed: 3,
+});
 
 /** Gyro that reaches `gain` of setpoint, LAG samples late. */
 const follower = (gain: number) => Float32Array.from(sp, (_, i) => (i >= LAG ? gain * sp[i - LAG]! : 0));

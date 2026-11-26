@@ -12,7 +12,17 @@ const NOISE_LEVELS = [
 ];
 
 /** The chain's response to a step, an impulse or a chirp, at the gyro loop rate. */
-export function TestSignalPlot({ chain, loopHz, inputColor, outputColor }: { chain: FilterSpec[]; loopHz: number; inputColor: string; outputColor: string }) {
+export function TestSignalPlot({
+  chain,
+  loopHz,
+  inputColor,
+  outputColor,
+}: {
+  chain: FilterSpec[];
+  loopHz: number;
+  inputColor: string;
+  outputColor: string;
+}) {
   const [kind, setKind] = useState<TestSignalKind>('step');
   const [startHz, setStartHz] = useState(0);
   const [endHz, setEndHz] = useState(Math.min(1000, Math.floor(loopHz / 2)));
@@ -41,7 +51,13 @@ export function TestSignalPlot({ chain, loopHz, inputColor, outputColor }: { cha
           <>
             <Field label="From" unit="Hz" value={startHz} onChange={setStartHz} />
             <Field label="to" unit="Hz" value={endHz} onChange={setEndHz} />
-            <Field label="Over" unit="s" value={duration} step={0.1} onChange={(v) => setDuration(Math.min(2, Math.max(0.05, v)))} />
+            <Field
+              label="Over"
+              unit="s"
+              value={duration}
+              step={0.1}
+              onChange={(v) => setDuration(Math.min(2, Math.max(0.05, v)))}
+            />
             <label>
               Noise
               <select value={noise} onChange={(e) => setNoise(Number.parseFloat(e.target.value))}>
@@ -72,7 +88,19 @@ export function TestSignalPlot({ chain, loopHz, inputColor, outputColor }: { cha
   );
 }
 
-function Field({ label, unit, value, step = 1, onChange }: { label: string; unit: string; value: number; step?: number; onChange: (v: number) => void }) {
+function Field({
+  label,
+  unit,
+  value,
+  step = 1,
+  onChange,
+}: {
+  label: string;
+  unit: string;
+  value: number;
+  step?: number;
+  onChange: (v: number) => void;
+}) {
   return (
     <label>
       {label}

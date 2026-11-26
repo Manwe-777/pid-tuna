@@ -56,7 +56,15 @@ export function StepControls({ settings, onChange, mergeToggle }: Props) {
   return (
     <div className="step-controls">
       <div className="controls step-controls__row">
-        <NumberField label="Window" unit="ms" value={settings.windowMs} min={250} max={5000} step={250} onChange={(v) => set('windowMs', v)} />
+        <NumberField
+          label="Window"
+          unit="ms"
+          value={settings.windowMs}
+          min={250}
+          max={5000}
+          step={250}
+          onChange={(v) => set('windowMs', v)}
+        />
         <NumberField
           label="Stick input"
           unit="deg/s"
@@ -89,7 +97,11 @@ export function StepControls({ settings, onChange, mergeToggle }: Props) {
           onChange={(v) => set('minThrottle', v)}
         />
         <label title="Skip windows where a motor sits at its lowest or highest output: the mixer has no headroom left">
-          <input type="checkbox" checked={settings.excludeSaturation} onChange={(e) => set('excludeSaturation', e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={settings.excludeSaturation}
+            onChange={(e) => set('excludeSaturation', e.target.checked)}
+          />
           Skip saturated motors
         </label>
         <button
@@ -114,7 +126,11 @@ export function StepControls({ settings, onChange, mergeToggle }: Props) {
 
       <div className="controls step-controls__row">
         <label>
-          <input type="checkbox" checked={settings.showSegments} onChange={(e) => set('showSegments', e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={settings.showSegments}
+            onChange={(e) => set('showSegments', e.target.checked)}
+          />
           Windows
         </label>
         <label title="Band of ±1 standard deviation of the single-window shapes around the estimate">
@@ -122,7 +138,11 @@ export function StepControls({ settings, onChange, mergeToggle }: Props) {
           ±σ band
         </label>
         <label title="Closed-loop tracking and disturbance sensitivity against frequency">
-          <input type="checkbox" checked={settings.showFrequency} onChange={(e) => set('showFrequency', e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={settings.showFrequency}
+            onChange={(e) => set('showFrequency', e.target.checked)}
+          />
           Frequency response
         </label>
         <label>
@@ -137,8 +157,14 @@ export function StepControls({ settings, onChange, mergeToggle }: Props) {
         </label>
         <label>
           Compare
-          <MetricSelect value={settings.dotMetrics[0]} onChange={(k) => set('dotMetrics', [k, settings.dotMetrics[1]])} />
-          <MetricSelect value={settings.dotMetrics[1]} onChange={(k) => set('dotMetrics', [settings.dotMetrics[0], k])} />
+          <MetricSelect
+            value={settings.dotMetrics[0]}
+            onChange={(k) => set('dotMetrics', [k, settings.dotMetrics[1]])}
+          />
+          <MetricSelect
+            value={settings.dotMetrics[1]}
+            onChange={(k) => set('dotMetrics', [settings.dotMetrics[0], k])}
+          />
         </label>
       </div>
 

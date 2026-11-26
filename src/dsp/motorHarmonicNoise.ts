@@ -46,7 +46,12 @@ export function motorHarmonicNoise(
   const smoothBins = options.smoothBins ?? 5;
   const segLen = Math.max(16, Math.round(sampleRateHz * (options.segmentSec ?? 0.3)));
   const hop = Math.max(1, Math.round(segLen / 2));
-  const empty = Array.from({ length: harmonics }, (_, i) => ({ harmonic: i + 1, meanDb: null, sdDb: null, segments: 0 }));
+  const empty = Array.from({ length: harmonics }, (_, i) => ({
+    harmonic: i + 1,
+    meanDb: null,
+    sdDb: null,
+    segments: 0,
+  }));
   if (signal.length < segLen || motorHz.length === 0 || sampleRateHz <= 0) return empty;
 
   let size = 1;

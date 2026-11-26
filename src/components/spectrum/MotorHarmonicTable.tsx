@@ -30,7 +30,9 @@ export function MotorHarmonicTable({ axes }: { axes: AxisHarmonicNoise[] }) {
 }
 
 function AxisRows({ axis, data }: { axis: number; data: AxisHarmonicNoise }) {
-  const rows: { label: string; cells: string[]; muted?: boolean }[] = [{ label: 'Gyro', cells: data.filtered.map(level) }];
+  const rows: { label: string; cells: string[]; muted?: boolean }[] = [
+    { label: 'Gyro', cells: data.filtered.map(level) },
+  ];
 
   if (data.unfiltered) {
     rows.push({ label: 'Unfiltered', cells: data.unfiltered.map(level) });

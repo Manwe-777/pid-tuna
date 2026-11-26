@@ -73,11 +73,11 @@ pnpm tauri:build
 
 This runs `pnpm build` first (which produces `dist/`), then compiles Rust in `--release` mode and bundles installers. Outputs land in `src-tauri/target/release/bundle/`:
 
-| Platform | Default output(s) |
-|---|---|
-| macOS  | `bundle/dmg/PIDTuna_<version>_<arch>.dmg`, `bundle/macos/PIDTuna.app` |
-| Windows | `bundle/msi/PIDTuna_<version>_x64_en-US.msi`, `bundle/nsis/PIDTuna_<version>_x64-setup.exe` |
-| Linux  | `bundle/appimage/PIDTuna_<version>_amd64.AppImage`, `bundle/deb/...deb`, `bundle/rpm/...rpm` |
+| Platform | Default output(s)                                                                            |
+| -------- | -------------------------------------------------------------------------------------------- |
+| macOS    | `bundle/dmg/PIDTuna_<version>_<arch>.dmg`, `bundle/macos/PIDTuna.app`                        |
+| Windows  | `bundle/msi/PIDTuna_<version>_x64_en-US.msi`, `bundle/nsis/PIDTuna_<version>_x64-setup.exe`  |
+| Linux    | `bundle/appimage/PIDTuna_<version>_amd64.AppImage`, `bundle/deb/...deb`, `bundle/rpm/...rpm` |
 
 For a macOS universal (Intel + Apple Silicon) binary:
 
@@ -96,7 +96,7 @@ PIDTuna has no automated test suite right now. To verify a change locally:
 
 1. **`pnpm typecheck`** — catches TypeScript errors.
 2. **`pnpm build`** — catches bundler errors (production-mode rollup).
-3. **`pnpm dev`** — load a `.bbl`/`.bfl` log via the sidebar's *Add log* button and exercise the relevant tab.
+3. **`pnpm dev`** — load a `.bbl`/`.bfl` log via the sidebar's _Add log_ button and exercise the relevant tab.
 4. **`pnpm tauri:dev`** — same end-to-end exercise, but inside the desktop window (catches WKWebView-specific issues that the browser misses, like the file-picker dialog path).
 
 If you've touched DSP code under `src/dsp/`, a sanity check on the algorithm output is usually fastest with a small Node harness (see how `test-wiener.mjs` is used during DSP iteration — write one, run it on `LOG00004.BFL`, delete it).

@@ -21,11 +21,7 @@ export function Sidebar({ slots, onAddFile, onToggle, onRemove, onReorder }: Sid
     <aside className="sidebar">
       <div className="sidebar__header">
         <span className="sidebar__title">Logs</span>
-        <button
-          type="button"
-          className="sidebar__add"
-          onClick={() => inputRef.current?.click()}
-        >
+        <button type="button" className="sidebar__add" onClick={() => inputRef.current?.click()}>
           + Add log
         </button>
         <input
@@ -43,7 +39,8 @@ export function Sidebar({ slots, onAddFile, onToggle, onRemove, onReorder }: Sid
       <div className="sidebar__body">
         {slots.length === 0 && (
           <div className="sidebar__empty">
-            No logs loaded yet. Click <strong>+ Add log</strong> or drag a <code>.bbl</code>/<code>.bfl</code> file here.
+            No logs loaded yet. Click <strong>+ Add log</strong> or drag a <code>.bbl</code>/<code>.bfl</code> file
+            here.
           </div>
         )}
         {slots.map((slot) => (
@@ -98,17 +95,16 @@ function LogCard({
   onDragEnd?: () => void;
   onDrop?: () => void;
 }) {
-  const view = useMemo(
-    () => (slot.state.kind === 'ready' ? buildTuneView(slot.state.log) : null),
-    [slot.state],
-  );
+  const view = useMemo(() => (slot.state.kind === 'ready' ? buildTuneView(slot.state.log) : null), [slot.state]);
 
   const className = [
     'log-card',
     slot.enabled ? '' : 'log-card--off',
     dragging ? 'log-card--dragging' : '',
     dropTarget ? 'log-card--drop-target' : '',
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div
@@ -153,9 +149,11 @@ function LogCard({
         />
         <DashSwatch dashIndex={slot.dashIndex} />
         <span className="log-card__name">
-          {slot.state.kind === 'parsing' ? slot.state.fileName
-            : slot.state.kind === 'ready' ? slot.state.log.fileName
-            : slot.state.fileName}
+          {slot.state.kind === 'parsing'
+            ? slot.state.fileName
+            : slot.state.kind === 'ready'
+              ? slot.state.log.fileName
+              : slot.state.fileName}
         </span>
         <button type="button" className="log-card__remove" onClick={onRemove} title="Remove">
           ✕
@@ -166,9 +164,7 @@ function LogCard({
           Parsing — {(slot.state.progress * 100).toFixed(0)}% ({slot.state.rows.toLocaleString()} rows)
         </div>
       )}
-      {slot.state.kind === 'error' && (
-        <div className="log-card__error">{slot.state.message}</div>
-      )}
+      {slot.state.kind === 'error' && <div className="log-card__error">{slot.state.message}</div>}
       {view && (
         <div className="log-card__pid" title="P · I · D · D-max · F">
           {AXIS_NAMES.map((name, i) => {
@@ -198,15 +194,7 @@ function DashSwatch({ dashIndex }: { dashIndex: number }) {
   const color = LOG_COLORS[dashIndex % LOG_COLORS.length]!;
   return (
     <svg width="22" height="6" className="log-card__dash" aria-hidden>
-      <line
-        x1="1"
-        y1="3"
-        x2="21"
-        y2="3"
-        stroke={color}
-        strokeWidth="2"
-        strokeDasharray={dashAttr}
-      />
+      <line x1="1" y1="3" x2="21" y2="3" stroke={color} strokeWidth="2" strokeDasharray={dashAttr} />
     </svg>
   );
 }

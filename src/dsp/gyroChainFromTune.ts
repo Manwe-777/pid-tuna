@@ -21,7 +21,8 @@ export function gyroChainFromTune(view: TuneView, ctx: FilterDelayContext = {}):
   };
   const notch = (hz: number | undefined, cutoff: number | undefined) => {
     // Betaflight's Q = centre·cutoff / (centre² − cutoff²); the simulator uses Q = centre / bandwidth.
-    if (hz && cutoff && hz > cutoff && cutoff > 0) push({ ...base, type: 'notch', cutoffHz: hz, bandwidth: (hz * hz - cutoff * cutoff) / cutoff });
+    if (hz && cutoff && hz > cutoff && cutoff > 0)
+      push({ ...base, type: 'notch', cutoffHz: hz, bandwidth: (hz * hz - cutoff * cutoff) / cutoff });
   };
 
   lpf(view.gyroDynRange?.min ?? view.gyroLpf1Hz, view.gyroLpf1Type);
@@ -45,7 +46,13 @@ export function gyroChainFromTune(view: TuneView, ctx: FilterDelayContext = {}):
   }
 
   if ((view.dynNotchCount ?? 0) > 0 && view.dynNotchMin != null) {
-    push({ ...base, type: 'dynNotch', cutoffHz: view.dynNotchMin, bfQ: view.dynNotchQ ?? 300, count: view.dynNotchCount });
+    push({
+      ...base,
+      type: 'dynNotch',
+      cutoffHz: view.dynNotchMin,
+      bfQ: view.dynNotchQ ?? 300,
+      count: view.dynNotchCount,
+    });
   }
 
   return chain;

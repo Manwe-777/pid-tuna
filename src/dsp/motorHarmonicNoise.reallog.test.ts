@@ -29,9 +29,14 @@ describe.skipIf(!available)('motor harmonic noise compared with PIDtoolbox', () 
   test.each([
     ['gyro', 'gyroFilt', 0.3],
     ['unfiltered', 'gyroRaw', 0.75],
-  ] as const)('roll %s noise at each harmonic is PIDtoolbox’s plus the window-power offset, within %f dB', async (key, field, tolerance) => {
-    const log = (await loaded)!;
-    const levels = motorHarmonicNoise(log[field][0]!, motorHzSeries(log)!, log.setup.sampleRateHz);
-    levels.forEach((h, i) => expect(Math.abs(h.meanDb! - (PIDTOOLBOX[key][i]! + WINDOW_POWER_DB))).toBeLessThan(tolerance));
-  });
+  ] as const)(
+    'roll %s noise at each harmonic is PIDtoolbox’s plus the window-power offset, within %f dB',
+    async (key, field, tolerance) => {
+      const log = (await loaded)!;
+      const levels = motorHarmonicNoise(log[field][0]!, motorHzSeries(log)!, log.setup.sampleRateHz);
+      levels.forEach((h, i) =>
+        expect(Math.abs(h.meanDb! - (PIDTOOLBOX[key][i]! + WINDOW_POWER_DB))).toBeLessThan(tolerance),
+      );
+    },
+  );
 });

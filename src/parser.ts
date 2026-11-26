@@ -40,9 +40,7 @@ export async function parseLog(
   // version strings (e.g. "2026.6.0-alpha") and debug modes newer than BF 4.4.
   // Patch both headers while preserving byte length; stash the real values for
   // display.
-  const { patched, originalFirmwareLine, originalDebugMode } = patchHeaders(
-    new Uint8Array(rawBuffer),
-  );
+  const { patched, originalFirmwareLine, originalDebugMode } = patchHeaders(new Uint8Array(rawBuffer));
 
   const parser = await getParser();
   const logFile = parser.loadFile(patched);
@@ -112,11 +110,15 @@ export async function parseLog(
       const f = event.data.fields;
       slowTime.push(lastMainTime);
       const vb = f.get('vbatLatest');
-      if (vb !== undefined) { slowVbat.push(vb); sawSlowVbat = true; }
-      else slowVbat.push(NaN);
+      if (vb !== undefined) {
+        slowVbat.push(vb);
+        sawSlowVbat = true;
+      } else slowVbat.push(NaN);
       const am = f.get('amperageLatest');
-      if (am !== undefined) { slowAmperage.push(am); sawSlowAmperage = true; }
-      else slowAmperage.push(NaN);
+      if (am !== undefined) {
+        slowAmperage.push(am);
+        sawSlowAmperage = true;
+      } else slowAmperage.push(NaN);
     } else if (event.kind === ParserEventKind.GpsFrame) {
       const f = event.data.fields;
       gpsTime.push(event.data.time);
@@ -209,11 +211,7 @@ export async function parseLog(
   const rawSource = rawGyroSource(cols.has('gyroUnfilt[0]'), cols.has('debug[0]'), setup.debugMode ?? '');
   const presence: DataPresence = {
     gyroRaw: rawSource != null,
-    pidTerms:
-      cols.has('axisP[0]') ||
-      cols.has('axisI[0]') ||
-      cols.has('axisD[0]') ||
-      cols.has('axisF[0]'),
+    pidTerms: cols.has('axisP[0]') || cols.has('axisI[0]') || cols.has('axisD[0]') || cols.has('axisF[0]'),
     iTerm: cols.has('axisI[0]'),
     motors: motor.length > 0,
     eRpm: eRpm.length > 0,
@@ -232,10 +230,7 @@ export async function parseLog(
     gyroRaw: triplet(rawSource ?? 'gyroUnfilt'),
     pTerm: triplet('axisP'),
     iTerm: triplet('axisI'),
-    dTerm: [
-      toF32(cols.get('axisD[0]'), rowCount),
-      toF32(cols.get('axisD[1]'), rowCount),
-    ] as const,
+    dTerm: [toF32(cols.get('axisD[0]'), rowCount), toF32(cols.get('axisD[1]'), rowCount)] as const,
     fTerm: triplet('axisF'),
     setpoint: quad(setpointPrefix),
     rcCommand: quad('rcCommand'),
@@ -319,7 +314,7 @@ function gpsAltitudeMetersMultiplier(alts: number[]): number {
     if (mxRaw > 7800 && mul === 0.01 && mxScaled < 180) c += 12_500;
     if (mxRaw > 7800 && mul === 0.01 && med < 180) c += 9000;
     // Mild preference for middling AMSL / AGL-ish medians vs sea-level artefacts.
-    if (med > 260 && med < 6500 && mxScaled < 8500) c -= (med > 520 ? 40 : 0);
+    if (med > 260 && med < 6500 && mxScaled < 8500) c -= med > 520 ? 40 : 0;
 
     return c;
   }
@@ -440,9 +435,7 @@ const PARSER_FRIENDLY_VERSION = '4.4.0';
  * (firmware name, board suffix, etc.) is left alone. Length is preserved so all
  * downstream byte offsets remain valid.
  */
-function patchFirmwareVersion(
-  input: Uint8Array,
-): { patched: Uint8Array; originalFirmwareLine: string | null } {
+function patchFirmwareVersion(input: Uint8Array): { patched: Uint8Array; originalFirmwareLine: string | null } {
   const scanLen = Math.min(input.byteLength, HEADER_SCAN_BYTES);
   const decoder = new TextDecoder('latin1');
   const head = decoder.decode(input.subarray(0, scanLen));
@@ -502,9 +495,7 @@ function patchFirmwareVersion(
  * display. Leading zeros keep the byte length identical ("97" → "00"); Rust's
  * integer parser accepts them, trailing spaces it would not.
  */
-function patchDebugMode(
-  input: Uint8Array,
-): { patched: Uint8Array; originalDebugMode: number | null } {
+function patchDebugMode(input: Uint8Array): { patched: Uint8Array; originalDebugMode: number | null } {
   const scanLen = Math.min(input.byteLength, HEADER_SCAN_BYTES);
   const decoder = new TextDecoder('latin1');
   const head = decoder.decode(input.subarray(0, scanLen));
@@ -568,7 +559,11 @@ const MAIN_FRAME_BATTERY_HZ = 10;
  * than in slow frames, in 0.01 V and 0.01 A. Thin them to about 10 Hz and
  * convert to volts and amps so battery analyses see the same data either way.
  */
-function batteryFromMainFrames(time: Float32Array, vbat: number[] | undefined, amperage: number[] | undefined): SlowFrameSeries {
+function batteryFromMainFrames(
+  time: Float32Array,
+  vbat: number[] | undefined,
+  amperage: number[] | undefined,
+): SlowFrameSeries {
   const n = time.length;
   const span = n > 1 ? time[n - 1]! - time[0]! : 0;
   const step = span > 0 ? Math.max(1, Math.round(n / (span * MAIN_FRAME_BATTERY_HZ))) : 1;
@@ -581,4 +576,3 @@ function batteryFromMainFrames(time: Float32Array, vbat: number[] | undefined, a
     amperage: amperage ? Float32Array.from(idx, (i) => (amperage[i] ?? Number.NaN) / 100) : new Float32Array(),
   };
 }
-

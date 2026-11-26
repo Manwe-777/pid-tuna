@@ -19,10 +19,38 @@ interface Row {
 }
 
 const ROWS: Row[] = [
-  { key: 'Step response (rise)', metric: 'riseTimeMs', unit: ' ms', digits: 1, worst: 'max', status: (v) => (v < 30 ? 'good' : v < 50 ? 'warn' : 'bad') },
-  { key: 'Step response (overshoot)', metric: 'overshootPct', unit: '%', digits: 1, worst: 'max', status: (v) => (v < 10 ? 'good' : v < 20 ? 'warn' : 'bad') },
-  { key: 'Sensitivity peak', metric: 'sensitivityPeakDb', unit: ' dB', digits: 1, worst: 'max', status: (v) => (v < 4 ? 'good' : v < 6 ? 'warn' : 'bad') },
-  { key: 'Tracking level', metric: 'steadyState', unit: '', digits: 2, worst: 'min', status: (v) => (v >= 0.95 ? 'good' : v >= 0.85 ? 'warn' : 'bad') },
+  {
+    key: 'Step response (rise)',
+    metric: 'riseTimeMs',
+    unit: ' ms',
+    digits: 1,
+    worst: 'max',
+    status: (v) => (v < 30 ? 'good' : v < 50 ? 'warn' : 'bad'),
+  },
+  {
+    key: 'Step response (overshoot)',
+    metric: 'overshootPct',
+    unit: '%',
+    digits: 1,
+    worst: 'max',
+    status: (v) => (v < 10 ? 'good' : v < 20 ? 'warn' : 'bad'),
+  },
+  {
+    key: 'Sensitivity peak',
+    metric: 'sensitivityPeakDb',
+    unit: ' dB',
+    digits: 1,
+    worst: 'max',
+    status: (v) => (v < 4 ? 'good' : v < 6 ? 'warn' : 'bad'),
+  },
+  {
+    key: 'Tracking level',
+    metric: 'steadyState',
+    unit: '',
+    digits: 2,
+    worst: 'min',
+    status: (v) => (v >= 0.95 ? 'good' : v >= 0.85 ? 'warn' : 'bad'),
+  },
 ];
 
 /**

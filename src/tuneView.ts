@@ -59,7 +59,10 @@ export function buildTuneView(log: ParsedLog): TuneView {
   const list = (k: string): number[] => {
     const v = h[k];
     if (!v) return [];
-    return v.split(',').map((x) => Number.parseFloat(x.trim())).filter(Number.isFinite);
+    return v
+      .split(',')
+      .map((x) => Number.parseFloat(x.trim()))
+      .filter(Number.isFinite);
   };
 
   const axisKeys = ['roll', 'pitch', 'yaw'] as const;

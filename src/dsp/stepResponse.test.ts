@@ -208,13 +208,22 @@ describe('frequency-domain metrics', () => {
   });
 
   test('a more oscillatory tune shows a higher sensitivity peak', () => {
-    expect(estimate(UNDERDAMPED).metrics.sensitivityPeakDb!).toBeGreaterThan(estimate(ACRO).metrics.sensitivityPeakDb! + 2);
+    expect(estimate(UNDERDAMPED).metrics.sensitivityPeakDb!).toBeGreaterThan(
+      estimate(ACRO).metrics.sensitivityPeakDb! + 2,
+    );
   });
 
   test('confidence drops when gyro moves for reasons setpoint does not explain', () => {
     const f = syntheticFlight({ plant: ACRO });
     // Same spectrum and power as the setpoint, so coherence should fall to about 1/(1 + 1) = 0.5.
-    const wind = stickSetpoint({ seconds: 60, sampleRateHz: 2000, amplitude: 600, holdMs: [80, 400], smoothingHz: 30, seed: 99 });
+    const wind = stickSetpoint({
+      seconds: 60,
+      sampleRateHz: 2000,
+      amplitude: 600,
+      holdMs: [80, 400],
+      smoothingHz: 30,
+      seed: 99,
+    });
     const gusty = f.gyro.map((v, i) => v + wind[i]!);
     const clean = computeStepResponse(f.setpoint, f.gyro, 500).metrics.confidence!;
     const disturbed = computeStepResponse(f.setpoint, gusty, 500).metrics.confidence!;

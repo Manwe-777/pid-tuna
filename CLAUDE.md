@@ -116,12 +116,12 @@ is the source of truth.
 Four tabs already do this: **Scorecard**, **Step response**, **Full spectrum**,
 **Motors balance**. Each uses a matching combine primitive from the dsp module:
 
-| Tab | Primitive |
-|---|---|
-| Step response | `combineStepResponses` (`dsp/stepResponse.ts`) — pools accepted segments |
-| Full spectrum | `combinePsds` (`dsp/spectrogram.ts`) — linear-power weighted Welch combine |
+| Tab            | Primitive                                                                            |
+| -------------- | ------------------------------------------------------------------------------------ |
+| Step response  | `combineStepResponses` (`dsp/stepResponse.ts`) — pools accepted segments             |
+| Full spectrum  | `combinePsds` (`dsp/spectrogram.ts`) — linear-power weighted Welch combine           |
 | Motors balance | `combineMotorBalances` (`dsp/motorBalance.ts`) — pools stats + PSDs, re-derives axes |
-| Scorecard | `buildMergedScorecard` (`dsp/scorecard.ts`) — composes the three above |
+| Scorecard      | `buildMergedScorecard` (`dsp/scorecard.ts`) — composes the three above               |
 
 UI uses the shared `<MergeLogsToggle>` and `makeMergedSlot(entries)` helpers
 in `App.tsx`. When adding another mergeable tab, write a `combineXxx()` in the
@@ -133,14 +133,14 @@ flags), then drop the toggle in.
 
 The same source ships under three base paths:
 
-| Target | Base | How set |
-|---|---|---|
-| Local dev / preview / Tauri | `/` | Vite default |
-| GitHub Pages | `/pid-tuna/` | `VITE_BASE_PATH=/pid-tuna/` env in `pages.yml` |
+| Target                      | Base         | How set                                        |
+| --------------------------- | ------------ | ---------------------------------------------- |
+| Local dev / preview / Tauri | `/`          | Vite default                                   |
+| GitHub Pages                | `/pid-tuna/` | `VITE_BASE_PATH=/pid-tuna/` env in `pages.yml` |
 
 For asset references in `index.html`, use absolute paths starting with `/` —
 Vite rewrites these. **For asset references in TSX**, use
-`${import.meta.env.BASE_URL}<path>` since Vite does *not* rewrite paths in JSX
+`${import.meta.env.BASE_URL}<path>` since Vite does _not_ rewrite paths in JSX
 strings. See the header logo in `App.tsx` for the pattern.
 
 ### Per-log compute → mean → metrics pipeline
@@ -168,11 +168,11 @@ scorecard row that scores per-axis, exclude yaw the same way.
 
 - Conventional Commits (`feat:`, `fix:`, `chore:`, `refactor:`, `style:`,
   `test:`, `ci:`, `docs:`), imperative subject line.
-- One commit per logical change, with a body explaining *why* when it isn't
+- One commit per logical change, with a body explaining _why_ when it isn't
   obvious.
 - No AI attribution: no `Co-Authored-By` or session trailers.
 - Don't rewrite history of pushed commits. Tags are mostly fine to move
-  *before* a release is published; once published, never.
+  _before_ a release is published; once published, never.
 
 ## Common gotchas
 

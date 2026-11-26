@@ -31,7 +31,9 @@ describe('step response scorecard rows', () => {
   });
 
   test('sensitivity peak follows PIDtoolbox’s 4 dB caution and 6 dB severe marks', () => {
-    const at = (db: number) => row(stepScoreEntries([axis(40, { sensitivityPeakDb: db }), axis(40, {}), axis(40, {})]), 'Sensitivity peak').status;
+    const at = (db: number) =>
+      row(stepScoreEntries([axis(40, { sensitivityPeakDb: db }), axis(40, {}), axis(40, {})]), 'Sensitivity peak')
+        .status;
     expect([at(3.9), at(4.5), at(6.5)]).toEqual(['good', 'warn', 'bad']);
   });
 

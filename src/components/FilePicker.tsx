@@ -23,9 +23,7 @@ async function pickFileViaTauri(): Promise<File | null> {
   const selected = await open({
     multiple: false,
     directory: false,
-    filters: [
-      { name: 'Blackbox log', extensions: ['bbl', 'bfl', 'BBL', 'BFL', 'csv'] },
-    ],
+    filters: [{ name: 'Blackbox log', extensions: ['bbl', 'bfl', 'BBL', 'BFL', 'csv'] }],
   });
   if (!selected || typeof selected !== 'string') return null;
   const bytes = await readFile(selected);
