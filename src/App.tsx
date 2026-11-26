@@ -28,12 +28,9 @@ import {
   type FilterSpec,
   type FilterType,
 } from './dsp/filters';
-import {
-  computeFilterDelays,
-  computeXcorrLatency,
-  type FilterDelayEntry,
-  type LatencyResult,
-} from './dsp/latency';
+import { type FilterDelayEntry } from './dsp/filterDelays';
+import { filterDelaysForLog } from './dsp/filterDelaysForLog';
+import { computeXcorrLatency, type LatencyResult } from './dsp/latency';
 import { analyzeBattery, type BatteryAnalysis } from './dsp/battery';
 import { analyzeGps, type GpsAnalysis } from './dsp/gps';
 import { buildValidGpsSamples } from './dsp/gpsPlayback';
@@ -3356,8 +3353,7 @@ function LatencySection({ entries }: { entries: LogEntry[] }) {
         const r = computeXcorrLatency(sp, gy, log.setup.sampleRateHz);
         return { axis, ...r };
       });
-      const view = buildTuneView(log);
-      const delays = computeFilterDelays(view);
+      const delays = filterDelaysForLog(log);
       return { slot, log, axes, delays };
     });
   }, [entries]);
@@ -3367,8 +3363,8 @@ function LatencySection({ entries }: { entries: LogEntry[] }) {
       <h2>Latency</h2>
       <p className="muted">
         Setpoint→gyro tracking delay via cross-correlation — works on any flight data
-        (no clean step needed). The filter breakdown below shows how much of that delay
-        is allocated by each filter near DC.
+        (no clean step needed). The filter breakdown below shows how much delay each filter
+        adds in the band the PID loop controls.
       </p>
 
       <div className="diff-section">
@@ -3412,14 +3408,14 @@ function LatencySection({ entries }: { entries: LogEntry[] }) {
       </div>
 
       <div className="diff-section">
-        <h3>Filter group delay (near DC)</h3>
+        <h3>Filter delay at {perLog[0]?.delays.referenceHz ?? 30} Hz</h3>
         {perLog.map(({ slot, delays }) => (
           <div key={slot.id} className="diff-log">
             <h4 className="diff-log__head">
               {multi && <span className="diff-log__chip" style={{ background: colorFor(slot) }} />}
               <span className="diff-log__name">{shortName(slot)}</span>
               <span className="diff-log__vs">
-                total {delays.totalGroupDelayMs.toFixed(2)} ms
+                gyro {delays.gyroDelayMs.toFixed(2)} ms · D path {delays.dPathDelayMs.toFixed(2)} ms
               </span>
             </h4>
             {delays.entries.length === 0 ? (
@@ -3430,8 +3426,10 @@ function LatencySection({ entries }: { entries: LogEntry[] }) {
           </div>
         ))}
         <p className="muted" style={{ fontSize: '0.78rem', marginTop: '0.5rem' }}>
-          Notches contribute ~0 ms at DC — their delay budget hits at the notch center. RPM and
-          dynamic notch filters track flight state and aren&apos;t modeled here.
+          Computed with Betaflight&apos;s filter maths: gyro filters at the gyro loop rate, D-term
+          filters at the PID loop rate. Gyro filters delay every PID term; D-term filters only add to
+          the D path. Dynamic filters are shown where they add the most delay, and RPM notches at the
+          log&apos;s median motor frequency when RPM telemetry is logged.
         </p>
       </div>
     </section>
@@ -3459,18 +3457,23 @@ function FilterDelayTable({ entries }: { entries: FilterDelayEntry[] }) {
       <thead>
         <tr>
           <th>Filter</th>
-          <th>Cutoff</th>
+          <th>Path</th>
+          <th>Cutoff / centre</th>
           <th>Type</th>
-          <th>Group delay</th>
+          <th>Delay</th>
         </tr>
       </thead>
       <tbody>
         {entries.map((e, i) => (
           <tr key={`${e.label}-${i}`}>
             <th>{e.label}</th>
-            <td>{e.cutoffHz > 0 ? `${e.cutoffHz} Hz` : '—'}{e.dynamic && ' (dyn)'}</td>
+            <td className="muted">{e.chain === 'gyro' ? 'gyro' : 'D only'}</td>
+            <td title={e.note}>
+              {e.cutoffHz > 0 ? `${e.cutoffHz} Hz` : '—'}
+              {e.dynamic && <span className="muted"> (dyn)</span>}
+            </td>
             <td className="muted">{e.type}</td>
-            <td>{e.groupDelayMs > 0 ? `${e.groupDelayMs.toFixed(2)} ms` : <span className="muted">~0</span>}</td>
+            <td>{e.delayMs >= 0.005 ? `${e.delayMs.toFixed(2)} ms` : <span className="muted">~0</span>}</td>
           </tr>
         ))}
       </tbody>
@@ -3668,6 +3671,7 @@ function StepResponseAxisPanel({
       label: shortName(p.slot),
       color: colorFor(p.slot),
       value: p.data.metrics[key],
+      spread: p.data.metricSpread[key] ?? null,
     }));
     return { option, dots };
   });
@@ -3715,6 +3719,8 @@ function StepResponseAxisPanel({
               title={`${axisName} ${option.label.toLowerCase()}`}
               unit={option.unit || undefined}
               referenceY={option.reference}
+              yMin={option.axis?.[0]}
+              yMax={option.axis?.[1]}
               height={220}
             />
           ))}

@@ -240,3 +240,17 @@ describe('choosing which parts of the flight count', () => {
     expect(Math.max(...r.spread)).toBeGreaterThan(r.spread[0]!);
   });
 });
+
+describe('per-window spread of the metrics', () => {
+  test('noisier gyro widens the spread of the rise time across windows', () => {
+    const quiet = estimate(ACRO, { noise: 5, motorTone: 0 }).metricSpread.riseTimeMs!;
+    const loud = estimate(ACRO, { noise: 120, motorTone: 60 }).metricSpread.riseTimeMs!;
+    expect(quiet).toBeGreaterThan(0);
+    expect(loud).toBeGreaterThan(quiet);
+  });
+
+  test('a single window has no spread', () => {
+    const f = syntheticFlight({ plant: ACRO, seconds: 2.5 });
+    expect(computeStepResponse(f.setpoint, f.gyro, 500, { overlap: 0 }).metricSpread).toEqual({});
+  });
+});

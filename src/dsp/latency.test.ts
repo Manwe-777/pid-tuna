@@ -1,40 +1,8 @@
 import { describe, expect, test } from 'vitest';
 
-import type { TuneView } from '../tuneView';
-import { computeFilterDelays, computeXcorrLatency } from './latency';
+import { computeXcorrLatency } from './latency';
 import { mulberry32 } from './testing/mulberry32';
 import { stickSetpoint } from './testing/stickSetpoint';
-
-const BASE_VIEW: TuneView = { hasPid: false, pidByAxis: [], hasRates: false, rcRates: [], rcExpo: [], superRates: [] };
-
-/** Betaflight 4.3+ shifts each PT2/PT3 section up so the whole cascade is -3 dB at the set cutoff. */
-function betaflightPtnDelayMs(cutoffHz: number, order: number): number {
-  const correction = 1 / Math.sqrt(2 ** (1 / order) - 1);
-
-  return (order * 1000) / (2 * Math.PI * correction * cutoffHz);
-}
-
-describe('filter delay breakdown', () => {
-  test('a PT1 at 100 Hz delays by 1/(2π·100) s', () => {
-    const d = computeFilterDelays({ ...BASE_VIEW, gyroLpf1Hz: 100, gyroLpf1Type: 0 });
-    expect(d.entries[0]!.groupDelayMs).toBeCloseTo(1.592, 2);
-  });
-
-  test.fails("a PT2 delay matches Betaflight's cutoff-corrected PT2", () => {
-    const d = computeFilterDelays({ ...BASE_VIEW, gyroLpf1Hz: 100, gyroLpf1Type: 2 });
-    expect(d.entries[0]!.groupDelayMs).toBeCloseTo(betaflightPtnDelayMs(100, 2), 2);
-  });
-
-  test.fails("a PT3 delay matches Betaflight's cutoff-corrected PT3", () => {
-    const d = computeFilterDelays({ ...BASE_VIEW, dtermLpf1Hz: 100, dtermLpf1Type: 3 });
-    expect(d.entries[0]!.groupDelayMs).toBeCloseTo(betaflightPtnDelayMs(100, 3), 2);
-  });
-
-  test.fails('gyro and D-term filters sit in parallel paths, so the total is not their sum', () => {
-    const d = computeFilterDelays({ ...BASE_VIEW, gyroLpf1Hz: 100, gyroLpf1Type: 0, dtermLpf1Hz: 100, dtermLpf1Type: 0 });
-    expect(d.totalGroupDelayMs).toBeLessThan(d.entries[0]!.groupDelayMs + d.entries[1]!.groupDelayMs);
-  });
-});
 
 describe('cross-correlation tracking latency', () => {
   const FS = 2000;

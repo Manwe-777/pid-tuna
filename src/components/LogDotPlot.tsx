@@ -6,6 +6,8 @@ export interface LogDot {
   color: string;
   /** Null = "no data" — shown as a muted hollow ring on the baseline. */
   value: number | null;
+  /** ±1σ whisker around the value, when known. */
+  spread?: number | null;
 }
 
 export interface LogDotPlotProps {
@@ -16,7 +18,7 @@ export interface LogDotPlotProps {
   unit?: string;
   /** Optional Y reference line (e.g. 1.0 for peak). */
   referenceY?: number;
-  /** Force a minimum Y range — useful for "peak" where 0.85–1.25 is the meaningful band. */
+  /** The axis always includes this range; it grows further if values or whiskers need it. */
   yMin?: number;
   yMax?: number;
   width?: number;
@@ -49,21 +51,23 @@ export function LogDotPlot({
   const AXIS_LABEL_FILL = chrome.label;
 
   const { effYMin, effYMax, yTicks } = useMemo(() => {
-    const validValues = dots.map((d) => d.value).filter((v): v is number => v != null);
+    const extents = dots.flatMap((d) => (d.value == null ? [] : [d.value - (d.spread ?? 0), d.value + (d.spread ?? 0)]));
     let lo: number;
     let hi: number;
-    if (validValues.length === 0) {
+    if (extents.length === 0) {
       lo = yMin ?? 0;
       hi = yMax ?? 1;
     } else {
-      const dMin = Math.min(...validValues);
-      const dMax = Math.max(...validValues);
-      const pad = Math.max((dMax - dMin) * 0.25, Math.abs(dMax) * 0.05, 1);
-      lo = yMin ?? dMin - pad;
-      hi = yMax ?? dMax + pad;
+      const dMin = Math.min(...extents);
+      const dMax = Math.max(...extents);
+      const pad = Math.max((dMax - dMin) * 0.15, Math.abs(dMax) * 0.05, 1e-3);
+      lo = dMin - pad;
+      hi = dMax + pad;
+      if (yMin != null) lo = Math.min(lo, yMin);
+      if (yMax != null) hi = Math.max(hi, yMax);
       if (referenceY != null) {
-        lo = Math.min(lo, referenceY - pad * 0.5);
-        hi = Math.max(hi, referenceY + pad * 0.5);
+        lo = Math.min(lo, referenceY - pad);
+        hi = Math.max(hi, referenceY + pad);
       }
       if (hi - lo < 1e-6) { lo -= 0.5; hi += 0.5; }
     }
@@ -176,8 +180,17 @@ export function LogDotPlot({
             >
               {i + 1}
             </text>
+            {d.spread != null && d.spread > 0 && (
+              <g stroke={d.color} strokeWidth={1.5}>
+                <line x1={x} x2={x} y1={yPos(d.value - d.spread)} y2={yPos(d.value + d.spread)} />
+                <line x1={x - 5} x2={x + 5} y1={yPos(d.value - d.spread)} y2={yPos(d.value - d.spread)} />
+                <line x1={x - 5} x2={x + 5} y1={yPos(d.value + d.spread)} y2={yPos(d.value + d.spread)} />
+              </g>
+            )}
             <circle cx={x} cy={yPos(d.value)} r={5} fill={d.color} />
-            <title>{`${d.label}: ${d.value.toFixed(2)}${unit ? ' ' + unit : ''}`}</title>
+            <title>
+              {`${d.label}: ${d.value.toFixed(2)}${d.spread ? ` ± ${d.spread.toFixed(2)}` : ''}${unit ? ' ' + unit : ''}`}
+            </title>
           </g>
         );
       })}

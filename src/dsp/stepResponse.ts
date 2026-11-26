@@ -54,6 +54,11 @@ export interface StepResponseResult {
   /** Closed-loop frequency response from the pooled spectra, up to 100 Hz. */
   frequency: FrequencyResponse | null;
   metrics: StepMetrics;
+  /**
+   * Standard deviation of each time-domain metric across the single windows
+   * (shape only: windows are scaled to the pooled level, so level has none).
+   */
+  metricSpread: Partial<Record<keyof StepMetrics, number>>;
   diagnostics: StepDiagnostics;
   /** Pooled spectra, kept so results from several logs can be combined. */
   pooled: StepSpectra | null;
@@ -281,6 +286,7 @@ function finish(
     mean,
     spread: spreadAround(segments, mean),
     frequency: freq?.response ?? null,
+    metricSpread: metricSpread(time, segments, steadyFrom),
     metrics: {
       ...timeMetrics(time, mean, steadyFrom),
       bandwidthHz: freq?.metrics.bandwidthHz ?? null,
@@ -460,6 +466,27 @@ function spreadAround(segments: Float32Array[], mean: Float32Array): Float32Arra
   return out;
 }
 
+const SPREAD_KEYS = ['riseTimeMs', 'overshootPct', 'peakTimeMs', 'settlingTimeMs', 'latencyHalfMs', 'peakResponse'] as const;
+
+function metricSpread(time: Float32Array, segments: Float32Array[], steadyFrom: number): StepResultSpread {
+  if (segments.length < 2) return {};
+
+  const per = segments.map((seg) => timeMetrics(time, seg, steadyFrom));
+  const out: StepResultSpread = {};
+
+  for (const key of SPREAD_KEYS) {
+    const values = per.map((m) => m[key]).filter((v): v is number => v != null && Number.isFinite(v));
+    if (values.length < 2) continue;
+
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    out[key] = Math.sqrt(values.reduce((a, v) => a + (v - mean) ** 2, 0) / values.length);
+  }
+
+  return out;
+}
+
+type StepResultSpread = Partial<Record<keyof StepMetrics, number>>;
+
 function emptyDiagnostics(): StepDiagnostics {
   return {
     windowsTotal: 0,
@@ -480,6 +507,7 @@ function emptyResult(): StepResponseResult {
     mean: new Float32Array(0),
     spread: new Float32Array(0),
     frequency: null,
+    metricSpread: {},
     metrics: nullMetrics(),
     diagnostics: emptyDiagnostics(),
     pooled: null,

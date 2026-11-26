@@ -32,12 +32,18 @@ export interface TuneView {
   dtermNotchHz?: number;
   dtermNotchCutoff?: number;
   rpmHarmonics?: number;
+  /** Per-harmonic RPM notch weights, % (Betaflight 4.4+). */
+  rpmWeights: number[];
   rpmMinHz?: number;
   rpmQ?: number;
   dynNotchCount?: number;
   dynNotchMin?: number;
   dynNotchMax?: number;
   dynNotchQ?: number;
+  /** Gyro loop rate, Hz: gyro filters run at this rate. */
+  gyroRateHz?: number;
+  /** PID loop rate, Hz: D-term filters run at this rate. */
+  pidRateHz?: number;
 }
 
 export function buildTuneView(log: ParsedLog): TuneView {
@@ -73,10 +79,14 @@ export function buildTuneView(log: ParsedLog): TuneView {
   const superRates = list('rates');
   const hasRates = rcRates.length + rcExpo.length + superRates.length > 0;
 
-  const gyroDynMin = num('dyn_lpf_gyro_min_hz');
-  const gyroDynMax = num('dyn_lpf_gyro_max_hz');
-  const dtermDynMin = num('dyn_lpf_dterm_min_hz');
-  const dtermDynMax = num('dyn_lpf_dterm_max_hz');
+  // Betaflight 4.3+ names first, then the older ones.
+  const gyroDyn = dynRange(list('gyro_lpf1_dyn_hz'), num('dyn_lpf_gyro_min_hz'), num('dyn_lpf_gyro_max_hz'));
+  const dtermDyn = dynRange(list('dterm_lpf1_dyn_hz'), num('dyn_lpf_dterm_min_hz'), num('dyn_lpf_dterm_max_hz'));
+  const gyroNotchHz = list('gyro_notch_hz');
+  const gyroNotchCutoff = list('gyro_notch_cutoff');
+  const looptimeUs = num('looptime');
+  const gyroRateHz = looptimeUs && looptimeUs > 0 ? 1e6 / looptimeUs : undefined;
+  const pidDenom = num('pid_process_denom') ?? 1;
 
   return {
     hasPid,
@@ -85,28 +95,39 @@ export function buildTuneView(log: ParsedLog): TuneView {
     rcRates,
     rcExpo,
     superRates,
-    gyroLpf1Hz: num('gyro_lowpass_hz') ?? num('gyro_lpf_hz'),
-    gyroLpf1Type: num('gyro_lowpass_type') ?? num('gyro_lpf_type'),
-    gyroLpf2Hz: num('gyro_lowpass2_hz') ?? num('gyro_lpf2_hz'),
-    gyroLpf2Type: num('gyro_lowpass2_type') ?? num('gyro_lpf2_type'),
-    gyroDynRange: gyroDynMin != null && gyroDynMax != null ? { min: gyroDynMin, max: gyroDynMax } : undefined,
-    gyroNotch1Hz: num('gyro_notch1_hz') ?? num('gyro_notch_hz'),
-    gyroNotch1Cutoff: num('gyro_notch1_cutoff') ?? num('gyro_notch_cutoff'),
-    gyroNotch2Hz: num('gyro_notch2_hz'),
-    gyroNotch2Cutoff: num('gyro_notch2_cutoff'),
-    dtermLpf1Hz: num('dterm_lpf_hz') ?? num('dterm_lowpass_hz'),
-    dtermLpf1Type: num('dterm_lpf_type') ?? num('dterm_lowpass_type'),
-    dtermLpf2Hz: num('dterm_lpf2_hz') ?? num('dterm_lowpass2_hz'),
+    gyroLpf1Hz: num('gyro_lpf1_static_hz') ?? num('gyro_lowpass_hz') ?? num('gyro_lpf_hz'),
+    gyroLpf1Type: num('gyro_lpf1_type') ?? num('gyro_lowpass_type') ?? num('gyro_lpf_type'),
+    gyroLpf2Hz: num('gyro_lpf2_static_hz') ?? num('gyro_lowpass2_hz') ?? num('gyro_lpf2_hz'),
+    gyroLpf2Type: num('gyro_lpf2_type') ?? num('gyro_lowpass2_type'),
+    gyroDynRange: gyroDyn,
+    gyroNotch1Hz: num('gyro_notch1_hz') ?? gyroNotchHz[0],
+    gyroNotch1Cutoff: num('gyro_notch1_cutoff') ?? gyroNotchCutoff[0],
+    gyroNotch2Hz: num('gyro_notch2_hz') ?? gyroNotchHz[1],
+    gyroNotch2Cutoff: num('gyro_notch2_cutoff') ?? gyroNotchCutoff[1],
+    dtermLpf1Hz: num('dterm_lpf1_static_hz') ?? num('dterm_lpf_hz') ?? num('dterm_lowpass_hz'),
+    dtermLpf1Type: num('dterm_lpf1_type') ?? num('dterm_lpf_type') ?? num('dterm_lowpass_type'),
+    dtermLpf2Hz: num('dterm_lpf2_static_hz') ?? num('dterm_lpf2_hz') ?? num('dterm_lowpass2_hz'),
     dtermLpf2Type: num('dterm_lpf2_type') ?? num('dterm_lowpass2_type'),
-    dtermDynRange: dtermDynMin != null && dtermDynMax != null ? { min: dtermDynMin, max: dtermDynMax } : undefined,
+    dtermDynRange: dtermDyn,
     dtermNotchHz: num('dterm_notch_hz'),
     dtermNotchCutoff: num('dterm_notch_cutoff'),
     rpmHarmonics: num('rpm_filter_harmonics'),
+    rpmWeights: list('rpm_filter_weights'),
     rpmMinHz: num('rpm_filter_min_hz'),
     rpmQ: num('rpm_filter_q'),
     dynNotchCount: num('dyn_notch_count'),
     dynNotchMin: num('dyn_notch_min_hz'),
     dynNotchMax: num('dyn_notch_max_hz'),
     dynNotchQ: num('dyn_notch_q'),
+    gyroRateHz,
+    pidRateHz: gyroRateHz ? gyroRateHz / Math.max(1, pidDenom) : undefined,
   };
+}
+
+/** A dynamic lowpass is active only when its minimum cutoff is above 0. */
+function dynRange(pair: number[], oldMin: number | undefined, oldMax: number | undefined) {
+  const min = pair[0] ?? oldMin;
+  const max = pair[1] ?? oldMax;
+
+  return min != null && max != null && min > 0 ? { min, max } : undefined;
 }

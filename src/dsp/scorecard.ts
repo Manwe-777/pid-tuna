@@ -1,8 +1,8 @@
 import { AXIS_NAMES } from '../axes';
 import type { ParsedLog } from '../types';
-import { buildTuneView } from '../tuneView';
 import { analyzeBattery, type BatteryAnalysis } from './battery';
-import { computeFilterDelays, computeXcorrLatency, type LatencyResult } from './latency';
+import { filterDelaysForLog } from './filterDelaysForLog';
+import { computeXcorrLatency, type LatencyResult } from './latency';
 import { analyzeMotorBalance, combineMotorBalances, type BalanceAnalysis } from './motorBalance';
 import { combinePsds, computePsd } from './spectrogram';
 import { combineStepResponses, type StepResponseResult } from './stepResponse';
@@ -36,7 +36,6 @@ const RATED_AXES = [0, 1] as const;
 
 export function buildScorecard(log: ParsedLog): Scorecard {
   const entries: ScoreEntry[] = [];
-  const tune = buildTuneView(log);
 
   // ---- Tracking latency (per axis, xcorr) ----
   const latencies = AXIS_NAMES.map((_n, axis) =>
@@ -44,9 +43,9 @@ export function buildScorecard(log: ParsedLog): Scorecard {
   );
   entries.push(latencyEntry(latencies));
 
-  // ---- Filter group delay near DC ----
-  const delays = computeFilterDelays(tune);
-  entries.push(filterDelayEntry(delays.totalGroupDelayMs, delays.entries.length));
+  // ---- Gyro filter delay in the control band ----
+  const delays = filterDelaysForLog(log);
+  entries.push(filterDelayEntry(delays.gyroDelayMs, delays.referenceHz, delays.entries.length));
 
   // ---- Motor balance ----
   const balance = analyzeMotorBalance(log);
@@ -89,7 +88,6 @@ export function buildMergedScorecard(logs: ParsedLog[]): Scorecard {
 
   const entries: ScoreEntry[] = [];
   const reference = logs[0]!;
-  const tune = buildTuneView(reference);
 
   // ---- Tracking latency: average reliable per-axis lags across logs ----
   const meanLatencies: LatencyResult[] = AXIS_NAMES.map((_n, axis) => {
@@ -106,9 +104,9 @@ export function buildMergedScorecard(logs: ParsedLog[]): Scorecard {
   });
   entries.push(latencyEntry(meanLatencies));
 
-  // ---- Filter group delay: configuration-only, all logs share it ----
-  const delays = computeFilterDelays(tune);
-  entries.push(filterDelayEntry(delays.totalGroupDelayMs, delays.entries.length));
+  // ---- Gyro filter delay: configuration-only, the first log stands for all ----
+  const delays = filterDelaysForLog(reference);
+  entries.push(filterDelayEntry(delays.gyroDelayMs, delays.referenceHz, delays.entries.length));
 
   // ---- Motor balance: pool via combineMotorBalances ----
   const balances = logs.map((l) => analyzeMotorBalance(l));
@@ -171,14 +169,14 @@ function latencyEntry(latencies: LatencyResult[]): ScoreEntry {
   };
 }
 
-function filterDelayEntry(totalDelayMs: number, filterCount: number): ScoreEntry {
+function filterDelayEntry(gyroDelayMs: number, referenceHz: number, filterCount: number): ScoreEntry {
   const status: ScoreStatus =
-    totalDelayMs < 2.5 ? 'good' : totalDelayMs < 5 ? 'warn' : 'bad';
+    gyroDelayMs < 2.5 ? 'good' : gyroDelayMs < 5 ? 'warn' : 'bad';
   return {
-    key: 'Filter group delay',
+    key: 'Gyro filter delay',
     status,
-    value: `${totalDelayMs.toFixed(2)} ms total`,
-    detail: `${filterCount} configured filter${filterCount === 1 ? '' : 's'}`,
+    value: `${gyroDelayMs.toFixed(2)} ms at ${referenceHz} Hz`,
+    detail: `${filterCount} active filter${filterCount === 1 ? '' : 's'}`,
   };
 }
 
