@@ -21,6 +21,11 @@ describe('step response sample mask', () => {
     expect(Array.from(stepResponseMask(log, { minThrottle: 25 }))).toEqual([0, 0, 1, 1]);
   });
 
+  test('a throttle band keeps only samples between its floor and ceiling', () => {
+    const log = fakeLog([10, 30, 50, 70], [[1000, 1000, 1000, 1000]]);
+    expect(Array.from(stepResponseMask(log, { minThrottle: 25, maxThrottle: 55 }))).toEqual([0, 1, 1, 0]);
+  });
+
   test('a motor pinned at full or minimum output marks the sample unusable', () => {
     const log = fakeLog([50, 50, 50, 50], [
       [1000, 2047, 1000, 48],

@@ -3,6 +3,8 @@ import type { ParsedLog } from '../types';
 export interface StepMaskOptions {
   /** Samples below this throttle (0–100) are unusable: on the ground, idling, landing. */
   minThrottle?: number;
+  /** Samples above this throttle (0–100) are unusable; used to look at one throttle band. */
+  maxThrottle?: number;
   /** Samples where any motor sits at its lowest or highest output are unusable. */
   excludeSaturation?: boolean;
 }
@@ -19,10 +21,14 @@ export function stepResponseMask(log: ParsedLog, opts: StepMaskOptions): Uint8Ar
   const n = log.time.length;
   const mask = new Uint8Array(n).fill(1);
   const minThrottle = opts.minThrottle ?? 0;
+  const maxThrottle = opts.maxThrottle ?? Infinity;
   const throttle = log.setpoint[3];
 
-  if (minThrottle > 0 && throttle) {
-    for (let i = 0; i < n; i++) if (!(throttle[i]! >= minThrottle)) mask[i] = 0;
+  if ((minThrottle > 0 || maxThrottle < Infinity) && throttle) {
+    for (let i = 0; i < n; i++) {
+      const t = throttle[i]!;
+      if (!(t >= minThrottle && t <= maxThrottle)) mask[i] = 0;
+    }
   }
 
   const range = motorRange(log);
