@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { applyFilterChain, computeFilterChainResponse, type FilterSpec } from './filters';
+import { computeFilterDelays, DELAY_REFERENCE_HZ } from './filterDelays';
 import { gyroChainFromTune } from './gyroChainFromTune';
 import { notchQFromCutoff } from './notchQFromCutoff';
 import type { TuneView } from '../tuneView';
@@ -48,6 +49,26 @@ describe('loading the log’s gyro filters into the simulator', () => {
       ['pt2', 250],
       ['pt1', 500],
     ]);
+  });
+
+  test('the loaded chain delays exactly as much as the gyro path in the delay breakdown', () => {
+    const view: TuneView = {
+      ...base,
+      gyroRateHz: 8000,
+      gyroDynRange: { min: 250, max: 500 },
+      gyroLpf2Hz: 500,
+      rpmHarmonics: 3,
+      rpmMinHz: 100,
+      rpmQ: 500,
+      rpmFadeHz: 50,
+      rpmWeights: [90, 30, 90],
+      dynNotchCount: 2,
+      dynNotchMin: 150,
+      dynNotchQ: 300,
+    };
+    const ctx = { motorHz: 180, motorCount: 4 };
+    const sim = computeFilterChainResponse(gyroChainFromTune(view, ctx), 8000, Float32Array.of(DELAY_REFERENCE_HZ)).phaseDelayMs[0]!;
+    expect(sim).toBeCloseTo(computeFilterDelays(view, ctx).gyroDelayMs, 6);
   });
 
   test('a static notch keeps the Q Betaflight would give it', () => {

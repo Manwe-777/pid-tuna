@@ -30,6 +30,7 @@ import {
 } from './dsp/filters';
 import { DELAY_REFERENCE_HZ, type FilterDelayEntry } from './dsp/filterDelays';
 import { gyroChainFromTune } from './dsp/gyroChainFromTune';
+import { medianMotorHz } from './dsp/medianMotorHz';
 import { filterDelaysForLog } from './dsp/filterDelaysForLog';
 import { type LatencyResult } from './dsp/latency';
 import { latencyForLog } from './dsp/latencyForLog';
@@ -476,8 +477,8 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
           <button type="button" onClick={() => addFilter('notch')}>+ Notch</button>
           <button
             type="button"
-            onClick={() => setChain(gyroChainFromTune(tune))}
-            title="Replace the chain with this log's static gyro filters (a dynamic lowpass at its minimum cutoff; RPM and dynamic notches are left out)"
+            onClick={() => setChain(gyroChainFromTune(tune, { motorHz: medianMotorHz(log), motorCount: log.motor.length || undefined }))}
+            title="Replace the chain with this log's gyro filters: a dynamic lowpass at its minimum cutoff, RPM notches at the median motor frequency, dynamic notches at their minimum"
           >
             Load from log
           </button>
@@ -625,6 +626,8 @@ const FILTER_TYPE_LABEL: Record<FilterType, string> = {
   pt3: 'PT3 LPF',
   biquad: 'Biquad LPF',
   notch: 'Notch',
+  rpm: 'RPM filter',
+  dynNotch: 'Dynamic notch',
 };
 
 function FilterRow({

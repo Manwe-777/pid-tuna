@@ -1,17 +1,32 @@
-import { type BfFilterKind, bfFilterSections, type Biquad } from './bfFilterSections';
+import type { BfFilterKind, Biquad } from './bfFilterSections';
 import { biquadChainResponse } from './biquadChainResponse';
+import type { FilterPart } from './filterPart';
+import { filterPartSections } from './filterPartSections';
+import { rpmNotchParts } from './rpmNotchParts';
 
-export type FilterType = BfFilterKind;
+export type FilterType = BfFilterKind | 'rpm' | 'dynNotch';
 
 export interface FilterSpec {
   /** Stable React key. */
   id: string;
   enabled: boolean;
   type: FilterType;
-  /** Cutoff (for lowpass) or centre (for notch), in Hz. */
+  /** Cutoff (lowpass), centre (notch, dynamic notch) or motor fundamental (RPM), in Hz. */
   cutoffHz: number;
-  /** Notch bandwidth in Hz (Q = centre / bandwidth). Ignored for lowpass filters. */
+  /** Notch bandwidth in Hz (Q = centre / bandwidth). */
   bandwidth: number;
+  /** RPM and dynamic notch Q, Betaflight scale (500 = Q 5). */
+  bfQ?: number;
+  /** RPM: harmonics. Dynamic notch: number of notches. */
+  count?: number;
+  /** RPM: minimum notch frequency, Hz. */
+  minHz?: number;
+  /** RPM: fade range above the minimum, Hz. */
+  fadeHz?: number;
+  /** RPM: per-harmonic weights, %. */
+  weights?: number[];
+  /** RPM: number of motors (one notch set per motor). */
+  motors?: number;
 }
 
 export const DEFAULT_FILTER_SPECS: Record<FilterType, FilterSpec> = {
@@ -20,18 +35,41 @@ export const DEFAULT_FILTER_SPECS: Record<FilterType, FilterSpec> = {
   pt3: { id: '', enabled: true, type: 'pt3', cutoffHz: 150, bandwidth: 40 },
   biquad: { id: '', enabled: true, type: 'biquad', cutoffHz: 150, bandwidth: 40 },
   notch: { id: '', enabled: true, type: 'notch', cutoffHz: 200, bandwidth: 40 },
+  rpm: {
+    id: '',
+    enabled: true,
+    type: 'rpm',
+    cutoffHz: 150,
+    bandwidth: 0,
+    bfQ: 500,
+    count: 3,
+    minHz: 100,
+    fadeHz: 50,
+    weights: [100, 100, 100],
+    motors: 4,
+  },
+  dynNotch: { id: '', enabled: true, type: 'dynNotch', cutoffHz: 150, bandwidth: 0, bfQ: 300, count: 1 },
 };
+
+/** The filter parts a spec stands for, in Betaflight terms. */
+export function specParts(f: FilterSpec, loopHz: number): FilterPart[] {
+  if (!f.enabled || !Number.isFinite(f.cutoffHz)) return [];
+
+  switch (f.type) {
+    case 'rpm':
+      return rpmNotchParts(f.cutoffHz, f.count ?? 3, (f.bfQ ?? 500) / 100, f.minHz ?? 100, f.fadeHz ?? 50, f.weights ?? [], f.motors ?? 4, loopHz);
+    case 'dynNotch':
+      return [{ kind: 'notch', hz: f.cutoffHz, q: (f.bfQ ?? 300) / 100, copies: f.count ?? 1 }];
+    case 'notch':
+      return f.bandwidth > 0 ? [{ kind: 'notch', hz: f.cutoffHz, q: f.cutoffHz / f.bandwidth }] : [];
+    default:
+      return [{ kind: f.type, hz: f.cutoffHz }];
+  }
+}
 
 /** Sections for the enabled filters, built with Betaflight's filter maths at `loopHz`. */
 export function chainSections(filters: ReadonlyArray<FilterSpec>, loopHz: number): Biquad[] {
-  return filters
-    .filter((f) => f.enabled && Number.isFinite(f.cutoffHz))
-    .flatMap((f) =>
-      bfFilterSections(
-        { kind: f.type, hz: f.cutoffHz, q: f.type === 'notch' && f.bandwidth > 0 ? f.cutoffHz / f.bandwidth : undefined },
-        loopHz,
-      ),
-    );
+  return filters.flatMap((f) => specParts(f, loopHz)).flatMap((p) => filterPartSections(p, loopHz));
 }
 
 /**

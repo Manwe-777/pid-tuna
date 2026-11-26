@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { computeXcorrLatency } from './latency';
-import { mulberry32 } from './testing/mulberry32';
+import { mulberry32 } from './mulberry32';
 import { stickSetpoint } from './testing/stickSetpoint';
 
 describe('cross-correlation tracking latency', () => {

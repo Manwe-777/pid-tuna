@@ -1,4 +1,4 @@
-import { mulberry32 } from './mulberry32';
+import { mulberry32 } from '../mulberry32';
 import { type ClosedLoopPlant, simulateClosedLoop } from './simulateClosedLoop';
 import { stickSetpoint } from './stickSetpoint';
 

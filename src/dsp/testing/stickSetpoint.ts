@@ -1,4 +1,4 @@
-import { mulberry32 } from './mulberry32';
+import { mulberry32 } from '../mulberry32';
 
 export interface StickOptions {
   seconds: number;

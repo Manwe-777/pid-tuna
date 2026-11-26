@@ -34,6 +34,8 @@ export interface TuneView {
   rpmHarmonics?: number;
   /** Per-harmonic RPM notch weights, % (Betaflight 4.4+). */
   rpmWeights: number[];
+  /** RPM notches fade in over this range above their minimum frequency, Hz. */
+  rpmFadeHz?: number;
   rpmMinHz?: number;
   rpmQ?: number;
   dynNotchCount?: number;
@@ -113,6 +115,7 @@ export function buildTuneView(log: ParsedLog): TuneView {
     dtermNotchCutoff: num('dterm_notch_cutoff'),
     rpmHarmonics: num('rpm_filter_harmonics'),
     rpmWeights: list('rpm_filter_weights'),
+    rpmFadeHz: num('rpm_filter_fade_range_hz'),
     rpmMinHz: num('rpm_filter_min_hz'),
     rpmQ: num('rpm_filter_q'),
     dynNotchCount: num('dyn_notch_count'),

@@ -2,6 +2,8 @@ import { describe, expect, test } from 'vitest';
 
 import type { TuneView } from '../tuneView';
 import { computeFilterDelays, DELAY_REFERENCE_HZ } from './filterDelays';
+import { partsDelay } from './partsDelay';
+import { rpmNotchParts } from './rpmNotchParts';
 
 const BASE: TuneView = {
   hasPid: false,
@@ -73,5 +75,46 @@ describe('filter delay breakdown', () => {
     const d = computeFilterDelays(BASE);
     expect(d.entries).toHaveLength(0);
     expect(d.gyroDelayMs).toBe(0);
+  });
+});
+
+/**
+ * PIDtoolbox's Filter Simulator with its default settings (8 kHz loop,
+ * delay at 25 Hz, 4 motors): PT1 250 Hz + PT1 500 Hz; RPM 3 harmonics at
+ * 150 Hz, Q 500, min 100 Hz, fade 50 Hz, weights 100; static notch 500 Hz Q 500.
+ */
+describe('filter delay matches PIDtoolbox’s filter simulator', () => {
+  const LOOP = 8000;
+
+  test.each([
+    [250, 0.6339, 5.705],
+    [500, 0.3179, 2.861],
+  ])('a PT1 at %i Hz: %f ms, %f° of lag', (hz, ms, deg) => {
+    const d = partsDelay([{ kind: 'pt1', hz }], LOOP, 25);
+    expect(d.delayMs).toBeCloseTo(ms, 3);
+    expect(-d.phaseDeg).toBeCloseTo(deg, 2);
+  });
+
+  test.each([
+    [1, 0.2179],
+    [2, 0.1063],
+    [3, 0.07021],
+  ])('RPM harmonic %i per motor: %f ms', (h, ms) => {
+    const parts = rpmNotchParts(150, 3, 5, 100, 50, [100, 100, 100], 1, LOOP);
+    expect(partsDelay([parts[h - 1]!], LOOP, 25).delayMs).toBeCloseTo(ms, 3);
+  });
+
+  test('all notches together: 1.641 ms, 14.77° of lag', () => {
+    const parts = [...rpmNotchParts(150, 3, 5, 100, 50, [100, 100, 100], 4, LOOP), { kind: 'notch' as const, hz: 500, q: 5 }];
+    const d = partsDelay(parts, LOOP, 25);
+    expect(d.delayMs).toBeCloseTo(1.641, 3);
+    expect(-d.phaseDeg).toBeCloseTo(14.77, 1);
+  });
+
+  test('RPM notches fade out as the motors slow towards the minimum frequency', () => {
+    const at = (hz: number) => partsDelay(rpmNotchParts(hz, 1, 5, 100, 50, [100], 4, LOOP), LOOP, 25).delayMs;
+    expect(at(100)).toBeCloseTo(0, 9);
+    expect(at(125)).toBeGreaterThan(0);
+    expect(at(125)).toBeLessThan(at(150));
   });
 });
