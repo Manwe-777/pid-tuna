@@ -30,6 +30,9 @@ import {
 } from './dsp/filters';
 import { DELAY_REFERENCE_HZ, type FilterDelayEntry } from './dsp/filterDelays';
 import { gyroChainFromTune } from './dsp/gyroChainFromTune';
+import { dynNotchMedians } from './dsp/dynNotchMedians';
+import { harmonicNoiseForLog } from './dsp/harmonicNoiseForLog';
+import { MotorHarmonicTable } from './components/spectrum/MotorHarmonicTable';
 import { medianMotorHz } from './dsp/medianMotorHz';
 import { filterDelaysForLog } from './dsp/filterDelaysForLog';
 import { type LatencyResult } from './dsp/latency';
@@ -783,6 +786,7 @@ function extractSignal(log: ParsedLog, key: SignalKey, axis: number): Float32Arr
 const PSD_WINDOW_SIZES = [512, 1024, 2048, 4096] as const;
 
 const MOTOR_COLORS = ['#ff5d8f', '#5dff5d', '#5db4ff', '#fff75d'] as const;
+const DYN_NOTCH_COLOR = '#c58cff';
 
 /**
  * Build harmonic-frequency markers for each enabled motor. Betaflight logs
@@ -927,16 +931,29 @@ function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
     () => log.eRpm.length > 0 && log.eRpm.some((a) => a.some((v) => v > 0)),
     [log],
   );
-  const [polePairs, setPolePairs] = useState<number>(7);
+  const [polePairs, setPolePairs] = useState<number>(() => {
+    const poles = Number.parseFloat(log.setup.rawHeaders.motor_poles ?? '');
+    return poles >= 2 ? Math.round(poles / 2) : 7;
+  });
   const [blades, setBlades] = useState<number>(2);
+  const [showDynNotches, setShowDynNotches] = useState(true);
+  const dynNotchHz = useMemo(() => dynNotchMedians(log), [log]);
   const [harmonics, setHarmonics] = useState<number>(3);
+  const harmonicNoise = useMemo(() => (hasRpm ? harmonicNoiseForLog(log, polePairs, harmonics) : null), [log, hasRpm, polePairs, harmonics]);
   const [enabledMotors, setEnabledMotors] = useState<ReadonlySet<number>>(
     () => new Set(log.eRpm.map((_, i) => i)),
   );
 
-  const { markers: rpmMarkers, perMotor } = useMemo(
+  const { markers: motorMarkers, perMotor } = useMemo(
     () => computeRpmMarkers(log, enabledMotors, polePairs, blades, harmonics),
     [log, enabledMotors, polePairs, blades, harmonics],
+  );
+  const rpmMarkers = useMemo<PlotMarker[]>(
+    () => [
+      ...motorMarkers,
+      ...(showDynNotches ? dynNotchHz.map((x) => ({ x, stroke: DYN_NOTCH_COLOR, width: 1.5, dash: [2, 3] })) : []),
+    ],
+    [motorMarkers, showDynNotches, dynNotchHz],
   );
 
   const toggleMotor = (i: number) => {
@@ -1167,6 +1184,30 @@ function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {
         )}
       </div>
 
+      {dynNotchHz.length > 0 && (
+        <div className="rpm-markers">
+          <label className={`rpm-motor${showDynNotches ? ' rpm-motor--on' : ''}`}>
+            <input type="checkbox" checked={showDynNotches} onChange={(e) => setShowDynNotches(e.target.checked)} />
+            <span className="signal-chip__swatch" style={{ background: DYN_NOTCH_COLOR }} />
+            Dynamic notches
+          </label>
+          <span className="muted">
+            median {dynNotchHz.map((hz) => `${hz.toFixed(0)} Hz`).join(' · ')} (from FFT_FREQ debug)
+          </span>
+        </div>
+      )}
+
+      {harmonicNoise && (
+        <details className="harmonic-noise" open>
+          <summary>Noise at motor harmonics</summary>
+          <p className="muted" style={{ fontSize: '0.78rem' }}>
+            Peak noise within ±20 Hz of each multiple of motor speed (mean ± SD over the flight, takeoff to
+            landing), and how much the gyro filters remove there. Uses {polePairs} pole pairs.
+          </p>
+          <MotorHarmonicTable axes={harmonicNoise} />
+        </details>
+      )}
+
       {!freqVec ? (
         <p className="muted">No selected signals are present in this window. Pick at least one from above.</p>
       ) : (
@@ -1255,6 +1296,12 @@ const TUNE_DIFF_KEYS: readonly string[] = [
   'd_min', 'd_max_roll', 'd_max_pitch', 'd_max_yaw',
   'rollFF', 'pitchFF', 'yawFF', 'feedforward_roll', 'feedforward_pitch', 'feedforward_yaw',
   'rc_rates', 'rc_expo', 'rates',
+  'gyro_lpf1_static_hz', 'gyro_lpf1_dyn_hz', 'gyro_lpf1_type',
+  'gyro_lpf2_static_hz', 'gyro_lpf2_type',
+  'gyro_notch_hz', 'gyro_notch_cutoff',
+  'dterm_lpf1_static_hz', 'dterm_lpf1_dyn_hz', 'dterm_lpf1_type',
+  'dterm_lpf2_static_hz',
+  'rpm_filter_fade_range_hz', 'rpm_filter_weights',
   'gyro_lowpass_hz', 'gyro_lowpass_type',
   'gyro_lowpass2_hz', 'gyro_lowpass2_type',
   'gyro_notch1_hz', 'gyro_notch1_cutoff',

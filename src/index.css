@@ -2107,6 +2107,23 @@ code {
   color: var(--bad);
 }
 
+.harmonic-noise {
+  margin: 0.4rem 0 0.8rem;
+  font-size: 0.85rem;
+  color: var(--text-3);
+}
+
+.harmonic-noise summary {
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-2);
+}
+
+.harmonic-table td,
+.harmonic-table th {
+  font-variant-numeric: tabular-nums;
+}
+
 .step-legend {
   display: flex;
   flex-wrap: wrap;

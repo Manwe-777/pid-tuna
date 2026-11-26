@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import type { ParsedLog } from '../types';
+import { dynNotchMedians } from './dynNotchMedians';
 import { dynNotchSeries } from './dynNotchSeries';
 import { motorHzSeries } from './motorHzSeries';
 
@@ -33,5 +34,11 @@ describe('motor rotation frequency', () => {
 
   test('no RPM telemetry means no motor frequency', () => {
     expect(motorHzSeries(fake('NONE', []))).toBeNull();
+  });
+});
+
+describe('median dynamic notch frequencies', () => {
+  test('each notch reports the median of its active values', () => {
+    expect(dynNotchMedians(fake('FFT_FREQ', [[0, 0, 0, 0], [150, 0, 170, 160], [300, 320, 310, 0]]))).toEqual([160, 310]);
   });
 });
