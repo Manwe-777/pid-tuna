@@ -1,9 +1,13 @@
 import type { ParsedLog } from '../types';
+import { flightRange } from './flightRange';
+import { throttlePercentSeries } from './spectralDomains';
 
 export interface StepMaskOptions {
-  /** Samples below this throttle (0–100) are unusable: on the ground, idling, landing. */
+  /** Keep only takeoff to landing. */
+  flightOnly?: boolean;
+  /** Samples below this stick throttle (%) are unusable; used to look at one throttle band. */
   minThrottle?: number;
-  /** Samples above this throttle (0–100) are unusable; used to look at one throttle band. */
+  /** Samples above this stick throttle (%) are unusable. */
   maxThrottle?: number;
   /** Samples where any motor sits at its lowest or highest output are unusable. */
   excludeSaturation?: boolean;
@@ -13,18 +17,27 @@ export interface StepMaskOptions {
 const SATURATION_MARGIN = 0.01;
 
 /**
- * Per-sample usability for step-response analysis: 1 where the drone is flying
- * and the mixer has headroom, 0 where gyro can't follow setpoint for reasons
- * that have nothing to do with the tune.
+ * Per-sample usability for analyses that compare setpoint and gyro: 1 where
+ * the drone is flying (and, if asked, within a throttle band with mixer
+ * headroom), 0 where gyro can't follow setpoint for reasons unrelated to the tune.
  */
 export function stepResponseMask(log: ParsedLog, opts: StepMaskOptions): Uint8Array {
   const n = log.time.length;
   const mask = new Uint8Array(n).fill(1);
+  const throttle = throttlePercentSeries(log);
+
+  if (opts.flightOnly) {
+    const range = flightRange(throttle, log.setup.sampleRateHz);
+    if (range) {
+      mask.fill(0, 0, range.start);
+      mask.fill(0, range.end + 1);
+    }
+  }
+
   const minThrottle = opts.minThrottle ?? 0;
   const maxThrottle = opts.maxThrottle ?? Infinity;
-  const throttle = log.setpoint[3];
 
-  if ((minThrottle > 0 || maxThrottle < Infinity) && throttle) {
+  if (minThrottle > 0 || maxThrottle < Infinity) {
     for (let i = 0; i < n; i++) {
       const t = throttle[i]!;
       if (!(t >= minThrottle && t <= maxThrottle)) mask[i] = 0;

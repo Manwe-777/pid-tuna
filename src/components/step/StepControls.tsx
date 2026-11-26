@@ -83,7 +83,7 @@ export function StepControls({ settings, onChange, mergeToggle }: Props) {
           min={0}
           max={80}
           step={5}
-          title="Skip windows with time below this throttle: on the ground, idling, landing"
+          title="Skip windows with time below this stick throttle: motors at idle respond differently. Time before takeoff and after landing is always skipped."
           onChange={(v) => set('minThrottle', v)}
         />
         <label title="Skip windows where a motor sits at its lowest or highest output: the mixer has no headroom left">

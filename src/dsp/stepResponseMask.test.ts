@@ -3,15 +3,16 @@ import { describe, expect, test } from 'vitest';
 import type { ParsedLog } from '../types';
 import { stepResponseMask } from './stepResponseMask';
 
-function fakeLog(throttle: number[], motors: number[][], motorOutput = '48,2047'): ParsedLog {
+/** `throttle` is stick %, logged as rcCommand[3] = 1000–2000. */
+function fakeLog(throttle: number[], motors: number[][], motorOutput = '48,2047', sampleRateHz = 2): ParsedLog {
   const n = throttle.length;
   const zeros = new Float32Array(n);
 
   return {
     time: new Float32Array(n),
-    setpoint: [zeros, zeros, zeros, Float32Array.from(throttle)],
+    rcCommand: [zeros, zeros, zeros, Float32Array.from(throttle, (t) => 1000 + t * 10)],
     motor: motors.map((m) => Float32Array.from(m)),
-    setup: { rawHeaders: { motorOutput } },
+    setup: { rawHeaders: { motorOutput }, sampleRateHz },
   } as unknown as ParsedLog;
 }
 
@@ -37,6 +38,11 @@ describe('step response sample mask', () => {
   test('saturation is ignored when the motor range header is missing', () => {
     const log = fakeLog([50, 50], [[2047, 48]], '');
     expect(Array.from(stepResponseMask(log, { excludeSaturation: true }))).toEqual([1, 1]);
+  });
+
+  test('flight only keeps takeoff to landing, including a throttle cut mid-flight', () => {
+    const throttle = [0, 0, 40, 40, 5, 5, 40, 40, 0, 0];
+    expect(Array.from(stepResponseMask(fakeLog(throttle, [], ''), { flightOnly: true }))).toEqual([0, 0, 1, 1, 1, 1, 1, 1, 0, 0]);
   });
 
   test('with no options every sample is usable', () => {
