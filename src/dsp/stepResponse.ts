@@ -1,21 +1,20 @@
 /**
- * Closed-loop step response per axis via Wiener deconvolution of setpoint→gyro.
+ * Closed-loop step response per axis, estimated from setpoint → gyro.
  *
- * Treats the closed-loop drone as an LTI system gyro = h ∗ setpoint + noise.
- * For each overlapping window of the log we solve for h in the frequency domain
+ * The log is cut into overlapping Hann-windowed segments. Segments with too
+ * little stick input, or whose own step response settles far from the rest,
+ * are dropped. The cross-spectrum Σ Y·conj(X) and input power Σ |X|² of the
+ * remaining segments are pooled (the H1 estimator), and the impulse response
+ * comes from one regularised division of the pooled spectra:
  *
- *   H[k] = Y[k] · conj(X[k]) / (|X[k]|² + λ · mean(|X|²))
+ *   H[k] = Σ Y[k]·conj(X[k]) / (Σ |X[k]|² + λ · mean(Σ |X|²))
  *
- * with regularization λ to keep low-excitation bins from blowing up. IFFT gives
- * the impulse response; the cumulative sum is the step response. We normalize
- * each window's step so its settling region averages 1.
+ * Pooling before dividing is what keeps the estimate unbiased: averaging
+ * per-segment deconvolutions overweights poorly excited segments.
  *
- * This replaces the older Brian-White / pidtoolbox `PTstepcalc.m` approach,
- * which detected discrete stick-deceleration events and demanded ~400 ms of
- * clean steady state after each. That worked for acro flying but rejected
- * almost every event in cruise/long-range logs where maneuvers are spaced
- * <400 ms apart. The deconvolution approach uses every sample regardless of
- * inter-event spacing.
+ * The step is left in absolute units, so a drone that settles below setpoint
+ * reads below 1. Shape metrics (rise, overshoot, settling, half-way time) are
+ * measured relative to that steady-state level.
  */
 import FFT from 'fft.js';
 
@@ -32,72 +31,92 @@ const FFTCtor = FFT as unknown as new (size: number) => FFTImpl;
 export interface StepResponseResult {
   /** Per-sample time vector in ms (length = responseSamples + 1). */
   time: Float32Array;
-  /** Per-window step responses, normalized to steady state = 1. */
+  /**
+   * Per-window step responses that passed the screens, each scaled to the
+   * pooled steady state (display only: single windows read low on their own,
+   * so these show how much the shape varies, not the level).
+   */
   segments: Float32Array[];
-  /** Windows whose deconvolution settled at a wildly wrong value (kept for diagnostics). */
+  /** Per-window step responses that were screened out (display only). */
   rejectedSegments: Float32Array[];
-  /** Element-wise mean across `segments`. Empty if no segments. */
+  /** Step response from the pooled spectra. Empty if no segment was accepted. */
   mean: Float32Array;
   metrics: StepMetrics;
   diagnostics: StepDiagnostics;
+  /** Pooled spectra, kept so results from several logs can be combined. */
+  pooled: PooledSpectra | null;
+}
+
+export interface PooledSpectra {
+  fftSize: number;
+  /** Σ Y·conj(X), interleaved re/im, length 2·fftSize. */
+  crossSpectrum: Float64Array;
+  /** Σ |X|², length fftSize. */
+  inputPower: Float64Array;
+  regularization: number;
 }
 
 export interface StepDiagnostics {
   /** Number of analysis windows the log was sliced into. */
   windowsTotal: number;
-  /** Windows rejected because the setpoint excitation was below minExcitation. */
+  /** Windows skipped because mean |setpoint| was below minExcitation. */
   windowsLowExcitation: number;
-  /** Windows whose step response settled outside [settleMin, settleMax]. */
+  /** Windows whose own step settled outside the band or far from the median. */
   windowsBadSettle: number;
-  /** Windows that produced a usable step. */
+  /** Windows pooled into the result. */
   windowsAccepted: number;
-  /** Peak |setpoint| observed in the analyzed range — used for the auto excitation default. */
+  /** Peak |setpoint| observed in the analyzed range. */
   peakSetpoint: number;
 }
 
 export interface StepMetrics {
-  /** Time from 10% → 90% steady state, in ms. */
+  /** Time from 10% → 90% of the steady-state level, in ms. */
   riseTimeMs: number | null;
-  /** Peak overshoot above steady state, in %. 0 if no overshoot. */
+  /** Peak above the steady-state level, in %. 0 if no overshoot. */
   overshootPct: number | null;
-  /** Time to enter and stay within ±5% of steady state, in ms. */
+  /** Time to enter and stay within ±5% of the steady-state level, in ms. */
   settlingTimeMs: number | null;
-  /** Time to first cross 50% of steady state, in ms. */
+  /** Time to first reach 50% of the steady-state level, in ms. */
   latencyHalfMs: number | null;
-  /** Absolute peak of the response (steady state = 1). */
+  /** Absolute peak of the response (setpoint = 1). */
   peakResponse: number | null;
+  /** Mean level from 200 ms to the end (setpoint = 1). Below 1 means gyro falls short of setpoint. */
+  steadyState: number | null;
 }
 
 export interface StepResponseOptions {
-  /** Analysis-window length in ms. Default 1000. Longer = better LF resolution, fewer windows. */
+  /** Analysis-window length in ms. Default 2000. */
   windowMs?: number;
   /** Step-response display length in ms. Default 500. */
   responseMs?: number;
-  /** Overlap fraction in [0,1). 0.5 = 50% overlap. Default 0.5. */
+  /** Overlap fraction in [0,1). Default 0.75. */
   overlap?: number;
-  /** Wiener regularization, as fraction of mean(|X|²). Default 0.01. */
+  /** Regularisation λ, as a fraction of mean pooled input power. Default 0.001. */
   regularization?: number;
-  /**
-   * Skip windows whose peak |setpoint| is below this (deg/s). No excitation in
-   * a window → deconvolution can't recover anything meaningful. Default 80;
-   * scale this down for sleepy axes (e.g. yaw on a typical fixed-camera log).
-   */
+  /** Skip windows whose mean |setpoint| is below this, in deg/s. Default 20. */
   minExcitation?: number;
-  /** Reject windows whose step settled below this (relative to expected 1.0). Default 0.3. */
+  /** Drop windows whose own steady state is below this. Default 0.5. */
   settleMin?: number;
-  /** Reject windows whose step settled above this. Default 2.0. */
+  /** Drop windows whose own steady state is above this. Default 1.5. */
   settleMax?: number;
+  /** Drop windows whose steady state is more than k robust deviations from the median. Default 3. */
+  outlierK?: number;
 }
 
-const DEFAULTS = {
-  windowMs: 1000,
+export const STEP_DEFAULTS = {
+  windowMs: 2000,
   responseMs: 500,
-  overlap: 0.5,
-  regularization: 0.01,
-  minExcitation: 80,
-  settleMin: 0.3,
-  settleMax: 2.0,
+  overlap: 0.75,
+  regularization: 0.001,
+  minExcitation: 20,
+  settleMin: 0.5,
+  settleMax: 1.5,
+  outlierK: 3,
 } as const;
+
+/** Per-window traces are only for screening and display, so they use a steadier, stronger λ. */
+const SEGMENT_REGULARIZATION = 0.01;
+const STEADY_FROM_MS = 200;
 
 export function computeStepResponse(
   setpoint: Float32Array,
@@ -105,7 +124,7 @@ export function computeStepResponse(
   sampTimeUs: number,
   options: StepResponseOptions = {},
 ): StepResponseResult {
-  const opts = { ...DEFAULTS, ...options };
+  const opts = { ...STEP_DEFAULTS, ...options };
   const sampleTimeMs = sampTimeUs / 1000;
   const n = Math.min(setpoint.length, gyro.length);
   if (sampleTimeMs <= 0 || n < 512) return emptyResult();
@@ -114,197 +133,271 @@ export function computeStepResponse(
   if (winSamples > n) return emptyResult();
   const hopSamples = Math.max(1, Math.round(winSamples * (1 - opts.overlap)));
   const respSamples = Math.max(8, Math.round(opts.responseMs / sampleTimeMs));
-  const fftSize = nextPow2(winSamples * 2);
-
-  // Time vector for the output step response.
   const stepLen = respSamples + 1;
+  const fftSize = nextPow2(winSamples * 2);
+  const steadyFrom = Math.min(stepLen - 1, Math.round(STEADY_FROM_MS / sampleTimeMs));
+
   const time = new Float32Array(stepLen);
   for (let i = 0; i < stepLen; i++) time[i] = i * sampleTimeMs;
 
-  // Track peak |setpoint| for diagnostics (drives the UI's auto-excitation suggestion).
   let peakSetpoint = 0;
-  for (let i = 0; i < n; i++) {
-    const v = Math.abs(setpoint[i]!);
-    if (v > peakSetpoint) peakSetpoint = v;
-  }
+  for (let i = 0; i < n; i++) peakSetpoint = Math.max(peakSetpoint, Math.abs(setpoint[i]!));
 
-  const fft = new FFTCtor(fftSize);
-  const hann = makeHannWindow(winSamples);
-  const xPad = new Float64Array(fftSize);
-  const yPad = new Float64Array(fftSize);
-  const X = new Float64Array(fftSize * 2);
-  const Y = new Float64Array(fftSize * 2);
-  const H = new Float64Array(fftSize * 2);
-  const h = new Float64Array(fftSize * 2);
-
-  const segments: Float32Array[] = [];
-  const rejectedSegments: Float32Array[] = [];
+  const ctx = makeContext(fftSize, winSamples);
+  const starts: number[] = [];
+  const traces: Float32Array[] = [];
+  const levels: number[] = [];
   let windowsTotal = 0;
   let windowsLowExcitation = 0;
-  let windowsBadSettle = 0;
 
   for (let start = 0; start + winSamples <= n; start += hopSamples) {
     windowsTotal++;
 
-    // Excitation gate — no stick activity in the window → nothing to deconvolve.
-    let maxSp = 0;
-    for (let i = 0; i < winSamples; i++) {
-      const v = Math.abs(setpoint[start + i]!);
-      if (v > maxSp) maxSp = v;
-    }
-    if (maxSp < opts.minExcitation) {
+    if (meanAbs(setpoint, start, winSamples) < opts.minExcitation) {
       windowsLowExcitation++;
       continue;
     }
 
-    xPad.fill(0);
-    yPad.fill(0);
-    for (let i = 0; i < winSamples; i++) {
-      const w = hann[i]!;
-      xPad[i] = setpoint[start + i]! * w;
-      yPad[i] = gyro[start + i]! * w;
-    }
+    transformWindow(ctx, setpoint, gyro, start);
+    const trace = segmentStep(ctx, stepLen);
+    starts.push(start);
+    traces.push(trace);
+    levels.push(meanOf(trace, steadyFrom, stepLen));
+  }
 
-    fft.realTransform(X, xPad);
-    fft.completeSpectrum(X);
-    fft.realTransform(Y, yPad);
-    fft.completeSpectrum(Y);
+  const keep = screenLevels(levels, opts.settleMin, opts.settleMax, opts.outlierK);
+  const segments: Float32Array[] = [];
+  const rejectedSegments: Float32Array[] = [];
+  const crossSpectrum = new Float64Array(fftSize * 2);
+  const inputPower = new Float64Array(fftSize);
 
-    // λ = regularization · mean(|X|²). Adaptive per window keeps the algorithm
-    // stable across both quiet and saturating windows.
-    let sumX2 = 0;
-    for (let k = 0; k < fftSize; k++) {
-      const xr = X[2 * k]!;
-      const xi = X[2 * k + 1]!;
-      sumX2 += xr * xr + xi * xi;
-    }
-    const lambda = opts.regularization * (sumX2 / fftSize);
-
-    // H[k] = Y[k] · conj(X[k]) / (|X[k]|² + λ).
-    for (let k = 0; k < fftSize; k++) {
-      const xr = X[2 * k]!;
-      const xi = X[2 * k + 1]!;
-      const yr = Y[2 * k]!;
-      const yi = Y[2 * k + 1]!;
-      const numR = yr * xr + yi * xi;
-      const numI = yi * xr - yr * xi;
-      const den = xr * xr + xi * xi + lambda;
-      H[2 * k] = numR / den;
-      H[2 * k + 1] = numI / den;
-    }
-
-    fft.inverseTransform(h, H);
-
-    // Step response = cumulative sum of impulse response (real part only).
-    const step = new Float32Array(stepLen);
-    let acc = 0;
-    for (let i = 0; i < stepLen; i++) {
-      acc += h[2 * i]!;
-      step[i] = acc;
-    }
-
-    // Settle estimate: mean of last 25% of the step. Used both as the
-    // normalization scale and as a sanity gate.
-    const settleFrom = Math.floor(stepLen * 0.75);
-    let sSum = 0;
-    let sN = 0;
-    for (let i = settleFrom; i < stepLen; i++) {
-      sSum += step[i]!;
-      sN++;
-    }
-    const settle = sN > 0 ? sSum / sN : 0;
-
-    if (!Number.isFinite(settle) || settle < opts.settleMin || settle > opts.settleMax) {
-      windowsBadSettle++;
-      rejectedSegments.push(step);
+  for (let w = 0; w < starts.length; w++) {
+    if (!keep[w]) {
+      rejectedSegments.push(traces[w]!);
       continue;
     }
 
-    const norm = new Float32Array(stepLen);
-    const inv = 1 / settle;
-    for (let i = 0; i < stepLen; i++) norm[i] = step[i]! * inv;
-    segments.push(norm);
+    segments.push(traces[w]!);
+    transformWindow(ctx, setpoint, gyro, starts[w]!);
+    accumulate(ctx, crossSpectrum, inputPower);
   }
 
-  const mean = meanAcrossSegments(segments, stepLen);
-  const metrics = computeMetrics(time, mean);
+  const pooled = segments.length > 0 ? { fftSize, crossSpectrum, inputPower, regularization: opts.regularization } : null;
+  const mean = pooled ? stepFromPooled(pooled, stepLen) : new Float32Array(0);
+  const pooledLevel = meanOf(mean, steadyFrom, stepLen);
+  for (const seg of segments) scaleToLevel(seg, steadyFrom, pooledLevel);
 
   return {
     time,
     segments,
     rejectedSegments,
     mean,
-    metrics,
+    metrics: computeMetrics(time, mean, steadyFrom),
     diagnostics: {
       windowsTotal,
       windowsLowExcitation,
-      windowsBadSettle,
+      windowsBadSettle: rejectedSegments.length,
       windowsAccepted: segments.length,
       peakSetpoint,
     },
+    pooled,
   };
 }
 
 /**
- * Combine multiple per-log step-response results into a single pooled result.
- * Every accepted segment from every input is concatenated into one set, the mean
- * is recomputed across the pool, and metrics are derived from that pooled mean.
- *
- * Useful when comparing many flights of the same craft / tune — averaging
- * across logs produces a much tighter, more representative step response than
- * any one log alone.
- *
- * Assumes inputs share the same sample rate / window length. Segments whose
- * length doesn't match the reference (longest) time vector are silently
- * skipped — that only happens if two logs were taken at different looptimes,
- * which can't be averaged meaningfully without resampling.
+ * Combine per-log results by pooling their spectra and re-deriving the step
+ * and metrics. Logs whose logging rate is within 2% of the first log merge
+ * (flight-controller clocks drift, so nominally equal rates rarely match
+ * exactly); logs at a different rate are skipped.
  */
 export function combineStepResponses(results: StepResponseResult[]): StepResponseResult {
   if (results.length === 0) return emptyResult();
   if (results.length === 1) return results[0]!;
 
-  const ref = results.reduce(
-    (best, r) => (r.time.length > best.time.length ? r : best),
-    results[0]!,
-  );
+  const ref = results.find((r) => r.pooled != null) ?? results[0]!;
   const stepLen = ref.time.length;
-  if (stepLen === 0) return emptyResult();
+  if (stepLen === 0 || ref.pooled == null) return ref;
 
+  const { fftSize, regularization } = ref.pooled;
+  const crossSpectrum = new Float64Array(fftSize * 2);
+  const inputPower = new Float64Array(fftSize);
   const segments: Float32Array[] = [];
   const rejectedSegments: Float32Array[] = [];
-  let windowsTotal = 0;
-  let windowsLowExcitation = 0;
-  let windowsBadSettle = 0;
-  let windowsAccepted = 0;
-  let peakSetpoint = 0;
+  const diagnostics: StepDiagnostics = {
+    windowsTotal: 0,
+    windowsLowExcitation: 0,
+    windowsBadSettle: 0,
+    windowsAccepted: 0,
+    peakSetpoint: 0,
+  };
 
   for (const r of results) {
-    for (const s of r.segments) if (s.length === stepLen) segments.push(s);
-    for (const s of r.rejectedSegments) if (s.length === stepLen) rejectedSegments.push(s);
-    windowsTotal += r.diagnostics.windowsTotal;
-    windowsLowExcitation += r.diagnostics.windowsLowExcitation;
-    windowsBadSettle += r.diagnostics.windowsBadSettle;
-    windowsAccepted += r.diagnostics.windowsAccepted;
-    if (r.diagnostics.peakSetpoint > peakSetpoint) peakSetpoint = r.diagnostics.peakSetpoint;
+    diagnostics.windowsTotal += r.diagnostics.windowsTotal;
+    diagnostics.windowsLowExcitation += r.diagnostics.windowsLowExcitation;
+    diagnostics.peakSetpoint = Math.max(diagnostics.peakSetpoint, r.diagnostics.peakSetpoint);
+    if (r.pooled == null || r.pooled.fftSize !== fftSize || !similarRate(r.time, ref.time)) continue;
+
+    for (let i = 0; i < crossSpectrum.length; i++) crossSpectrum[i] = crossSpectrum[i]! + r.pooled.crossSpectrum[i]!;
+    for (let i = 0; i < fftSize; i++) inputPower[i] = inputPower[i]! + r.pooled.inputPower[i]!;
+    segments.push(...r.segments.map((seg) => fitLength(seg, stepLen)));
+    rejectedSegments.push(...r.rejectedSegments.map((seg) => fitLength(seg, stepLen)));
+    diagnostics.windowsAccepted += r.diagnostics.windowsAccepted;
+    diagnostics.windowsBadSettle += r.diagnostics.windowsBadSettle;
   }
 
-  const mean = meanAcrossSegments(segments, stepLen);
-  const metrics = computeMetrics(ref.time, mean);
+  const pooled = { fftSize, crossSpectrum, inputPower, regularization };
+  const mean = stepFromPooled(pooled, stepLen);
+  const sampleTimeMs = stepLen > 1 ? ref.time[1]! : 1;
+  const steadyFrom = Math.min(stepLen - 1, Math.round(STEADY_FROM_MS / sampleTimeMs));
 
   return {
     time: ref.time,
     segments,
     rejectedSegments,
     mean,
-    metrics,
-    diagnostics: {
-      windowsTotal,
-      windowsLowExcitation,
-      windowsBadSettle,
-      windowsAccepted,
-      peakSetpoint,
-    },
+    metrics: computeMetrics(ref.time, mean, steadyFrom),
+    diagnostics,
+    pooled,
   };
+}
+
+const MERGE_RATE_TOLERANCE = 0.02;
+
+function similarRate(a: Float32Array, b: Float32Array): boolean {
+  if (a.length < 2 || b.length < 2) return false;
+
+  return Math.abs(a[1]! / b[1]! - 1) <= MERGE_RATE_TOLERANCE;
+}
+
+function fitLength(trace: Float32Array, len: number): Float32Array {
+  if (trace.length === len) return trace;
+
+  const out = new Float32Array(len);
+  out.set(trace.subarray(0, len));
+  for (let i = trace.length; i < len; i++) out[i] = trace[trace.length - 1]!;
+
+  return out;
+}
+
+interface Context {
+  fft: FFTImpl;
+  fftSize: number;
+  winSamples: number;
+  hann: Float64Array;
+  xPad: Float64Array;
+  yPad: Float64Array;
+  X: Float64Array;
+  Y: Float64Array;
+  H: Float64Array;
+  h: Float64Array;
+}
+
+function makeContext(fftSize: number, winSamples: number): Context {
+  return {
+    fft: new FFTCtor(fftSize),
+    fftSize,
+    winSamples,
+    hann: makeHannWindow(winSamples),
+    xPad: new Float64Array(fftSize),
+    yPad: new Float64Array(fftSize),
+    X: new Float64Array(fftSize * 2),
+    Y: new Float64Array(fftSize * 2),
+    H: new Float64Array(fftSize * 2),
+    h: new Float64Array(fftSize * 2),
+  };
+}
+
+function transformWindow(ctx: Context, setpoint: Float32Array, gyro: Float32Array, start: number): void {
+  ctx.xPad.fill(0);
+  ctx.yPad.fill(0);
+
+  for (let i = 0; i < ctx.winSamples; i++) {
+    const w = ctx.hann[i]!;
+    ctx.xPad[i] = setpoint[start + i]! * w;
+    ctx.yPad[i] = gyro[start + i]! * w;
+  }
+
+  ctx.fft.realTransform(ctx.X, ctx.xPad);
+  ctx.fft.completeSpectrum(ctx.X);
+  ctx.fft.realTransform(ctx.Y, ctx.yPad);
+  ctx.fft.completeSpectrum(ctx.Y);
+}
+
+function accumulate(ctx: Context, crossSpectrum: Float64Array, inputPower: Float64Array): void {
+  const { X, Y } = ctx;
+
+  for (let k = 0; k < ctx.fftSize; k++) {
+    const xr = X[2 * k]!;
+    const xi = X[2 * k + 1]!;
+    const yr = Y[2 * k]!;
+    const yi = Y[2 * k + 1]!;
+    crossSpectrum[2 * k] = crossSpectrum[2 * k]! + yr * xr + yi * xi;
+    crossSpectrum[2 * k + 1] = crossSpectrum[2 * k + 1]! + yi * xr - yr * xi;
+    inputPower[k] = inputPower[k]! + xr * xr + xi * xi;
+  }
+}
+
+function segmentStep(ctx: Context, stepLen: number): Float32Array {
+  const cross = new Float64Array(ctx.fftSize * 2);
+  const power = new Float64Array(ctx.fftSize);
+  accumulate(ctx, cross, power);
+
+  return deconvolve(ctx, cross, power, relativeLambda(power, SEGMENT_REGULARIZATION), stepLen);
+}
+
+function stepFromPooled(pooled: PooledSpectra, stepLen: number): Float32Array {
+  const ctx = makeContext(pooled.fftSize, 0);
+  const lambda = relativeLambda(pooled.inputPower, pooled.regularization);
+
+  return deconvolve(ctx, pooled.crossSpectrum, pooled.inputPower, lambda, stepLen);
+}
+
+function relativeLambda(power: Float64Array, regularization: number): number {
+  let sum = 0;
+  for (let k = 0; k < power.length; k++) sum += power[k]!;
+
+  return (regularization * sum) / power.length;
+}
+
+function deconvolve(
+  ctx: Context,
+  cross: Float64Array,
+  power: Float64Array,
+  lambda: number,
+  stepLen: number,
+): Float32Array {
+  const N = ctx.fftSize;
+
+  for (let k = 0; k < N; k++) {
+    const den = power[k]! + lambda;
+    ctx.H[2 * k] = den > 0 ? cross[2 * k]! / den : 0;
+    ctx.H[2 * k + 1] = den > 0 ? cross[2 * k + 1]! / den : 0;
+  }
+
+  ctx.fft.inverseTransform(ctx.h, ctx.H);
+
+  const step = new Float32Array(stepLen);
+  let acc = 0;
+
+  for (let i = 0; i < stepLen; i++) {
+    acc += ctx.h[2 * i]!;
+    step[i] = acc;
+  }
+
+  return step;
+}
+
+/** Keep windows inside the settle band and within k robust deviations of the median level. */
+function screenLevels(levels: number[], settleMin: number, settleMax: number, k: number): boolean[] {
+  const inBand = levels.map((l) => Number.isFinite(l) && l >= settleMin && l <= settleMax);
+  const banded = levels.filter((_l, i) => inBand[i]);
+  if (banded.length < 3) return inBand;
+
+  const center = median(banded);
+  const spread = 1.4826 * median(banded.map((l) => Math.abs(l - center)));
+  if (!(spread > 0)) return inBand;
+
+  return levels.map((l, i) => inBand[i]! && Math.abs(l - center) <= k * spread);
 }
 
 function emptyResult(): StepResponseResult {
@@ -313,13 +406,7 @@ function emptyResult(): StepResponseResult {
     segments: [],
     rejectedSegments: [],
     mean: new Float32Array(0),
-    metrics: {
-      riseTimeMs: null,
-      overshootPct: null,
-      settlingTimeMs: null,
-      latencyHalfMs: null,
-      peakResponse: null,
-    },
+    metrics: nullMetrics(),
     diagnostics: {
       windowsTotal: 0,
       windowsLowExcitation: 0,
@@ -327,75 +414,111 @@ function emptyResult(): StepResponseResult {
       windowsAccepted: 0,
       peakSetpoint: 0,
     },
+    pooled: null,
   };
 }
 
-function computeMetrics(time: Float32Array, mean: Float32Array): StepMetrics {
-  if (mean.length < 2) {
-    return {
-      riseTimeMs: null,
-      overshootPct: null,
-      settlingTimeMs: null,
-      latencyHalfMs: null,
-      peakResponse: null,
-    };
-  }
-  const t10 = firstCrossing(time, mean, 0.1);
-  const t90 = firstCrossing(time, mean, 0.9);
-  const riseTimeMs = t10 != null && t90 != null && t90 >= t10 ? t90 - t10 : null;
-  const latencyHalfMs = firstCrossing(time, mean, 0.5);
+function nullMetrics(): StepMetrics {
+  return {
+    riseTimeMs: null,
+    overshootPct: null,
+    settlingTimeMs: null,
+    latencyHalfMs: null,
+    peakResponse: null,
+    steadyState: null,
+  };
+}
+
+function computeMetrics(time: Float32Array, step: Float32Array, steadyFrom: number): StepMetrics {
+  if (step.length < 2) return nullMetrics();
+
+  const steadyState = meanOf(step, steadyFrom, step.length);
+  if (!(steadyState > 0.05)) return { ...nullMetrics(), steadyState: Number.isFinite(steadyState) ? steadyState : null };
 
   let peak = -Infinity;
-  for (let i = 0; i < mean.length; i++) if (mean[i]! > peak) peak = mean[i]!;
-  const peakResponse = Number.isFinite(peak) ? peak : null;
-  const overshootPct = peakResponse != null && peakResponse > 1 ? (peakResponse - 1) * 100 : 0;
+  for (let i = 0; i < step.length; i++) peak = Math.max(peak, step[i]!);
 
-  let settlingTimeMs: number | null = null;
-  for (let i = mean.length - 1; i >= 0; i--) {
-    if (Math.abs(mean[i]! - 1) > 0.05) {
-      settlingTimeMs = i + 1 < mean.length ? time[i + 1]! : null;
-      break;
-    }
-    if (i === 0) settlingTimeMs = time[0]!;
+  const t10 = firstCrossing(time, step, 0.1 * steadyState);
+  const t90 = firstCrossing(time, step, 0.9 * steadyState);
+
+  return {
+    riseTimeMs: t10 != null && t90 != null && t90 >= t10 ? t90 - t10 : null,
+    overshootPct: peak > steadyState ? (peak / steadyState - 1) * 100 : 0,
+    settlingTimeMs: settlingTime(time, step, steadyState),
+    latencyHalfMs: firstCrossing(time, step, 0.5 * steadyState),
+    peakResponse: peak,
+    steadyState,
+  };
+}
+
+function settlingTime(time: Float32Array, step: Float32Array, steadyState: number): number | null {
+  for (let i = step.length - 1; i >= 0; i--) {
+    if (Math.abs(step[i]! / steadyState - 1) > 0.05) return i + 1 < step.length ? time[i + 1]! : null;
   }
-  return { riseTimeMs, overshootPct, settlingTimeMs, latencyHalfMs, peakResponse };
+
+  return time[0]!;
 }
 
 function firstCrossing(time: Float32Array, signal: Float32Array, target: number): number | null {
   for (let i = 1; i < signal.length; i++) {
     const a = signal[i - 1]!;
     const b = signal[i]!;
+
     if (a < target && b >= target) {
       const frac = (target - a) / (b - a);
+
       return time[i - 1]! + frac * (time[i]! - time[i - 1]!);
     }
   }
+
   return null;
 }
 
-function meanAcrossSegments(segs: Float32Array[], len: number): Float32Array {
-  if (segs.length === 0) return new Float32Array(0);
-  const out = new Float32Array(len);
-  for (const s of segs) for (let i = 0; i < len; i++) out[i] = out[i]! + s[i]!;
-  const inv = 1 / segs.length;
-  for (let i = 0; i < len; i++) out[i] = out[i]! * inv;
-  return out;
+function scaleToLevel(trace: Float32Array, from: number, level: number): void {
+  const own = meanOf(trace, from, trace.length);
+  if (!(Math.abs(own) > 1e-6) || !Number.isFinite(level)) return;
+
+  const k = level / own;
+  for (let i = 0; i < trace.length; i++) trace[i] = trace[i]! * k;
+}
+
+function meanAbs(x: Float32Array, start: number, len: number): number {
+  let s = 0;
+  for (let i = 0; i < len; i++) s += Math.abs(x[start + i]!);
+
+  return s / len;
+}
+
+function meanOf(x: Float32Array, from: number, to: number): number {
+  let s = 0;
+  for (let i = from; i < to; i++) s += x[i]!;
+
+  return to > from ? s / (to - from) : Number.NaN;
+}
+
+function median(values: number[]): number {
+  const s = [...values].sort((a, b) => a - b);
+  const m = s.length >> 1;
+
+  return s.length % 2 ? s[m]! : 0.5 * (s[m - 1]! + s[m]!);
 }
 
 function makeHannWindow(n: number): Float64Array {
   const out = new Float64Array(n);
   if (n < 2) {
     if (n === 1) out[0] = 1;
+
     return out;
   }
-  for (let i = 0; i < n; i++) {
-    out[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (n - 1)));
-  }
+
+  for (let i = 0; i < n; i++) out[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (n - 1)));
+
   return out;
 }
 
 function nextPow2(n: number): number {
   let p = 1;
   while (p < n) p <<= 1;
+
   return p;
 }

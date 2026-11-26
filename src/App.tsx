@@ -57,7 +57,7 @@ import {
 } from './dsp/spectrogram';
 import { computeErrorSetpointDensity } from './dsp/errorSetpoint';
 import { motorRpmSeries, rpmAxisMax, throttlePercentSeries } from './dsp/spectralDomains';
-import { combineStepResponses, computeStepResponse } from './dsp/stepResponse';
+import { combineStepResponses, computeStepResponse, STEP_DEFAULTS } from './dsp/stepResponse';
 import { parseLog } from './parser';
 import { sliceLog, type TimeRangeSec } from './sliceLog';
 import { buildTuneView } from './tuneView';
@@ -3470,37 +3470,10 @@ function FilterDelayTable({ entries }: { entries: FilterDelayEntry[] }) {
 }
 
 function StepResponseSection({ entries }: { entries: LogEntry[] }) {
-  // Auto-derived excitation floor: scale with the log's peak setpoint so quiet
-  // axes (e.g. yaw on a cruise log) aren't gated out by a fixed acro default.
-  const autoParams = useMemo(() => {
-    let peakSetpoint = 0;
-    for (const { log } of entries) {
-      for (let axis = 0; axis < 3; axis++) {
-        const sp = log.setpoint[axis]!;
-        for (let i = 0; i < sp.length; i++) {
-          const v = Math.abs(sp[i]!);
-          if (v > peakSetpoint) peakSetpoint = v;
-        }
-      }
-    }
-    const minExcitation = Math.max(20, Math.min(200, Math.round(peakSetpoint * 0.15)));
-    return { windowMs: 1000, minExcitation, peakSetpoint };
-  }, [entries]);
-
-  const [windowMs, setWindowMs] = useState<number>(autoParams.windowMs);
-  const [minExcitation, setMinExcitation] = useState<number>(autoParams.minExcitation);
+  const [windowMs, setWindowMs] = useState<number>(STEP_DEFAULTS.windowMs);
+  const [minExcitation, setMinExcitation] = useState<number>(STEP_DEFAULTS.minExcitation);
   const [mergeLogs, setMergeLogs] = useState(false);
   const [showSegments, setShowSegments] = useState(true);
-  // Re-seed defaults when the loaded logs change.
-  const lastAutoRef = useRef(autoParams);
-  useEffect(() => {
-    const last = lastAutoRef.current;
-    if (last.windowMs !== autoParams.windowMs || last.minExcitation !== autoParams.minExcitation) {
-      setWindowMs(autoParams.windowMs);
-      setMinExcitation(autoParams.minExcitation);
-      lastAutoRef.current = autoParams;
-    }
-  }, [autoParams]);
 
   const canMerge = entries.length > 1;
   const effectiveMerge = mergeLogs && canMerge;
@@ -3545,10 +3518,12 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
     <section className="plot-section">
       <h2>Step response</h2>
       <p className="muted">
-        {effectiveMerge && `Pooling segments from ${entries.length} logs into one mean. `}
+        {effectiveMerge && `Pooling windows from ${entries.length} logs into one estimate. `}
         {multi && 'Each log uses its own dash pattern. '}
-        Per-axis normalized step response, computed by Wiener deconvolution of setpoint → gyro
-        over overlapping windows. Faint lines are per-window estimates; the bold line is the mean.
+        How gyro follows a 1 deg/s step in setpoint, estimated from the whole flight by pooling the
+        setpoint → gyro spectra of overlapping windows. The bold line is the estimate; a level below
+        1 means gyro falls short of setpoint. Faint lines are single windows scaled to the same level,
+        to show how much the shape varies.
       </p>
 
       <div className="controls" style={{ flexWrap: 'wrap' }}>
@@ -3578,8 +3553,8 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
           Min excitation:
           <input
             type="range"
-            min={10}
-            max={400}
+            min={5}
+            max={200}
             step={5}
             value={minExcitation}
             onChange={(e) => setMinExcitation(Number.parseInt(e.target.value, 10))}
@@ -3599,13 +3574,13 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
         <button
           type="button"
           onClick={() => {
-            setWindowMs(autoParams.windowMs);
-            setMinExcitation(autoParams.minExcitation);
+            setWindowMs(STEP_DEFAULTS.windowMs);
+            setMinExcitation(STEP_DEFAULTS.minExcitation);
           }}
           className="step-btn-reset"
-          title={`Auto-derived from log peak setpoint of ${autoParams.peakSetpoint.toFixed(0)} deg/s`}
+          title="The settings the scorecard uses"
         >
-          Auto ({autoParams.windowMs} ms / {autoParams.minExcitation})
+          Defaults ({STEP_DEFAULTS.windowMs} ms / {STEP_DEFAULTS.minExcitation})
         </button>
         <MergeLogsToggle checked={mergeLogs} canMerge={canMerge} onChange={setMergeLogs} />
         <label
@@ -3626,10 +3601,9 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
         </label>
       </div>
       <p className="muted" style={{ fontSize: '0.78rem', marginTop: '-0.2rem' }}>
-        <strong>Window length</strong>: longer windows give better low-frequency resolution but
-        fewer averages. <strong>Min excitation</strong>: windows with peak |setpoint| below this
-        skip — no stick activity, nothing to deconvolve. Scales off your log&apos;s peak setpoint
-        ({autoParams.peakSetpoint.toFixed(0)} deg/s here).
+        <strong>Window length</strong>: longer windows resolve the slow settling better; shorter
+        windows suit short logs. <strong>Min excitation</strong>: windows whose average |setpoint| is
+        below this are skipped, since there is too little stick movement to measure.
       </p>
 
       <div className="step-diag">
@@ -3647,7 +3621,7 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
           <span className="step-diag__v">{diagSummary.windowsLowExcitation}</span>
         </span>
         <span className="step-diag__item">
-          <span className="step-diag__k">rejected (bad settle)</span>
+          <span className="step-diag__k">rejected (outliers)</span>
           <span className="step-diag__v">{diagSummary.windowsBadSettle}</span>
         </span>
         <span className="step-diag__item">
@@ -3784,6 +3758,13 @@ function StepResponseAxisPanel({
               <span className="step-metrics__k">50%</span>
               {p.data.metrics.latencyHalfMs != null ? `${p.data.metrics.latencyHalfMs.toFixed(1)} ms` : '—'}
             </span>
+            <span
+              className="step-metrics__item"
+              title="Level gyro settles at, relative to setpoint (1.00 = tracks fully)"
+            >
+              <span className="step-metrics__k">level</span>
+              {p.data.metrics.steadyState != null ? p.data.metrics.steadyState.toFixed(2) : '—'}
+            </span>
           </span>
         ))}
       </h3>
@@ -3793,7 +3774,7 @@ function StepResponseAxisPanel({
             <TimeSeriesPlot
               time={time}
               series={series}
-              yLabel="normalized"
+              yLabel="× setpoint"
               xLabel="ms"
               height={220}
               // Cap Y at 1.5 so a handful of overshooting segments don't squash

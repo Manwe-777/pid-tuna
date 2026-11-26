@@ -146,11 +146,15 @@ strings. See the header logo in `App.tsx` for the pattern.
 ### Per-log compute → mean → metrics pipeline
 
 DSP modules expose `compute<X>(perLogInputs, opts)` that returns a result with
-both `segments[]` (the per-window raw estimates) and a `mean` derived from
-them. Metrics like rise time / overshoot are computed from the mean, not from
-each segment. When merging across logs the segments get pooled, the mean is
-recomputed from the bigger pool, and the metrics from that — that's why the
-combine primitives work.
+`segments[]` (per-window estimates, for display) and a `mean` estimate the
+metrics come from. Results carry whatever pooled state a merge needs (Welch
+power for spectra, summed cross-spectra for step response), so a combine
+primitive pools that state across logs and re-derives the estimate and metrics
+from the bigger pool. Never average finished per-log metrics.
+
+Step response pools cross-spectra (H1) rather than averaging per-window
+deconvolutions: single windows read low and noisy. The Step response tab and
+the scorecard both use `STEP_DEFAULTS`.
 
 ### Yaw is excluded from rating rubrics
 

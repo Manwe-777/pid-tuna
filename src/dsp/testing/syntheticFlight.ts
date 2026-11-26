@@ -7,6 +7,8 @@ export interface SyntheticFlightOptions {
   sampleRateHz?: number;
   seconds?: number;
   holdMs?: [number, number];
+  /** Stick smoothing, Hz. Real pilots sit around 3–8 Hz; the default 30 Hz is twitchier than any pilot. */
+  smoothingHz?: number;
   /** Peak white gyro noise, deg/s. */
   noise?: number;
   /** Amplitude of a 180 Hz motor-noise tone, deg/s. */
@@ -23,7 +25,7 @@ export function syntheticFlight(opts: SyntheticFlightOptions): { setpoint: Float
     sampleRateHz,
     amplitude: 600,
     holdMs: opts.holdMs ?? [80, 400],
-    smoothingHz: 30,
+    smoothingHz: opts.smoothingHz ?? 30,
     seed,
   });
   const gyro = simulateClosedLoop(setpoint, sampleRateHz, opts.plant);
