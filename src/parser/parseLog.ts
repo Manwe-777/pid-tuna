@@ -1,8 +1,10 @@
-import { type DataParser, FirmwareKind, getWasm, type LogHeaders, Parser, ParserEventKind } from 'blackbox-log';
-
+import { BlackboxDecoder } from '../blackbox/BlackboxDecoder';
+import { findLogStarts } from '../blackbox/findLogStarts';
+import { parseHeader } from '../blackbox/parseHeader';
 import type {
   Axis3,
   Axis4,
+  BbHeader,
   DataPresence,
   GpsFrameSeries,
   ParsedLog,
@@ -11,19 +13,11 @@ import type {
   SlowFrameSeries,
 } from '../types';
 import { armEvents } from './armEvents';
-import { freeLogFile } from './freeLogFile';
-import { type OriginalHeader, patchHeaders } from './patchHeaders';
+import { debugModeName } from './debugModeName';
+import { featureNames } from './featureNames';
+import { firmwareInfo } from './firmwareInfo';
+import { motorProtocolName } from './motorProtocolName';
 import { rawGyroSource } from './rawGyroSource';
-import { resolveDebugMode } from './resolveDebugMode';
-import { parserState } from './state';
-
-function getParser(): Promise<Parser> {
-  if (!parserState.parser) {
-    parserState.parser = Parser.init(getWasm());
-  }
-
-  return parserState.parser;
-}
 
 /** Per-axis index. */
 const ROLL = 0;
@@ -34,39 +28,31 @@ const YAW = 2;
 
 const THROTTLE = 3;
 
+/** Index of the time field (µs) in main frames. */
+const TIME = 1;
+
+/** Progress is reported at most this often (ms). */
+const PROGRESS_INTERVAL_MS = 100;
+
 /**
- * Parse a single log (logIndex) out of a Betaflight/INAV blackbox file.
- * Materializes main-frame fields into Float32Array columns matching the conventional BB-log column layout.
+ * Parse a single log (logIndex) out of a blackbox file. Materializes main-frame fields into
+ * Float32Array columns matching the conventional BB-log column layout.
  */
 export async function parseLog(
   file: File,
   options: { logIndex?: number; onProgress?: ProgressCallback } = {},
 ): Promise<ParsedLog> {
   const { logIndex = 0, onProgress } = options;
-  const rawBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const starts = findLogStarts(bytes);
+  const logCount = starts.length;
 
-  // The deprecated blackbox-log Rust parser rejects year-based or prerelease
-  // version strings (e.g. "2026.6.0-alpha") and debug modes newer than BF 4.4.
-  // Patch both headers while preserving byte length; stash the real values for
-  // display.
-  const { patched, originals } = patchHeaders(new Uint8Array(rawBuffer));
+  if (logCount === 0) throw new Error(`${file.name} doesn't contain a blackbox log`);
+  if (logIndex >= logCount) throw new Error(`Log index ${logIndex} out of range (file has ${logCount} log(s))`);
 
-  const parser = await getParser();
-  const logFile = parser.loadFile(patched);
-  const logCount = logFile.logCount;
-
-  if (logIndex >= logCount) {
-    throw new Error(`Log index ${logIndex} out of range (file has ${logCount} log(s))`);
-  }
-
-  const headers = logFile.parseHeaders(logIndex);
-
-  if (!headers) {
-    throw new Error(`Failed to parse headers for log ${logIndex} of ${file.name}`);
-  }
-
-  const dataParser = headers.getDataParser();
-  const frames = collectFrames(dataParser, onProgress);
+  const end = starts[logIndex + 1] ?? bytes.length;
+  const header = parseHeader(bytes, starts[logIndex]!, end);
+  const frames = collectFrames(bytes, header, end, onProgress);
   const { cols, rowCount } = frames;
 
   // Normalize time to start at 0.
@@ -88,9 +74,7 @@ export async function parseLog(
 
   // Setpoint: newer firmwares emit `setpoint[..]`, older emit `rcCommands[..]`.
   const setpointPrefix = cols.has('setpoint[0]') ? 'setpoint' : 'rcCommands';
-
-  // Each flight has its own header; a file whose markers didn't line up falls back to the first.
-  const setup = extractSetup(headers, timeArr, originals[logIndex] ?? originals[0]);
+  const setup = extractSetup(header.lines, timeArr);
 
   // Collect motors: motor[0], motor[1], ... until missing.
   const motor = indexedColumns(cols, 'motor', rowCount);
@@ -101,9 +85,6 @@ export async function parseLog(
   const gps = gpsSeries(frames, t0);
 
   // Track which optional fields were actually present in the source log.
-  // For PID, only consider it "present" if at least one axis was logged — the
-  // parser zero-fills missing columns, so a key check tells us whether the
-  // source contained the data at all.
   const rawSource = rawGyroSource(cols.has('gyroUnfilt[0]'), cols.has('debug[0]'), setup.debugMode ?? '');
   const presence: DataPresence = {
     gyroRaw: rawSource != null,
@@ -116,7 +97,7 @@ export async function parseLog(
     gps: frames.sawGps,
   };
 
-  const result: ParsedLog = {
+  return {
     fileName: file.name,
     logIndex,
     logCount,
@@ -140,21 +121,13 @@ export async function parseLog(
     events: armEvents(offsetFrom(frames.slowTime, t0), frames.slowModeFlags),
     presence,
   };
-
-  dataParser.free();
-  headers.free();
-  freeLogFile(logFile, logIndex);
-
-  return result;
 }
 
-/** Everything read from the data frames, before conversion to typed columns. */
+/** Everything read from the data frames, before conversion to typed columns. Times in seconds. */
 interface FrameBuffers {
-  // Growing column buffers — push into JS arrays, convert to Float32Array at end.
   time: number[];
   cols: Map<string, number[]>;
   rowCount: number;
-  lastProgressEmit: number;
   // Slow + GPS frames are interleaved. Slow frames have no `time` field of
   // their own, so we associate each one with the most recent main-frame time.
   slowTime: number[];
@@ -173,15 +146,11 @@ interface FrameBuffers {
   sawGps: boolean;
 }
 
-type FrameFields = ReadonlyMap<string, number>;
-
-/** Read every main, slow and GPS frame, reporting progress along the way. */
-function collectFrames(dataParser: DataParser, onProgress: ProgressCallback | undefined): FrameBuffers {
-  const buf: FrameBuffers = {
+function emptyBuffers(names: readonly string[]): FrameBuffers {
+  return {
     time: [],
-    cols: new Map<string, number[]>(),
+    cols: new Map(names.filter((n) => n !== 'time' && n !== 'loopIteration').map((n) => [n, []])),
     rowCount: 0,
-    lastProgressEmit: 0,
     slowTime: [],
     slowVbat: [],
     slowAmperage: [],
@@ -197,56 +166,71 @@ function collectFrames(dataParser: DataParser, onProgress: ProgressCallback | un
     gpsNumSat: [],
     sawGps: false,
   };
+}
 
-  for (const event of dataParser) {
-    if (event.kind === ParserEventKind.MainFrame) {
-      addMainFrame(buf, event.data.time, event.data.fields);
-      if (onProgress && buf.rowCount % 4096 === 0) emitProgress(buf, dataParser, onProgress);
-    } else if (event.kind === ParserEventKind.SlowFrame) {
-      addSlowFrame(buf, event.data.fields);
-    } else if (event.kind === ParserEventKind.GpsFrame) {
-      addGpsFrame(buf, event.data.time, event.data.fields);
-    }
-  }
+/** A reader for one named field of a frame: its value, or undefined when the frame type lacks it. */
+function fieldReader(names: readonly string[] | undefined, name: string) {
+  const i = names?.indexOf(name) ?? -1;
 
-  if (onProgress) onProgress({ progress: 1, rows: buf.rowCount });
+  return (v: readonly number[]) => (i >= 0 ? v[i] : undefined);
+}
+
+/** Read every main, slow and GPS frame, reporting progress along the way. */
+function collectFrames(
+  bytes: Uint8Array,
+  header: BbHeader,
+  end: number,
+  onProgress: ProgressCallback | undefined,
+): FrameBuffers {
+  const names = header.frameDefs.I?.names ?? [];
+  const buf = emptyBuffers(names);
+  const columns = names.map((n) => buf.cols.get(n));
+  const { S, G } = header.frameDefs;
+  const slow = {
+    vbat: fieldReader(S?.names, 'vbatLatest'),
+    amps: fieldReader(S?.names, 'amperageLatest'),
+    flags: fieldReader(S?.names, 'flightModeFlags'),
+  };
+  const gps = gpsFields(G?.names);
+  let lastEmit = 0;
+
+  new BlackboxDecoder(bytes, header, end).run({
+    main: (v) => {
+      const t = v[TIME]! / 1e6;
+      buf.time.push(t);
+      buf.lastMainTime = t;
+      for (let i = 0; i < columns.length; i++) columns[i]?.push(v[i]!);
+      buf.rowCount++;
+    },
+    slow: (v) => {
+      buf.slowTime.push(buf.lastMainTime);
+      if (pushOrNaN(buf.slowVbat, slow.vbat(v))) buf.sawSlowVbat = true;
+      if (pushOrNaN(buf.slowAmperage, slow.amps(v))) buf.sawSlowAmperage = true;
+      pushOrNaN(buf.slowModeFlags, slow.flags(v));
+    },
+    gps: (v) => addGpsFrame(buf, v, gps),
+    progress: (share) => {
+      const now = performance.now();
+      if (!onProgress || now - lastEmit < PROGRESS_INTERVAL_MS) return;
+      lastEmit = now;
+      onProgress({ progress: share, rows: buf.rowCount });
+    },
+  });
+
+  onProgress?.({ progress: 1, rows: buf.rowCount });
 
   return buf;
 }
 
-function addMainFrame(buf: FrameBuffers, time: number, fields: FrameFields): void {
-  buf.time.push(time);
-  buf.lastMainTime = time;
-
-  for (const [name, value] of fields) {
-    let arr = buf.cols.get(name);
-
-    if (!arr) {
-      arr = [];
-      buf.cols.set(name, arr);
-    }
-
-    arr.push(value);
-  }
-
-  buf.rowCount++;
-}
-
-/** Report progress at most every 100 ms. */
-function emitProgress(buf: FrameBuffers, dataParser: DataParser, onProgress: ProgressCallback): void {
-  const now = performance.now();
-  if (!(now - buf.lastProgressEmit > 100)) return;
-
-  const stats = dataParser.stats();
-  onProgress({ progress: stats.progress, rows: buf.rowCount });
-  buf.lastProgressEmit = now;
-}
-
-function addSlowFrame(buf: FrameBuffers, f: FrameFields): void {
-  buf.slowTime.push(buf.lastMainTime);
-  if (pushOrNaN(buf.slowVbat, f.get('vbatLatest'))) buf.sawSlowVbat = true;
-  if (pushOrNaN(buf.slowAmperage, f.get('amperageLatest'))) buf.sawSlowAmperage = true;
-  pushOrNaN(buf.slowModeFlags, f.get('flightModeFlags'));
+function gpsFields(names: readonly string[] | undefined) {
+  return {
+    time: fieldReader(names, 'time'),
+    lat: fieldReader(names, 'GPS_coord[0]'),
+    lon: fieldReader(names, 'GPS_coord[1]'),
+    alt: fieldReader(names, 'GPS_altitude'),
+    speed: fieldReader(names, 'GPS_speed'),
+    numSat: fieldReader(names, 'GPS_numSat'),
+  };
 }
 
 /** Push the value, or NaN when the field is missing; true when it was present. */
@@ -260,13 +244,14 @@ function pushOrNaN(target: number[], value: number | undefined): boolean {
   return true;
 }
 
-function addGpsFrame(buf: FrameBuffers, time: number, f: FrameFields): void {
-  buf.gpsTime.push(time);
-  buf.gpsLat.push(gpsCoordDegrees(f.get('GPS_coord[0]') ?? NaN, 'lat'));
-  buf.gpsLon.push(gpsCoordDegrees(f.get('GPS_coord[1]') ?? NaN, 'lon'));
-  buf.gpsAlt.push(f.get('GPS_altitude') ?? NaN);
-  buf.gpsSpeed.push(f.get('GPS_speed') ?? NaN);
-  buf.gpsNumSat.push(f.get('GPS_numSat') ?? NaN);
+function addGpsFrame(buf: FrameBuffers, v: readonly number[], f: ReturnType<typeof gpsFields>): void {
+  const time = f.time(v);
+  buf.gpsTime.push(time === undefined ? buf.lastMainTime : time / 1e6);
+  buf.gpsLat.push(gpsCoordDegrees(f.lat(v) ?? NaN, 'lat'));
+  buf.gpsLon.push(gpsCoordDegrees(f.lon(v) ?? NaN, 'lon'));
+  buf.gpsAlt.push(f.alt(v) ?? NaN);
+  buf.gpsSpeed.push(f.speed(v) ?? NaN);
+  buf.gpsNumSat.push(f.numSat(v) ?? NaN);
   buf.sawGps = true;
 }
 
@@ -308,8 +293,8 @@ function slowSeries(frames: FrameBuffers, timeArr: Float32Array, t0: number): Sl
 }
 
 /**
- * Build the GPS series. Apply blackbox-log's natural units conversion:
- * GPS altitude/speed: blackbox-log often surfaces raw ints; coerce to SI for the UI:
+ * Build the GPS series. GPS altitude and speed are raw integers whose units vary;
+ * coerce them to SI for the UI:
  *   altitude → meters (cm/decimeters/int meters vary by FW / receiver),
  *   speed → m/s (Betaflight frequently logs cm/s).
  */
@@ -491,41 +476,35 @@ function toF32(src: number[] | undefined, length: number): Float32Array {
   return out;
 }
 
-/** Firmware name, version (from the unpatched header when there is one) and major version (0 if unreadable). */
-function firmwareInfo(headers: LogHeaders, original: OriginalHeader | undefined) {
-  const firmwareKind: string = headers.firmwareKind === FirmwareKind.Inav ? 'INAV' : 'Betaflight';
-  const rawLine = original?.firmwareLine ?? headers.firmwareVersion.toString();
-  const firmwareVersion = rawLine.replace(/^(Betaflight|INAV|EmuFlight)\s+/i, '');
-  const major = Number.parseInt(firmwareVersion, 10);
+/** Every header line except the field definitions, as a record. */
+function headerRecord(lines: ReadonlyMap<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of lines) if (!key.startsWith('Field ')) out[key] = value;
 
-  return { firmwareKind, firmwareVersion, firmwareMajor: Number.isNaN(major) ? 0 : major };
+  return out;
 }
 
-function extractSetup(headers: LogHeaders, time: Float32Array, original: OriginalHeader | undefined): SetupInfo {
+function extractSetup(lines: ReadonlyMap<string, string>, time: Float32Array): SetupInfo {
   const dtMedian = medianStride(time);
-  const sampleRateHz = dtMedian > 0 ? Math.round(1 / dtMedian) : 0;
-  const looptimeUs = dtMedian > 0 ? Math.round(dtMedian * 1_000_000) : 0;
+  const fw = firmwareInfo(lines);
 
-  const { firmwareKind, firmwareVersion, firmwareMajor } = firmwareInfo(headers, original);
-  const craftName = headers.craftName;
+  const num = (key: string) => {
+    const v = Number.parseInt(lines.get(key) ?? '', 10);
 
-  const rawHeaders: Record<string, string> = {};
-  for (const [key, value] of headers.unknown) rawHeaders[key] = value;
-
-  const features: string[] = [];
-  for (const f of headers.features) features.push(f);
+    return Number.isFinite(v) ? v : null;
+  };
 
   return {
-    firmwareKind,
-    firmwareVersion,
-    craftName,
-    boardInfo: headers.boardInfo,
-    debugMode: resolveDebugMode(original?.debugMode ?? null, headers.debugMode, firmwareKind, firmwareMajor),
-    pwmProtocol: headers.pwmProtocol,
-    looptimeUs,
-    sampleRateHz,
-    rawHeaders,
-    features,
+    firmwareKind: fw.kind,
+    firmwareVersion: fw.version,
+    craftName: lines.get('Craft name') || undefined,
+    boardInfo: lines.get('Board information') || undefined,
+    debugMode: debugModeName(num('debug_mode'), fw),
+    pwmProtocol: motorProtocolName(num('motor_pwm_protocol')),
+    looptimeUs: dtMedian > 0 ? Math.round(dtMedian * 1_000_000) : 0,
+    sampleRateHz: dtMedian > 0 ? Math.round(1 / dtMedian) : 0,
+    rawHeaders: headerRecord(lines),
+    features: featureNames(num('features') ?? 0),
   };
 }
 

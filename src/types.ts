@@ -13,11 +13,7 @@ export interface SetupInfo {
   pwmProtocol?: string;
   looptimeUs: number;
   sampleRateHz: number;
-  /**
-   * All `H key:value` headers from the blackbox file that blackbox-log didn't
-   * classify into typed getters (so most tune-relevant settings: rollPID,
-   * gyro_lowpass_hz, rpm_filter_*, dyn_notch_*, rc_rates, etc.).
-   */
+  /** Every `H name:value` header line of the log except the field definitions (rollPID, gyro_lowpass_hz, ...). */
   rawHeaders: Readonly<Record<string, string>>;
   /** Active features (e.g. "RPM_FILTER", "DYNAMIC_FILTER"). */
   features: ReadonlyArray<string>;
@@ -1256,4 +1252,50 @@ export interface PlotArea {
   height: number;
   xMin: number;
   xMax: number;
+}
+
+/** Field layout of one blackbox frame type, from the `Field X ...` header lines. */
+export interface BbFrameDef {
+  names: string[];
+  predictors: number[];
+  encodings: number[];
+  /** Per field: whether its values are signed (absent in some logs; then all unsigned). */
+  signed: boolean[];
+}
+
+export type BbFrameType = 'I' | 'P' | 'S' | 'G' | 'H';
+
+/** One log's header: every `H name:value` line plus what decoding needs from them. */
+export interface BbHeader {
+  /** Every header line, by name, in file order (field definitions included). */
+  lines: Map<string, string>;
+  frameDefs: Partial<Record<BbFrameType, BbFrameDef>>;
+  dataVersion: number;
+  /** Main frames: one I frame every `iInterval` iterations, P frames on `pNum` of every `pDenom`. */
+  iInterval: number;
+  pNum: number;
+  pDenom: number;
+  minThrottle: number;
+  minMotor: number;
+  vbatRef: number;
+  /** Offset of the first data frame. */
+  dataStart: number;
+}
+
+/** A decoded event frame; `time` is the last main frame's time in µs. */
+export interface BbEvent {
+  type: number;
+  time: number;
+  data: Record<string, number | string>;
+}
+
+/** Which firmware wrote a log, from its `Firmware revision` header. */
+export interface FirmwareInfo {
+  /** 'Betaflight', 'INAV', 'EmuFlight', 'Rotorflight' and so on, as the header names it. */
+  kind: string;
+  /** Everything after the name, e.g. "4.4.3 (738127e7e) STM32F405". */
+  version: string;
+  major: number;
+  minor: number;
+  patch: number;
 }

@@ -48,10 +48,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       workbox: {
-        // The blackbox-log WASM is base64-inlined into the main JS bundle, so
-        // standard precaching of the build output is enough for full offline use.
+        // Precaching the build output is enough for full offline use.
         globPatterns: ['**/*.{js,css,html,svg,ico,png,woff2}'],
-        // App bundle is large (uPlot + Leaflet + WASM string); raise the cache cap.
+        // App bundle is large (uPlot + Leaflet); raise the cache cap.
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
       },
       manifest: {

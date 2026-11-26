@@ -20,9 +20,6 @@ importers:
       '@tauri-apps/plugin-fs':
         specifier: ^2.5.1
         version: 2.5.1
-      blackbox-log:
-        specifier: 0.2.2
-        version: 0.2.2
       fft.js:
         specifier: 4.0.4
         version: 4.0.4
@@ -1706,10 +1703,6 @@ packages:
 
   before-after-hook@4.0.0:
     resolution: {integrity: sha512-q6tR3RPqIB1pMiTRMFcZwuG5T8vwp+vUvEG0vuI6B+Rikh5BfPp2fQ82c925FOs+b0lcFQ8CFrL+KbilfZFhOQ==}
-
-  blackbox-log@0.2.2:
-    resolution: {integrity: sha512-76r9HVFzpFTJ6du8Rny55TgR2VmXEhTY0SFIUx3ZsTtWmDU9CO0YjRWvW0OVCHn53kHSqUETtgQBQX7WICFt6A==}
-    deprecated: No longer maintained. Please open a GitHub issue if you are interested in using this library and/or helping develop/maintain it.
 
   bottleneck@2.19.5:
     resolution: {integrity: sha512-VHiNCbI1lKdl44tGrhNfU3lup0Tj/ZBMJB5/2ZbNXRCPuRCO7ed2mgcK4r17y+KB2EfuYuRaVlwNbAeaWGSpbw==}
@@ -3730,9 +3723,6 @@ packages:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
       typescript: '>=4.8.4 <6.1.0'
 
-  typescript-memoize@1.1.1:
-    resolution: {integrity: sha512-GQ90TcKpIH4XxYTI2F98yEQYZgjNMOGPpOgdjIBhaLaWji5HPWlRnZ4AeA1hfBxtY7bCGDJsqDDHk/KaHOl5bA==}
-
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
@@ -5704,10 +5694,6 @@ snapshots:
       is-decimal: 2.0.1
 
   before-after-hook@4.0.0: {}
-
-  blackbox-log@0.2.2:
-    dependencies:
-      typescript-memoize: 1.1.1
 
   bottleneck@2.19.5: {}
 
@@ -7740,8 +7726,6 @@ snapshots:
     transitivePeerDependencies:
       - '@typescript/native'
       - supports-color
-
-  typescript-memoize@1.1.1: {}
 
   typescript@5.9.3: {}
 

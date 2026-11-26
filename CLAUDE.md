@@ -9,7 +9,8 @@ A client-side React app that parses Betaflight blackbox logs and runs DSP on the
 ## Layout
 
 - `src/dsp/` — analyses, one function per file, grouped by analysis (`step/`, `spectrum/`, `filters/`, `gps/`, `balance/`, `scorecard/`); `dsp/testing/` holds the simulated drone used by accuracy tests.
-- `src/parser/` — the `blackbox-log` adapter that builds `ParsedLog`.
+- `src/blackbox/` — the blackbox decoder: headers, frames (I, P, S, G, H) and events, as raw integers.
+- `src/parser/` — builds `ParsedLog` from the decoder's output and names header values (firmware, debug mode, features).
 - `src/plot/` — canvas and uPlot drawing used by the plot components.
 - `src/logs/` — the `LogLibrary` class and per-log helpers.
 - `src/components/<tab>/` — one folder per tab.
@@ -35,9 +36,8 @@ A client-side React app that parses Betaflight blackbox logs and runs DSP on the
 
 ## Parser and platform quirks
 
-- `blackbox-log` 0.2.2 rejects year-numbered firmware versions (e.g. `2026.6.0`); `parseLog` rewrites the header to `4.4.0` in memory, keeping the byte length.
-- `parser/compat.ts` makes `DataView.byteLength` return 0 on detached buffers, which the parser relies on. It must be imported before any `blackbox-log` code; `main.tsx` imports it first.
-- The parser WASM is inlined in its JS, so the bundle is large and the PWA precaches the whole parser.
+- The decoder follows Betaflight's encoder (`blackbox.c`, `blackbox_encoding.c`): after an I frame both history slots hold that I frame.
+- A frame is accepted only when the next frame marker follows it within 256 bytes; a corrupt or implausible frame (time or iteration jumping backwards or too far) breaks the main-frame chain until the next I frame.
 - In Tauri the HTML file input is unreliable; `FilePicker` uses the dialog and fs plugins when `window.__TAURI_INTERNALS__` exists. Exercise file picking in both `pnpm dev` and `pnpm tauri:dev`.
 - An old service worker can serve a stale build after a release; a hard reload fixes it.
 
