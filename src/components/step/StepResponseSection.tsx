@@ -3,8 +3,10 @@ import { useMemo, useState } from 'react';
 import { AXIS_NAMES, STEP_SETTINGS_DEFAULTS } from '../../constants';
 import { useStepCurves } from '../../hooks/useStepCurves';
 import type { LogEntry, StepSettings } from '../../types';
+import { stepMetricsCsv } from '../../utils/stepMetricsCsv';
 import { stepSectionNote } from '../../utils/stepSectionNote';
 import { sumStepDiagnostics } from '../../utils/sumStepDiagnostics';
+import { CsvExportButton } from '../common/CsvExportButton';
 import { MergeLogsToggle } from '../common/MergeLogsToggle';
 import { StepControls } from './StepControls';
 import { StepDiagnosticsBar } from './StepDiagnosticsBar';
@@ -37,7 +39,10 @@ export function StepResponseSection({ entries }: { entries: LogEntry[] }) {
         mergeToggle={<MergeLogsToggle checked={mergeLogs} canMerge={canMerge} onChange={setMergeLogs} />}
       />
 
-      <StepDiagnosticsBar diag={diagSummary} />
+      <div className="controls mb-2 items-center">
+        <StepDiagnosticsBar diag={diagSummary} />
+        <CsvExportButton name="step response" csv={() => stepMetricsCsv(computed)} />
+      </div>
 
       {!anyDetected && (
         <p className="muted">

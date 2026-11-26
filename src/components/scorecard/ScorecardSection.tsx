@@ -6,6 +6,8 @@ import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
 import type { LogEntry, TabId } from '../../types';
 import { makeMergedSlot } from '../../utils/makeMergedSlot';
+import { scorecardCsv } from '../../utils/scorecardCsv';
+import { CsvExportButton } from '../common/CsvExportButton';
 import { MergeLogsToggle } from '../common/MergeLogsToggle';
 import { ScorecardRow } from './ScorecardRow';
 import { ScorecardSummary } from './ScorecardSummary';
@@ -40,6 +42,10 @@ export function ScorecardSection({ entries, onJump }: { entries: LogEntry[]; onJ
 
       <div className="controls mb-2">
         <MergeLogsToggle checked={mergeLogs} canMerge={canMerge} onChange={setMergeLogs} />
+        <CsvExportButton
+          name="scorecard"
+          csv={() => scorecardCsv(cards.map(({ slot, scorecard }) => ({ label: shortName(slot), scorecard })))}
+        />
       </div>
 
       {cards.map(({ slot, scorecard }) => (
