@@ -1,5 +1,6 @@
 import { Parser, ParserEventKind, getWasm, FirmwareKind, type LogHeaders } from 'blackbox-log';
 import { MAX_PARSER_DEBUG_MODE, resolveDebugMode } from './debugModes';
+import { rawGyroSource } from './rawGyroSource';
 import type { Axis3, Axis4, DataPresence, GpsFrameSeries, ParsedLog, SetupInfo, SlowFrameSeries } from './types';
 
 let parserPromise: Promise<Parser> | null = null;
@@ -150,13 +151,6 @@ export async function parseLog(
     toF32(cols.get(`${base}[${PITCH}]`), rowCount),
     toF32(cols.get(`${base}[${YAW}]`), rowCount),
   ];
-  /** Try each base in order; use the first one whose roll column exists. */
-  const tripletWithFallback = (...bases: string[]): Axis3 => {
-    for (const base of bases) {
-      if (cols.has(`${base}[0]`)) return triplet(base);
-    }
-    return triplet(bases[0]!);
-  };
   const quad = (base: string): Axis4 => [
     toF32(cols.get(`${base}[0]`), rowCount),
     toF32(cols.get(`${base}[1]`), rowCount),
@@ -209,8 +203,9 @@ export async function parseLog(
   // For PID, only consider it "present" if at least one axis was logged — the
   // parser zero-fills missing columns, so a key check tells us whether the
   // source contained the data at all.
+  const rawSource = rawGyroSource(cols.has('gyroUnfilt[0]'), cols.has('debug[0]'), setup.debugMode ?? '');
   const presence: DataPresence = {
-    gyroRaw: cols.has('gyroUnfilt[0]') || cols.has('debug[0]'),
+    gyroRaw: rawSource != null,
     pidTerms:
       cols.has('axisP[0]') ||
       cols.has('axisI[0]') ||
@@ -231,7 +226,7 @@ export async function parseLog(
     setup,
     time: timeArr,
     gyroFilt: triplet('gyroADC'),
-    gyroRaw: tripletWithFallback('gyroUnfilt', 'debug'),
+    gyroRaw: triplet(rawSource ?? 'gyroUnfilt'),
     pTerm: triplet('axisP'),
     iTerm: triplet('axisI'),
     dTerm: [
