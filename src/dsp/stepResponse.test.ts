@@ -2,7 +2,9 @@ import { describe, expect, test } from 'vitest';
 
 import { combineStepResponses, computeStepResponse, STEP_DEFAULTS } from './stepResponse';
 import type { ClosedLoopPlant } from './testing/simulateClosedLoop';
+import { stickSetpoint } from './testing/stickSetpoint';
 import { type SyntheticFlightOptions, syntheticFlight } from './testing/syntheticFlight';
+import { trueFrequencyMetrics } from './testing/trueFrequencyMetrics';
 import { trueStepMetrics } from './testing/trueStepMetrics';
 
 const ACRO: ClosedLoopPlant = { naturalHz: 14, damping: 0.55, delaySamples: 8 };
@@ -171,5 +173,70 @@ describe('merging step responses from several logs', () => {
     const ra = computeStepResponse(a.setpoint, a.gyro, 500);
     const merged = combineStepResponses([ra, computeStepResponse(b.setpoint, b.gyro, 1000)]);
     expect(merged.metrics.riseTimeMs).toBeCloseTo(ra.metrics.riseTimeMs!, 5);
+  });
+});
+
+describe('frequency-domain metrics', () => {
+  test.each([
+    ['acro', ACRO],
+    ['underdamped', UNDERDAMPED],
+  ])('bandwidth on an %s tune is within 10%% of the truth', (_name, plant) => {
+    const truth = trueFrequencyMetrics(plant, 2000).bandwidthHz;
+    expect(Math.abs(estimate(plant).metrics.bandwidthHz! / truth - 1)).toBeLessThan(0.1);
+  });
+
+  test.each([
+    ['acro', ACRO],
+    ['underdamped', UNDERDAMPED],
+  ])('sensitivity peak on an %s tune is within 1 dB of the truth', (_name, plant) => {
+    const truth = trueFrequencyMetrics(plant, 2000).sensitivityPeakDb;
+    expect(Math.abs(estimate(plant).metrics.sensitivityPeakDb! - truth)).toBeLessThan(1);
+  });
+
+  test('a more oscillatory tune shows a higher sensitivity peak', () => {
+    expect(estimate(UNDERDAMPED).metrics.sensitivityPeakDb!).toBeGreaterThan(estimate(ACRO).metrics.sensitivityPeakDb! + 2);
+  });
+
+  test('confidence drops when gyro moves for reasons setpoint does not explain', () => {
+    const f = syntheticFlight({ plant: ACRO });
+    // Same spectrum and power as the setpoint, so coherence should fall to about 1/(1 + 1) = 0.5.
+    const wind = stickSetpoint({ seconds: 60, sampleRateHz: 2000, amplitude: 600, holdMs: [80, 400], smoothingHz: 30, seed: 99 });
+    const gusty = f.gyro.map((v, i) => v + wind[i]!);
+    const clean = computeStepResponse(f.setpoint, f.gyro, 500).metrics.confidence!;
+    const disturbed = computeStepResponse(f.setpoint, gusty, 500).metrics.confidence!;
+    expect(clean).toBeGreaterThan(0.9);
+    expect(disturbed).toBeGreaterThan(0.35);
+    expect(disturbed).toBeLessThan(0.65);
+  });
+
+  test('peak time on an acro tune is within 2 ms of the truth', () => {
+    const m = estimate(ACRO).metrics;
+    const t = trueStepMetrics(ACRO, 2000);
+    expect(Math.abs(m.peakTimeMs! - t.peakTimeMs)).toBeLessThan(2);
+  });
+});
+
+describe('choosing which parts of the flight count', () => {
+  test('masking out the second half of the flight drops its windows', () => {
+    const f = syntheticFlight({ plant: ACRO });
+    const mask = new Uint8Array(f.setpoint.length).fill(1);
+    mask.fill(0, f.setpoint.length / 2);
+    const all = computeStepResponse(f.setpoint, f.gyro, 500);
+    const half = computeStepResponse(f.setpoint, f.gyro, 500, { mask });
+    expect(half.diagnostics.windowsMasked).toBeGreaterThan(0);
+    expect(half.diagnostics.windowsAccepted).toBeLessThan(all.diagnostics.windowsAccepted * 0.6);
+  });
+
+  test('a ceiling on stick input keeps only the gentle windows', () => {
+    const f = syntheticFlight({ plant: ACRO });
+    const r = computeStepResponse(f.setpoint, f.gyro, 500, { maxExcitation: 150 });
+    expect(r.diagnostics.windowsHighExcitation).toBeGreaterThan(0);
+    expect(r.diagnostics.windowsAccepted).toBeGreaterThan(0);
+  });
+
+  test('the spread band is zero-width before the step and widest around the rise', () => {
+    const r = estimate(ACRO);
+    expect(r.spread[0]!).toBeLessThan(0.05);
+    expect(Math.max(...r.spread)).toBeGreaterThan(r.spread[0]!);
   });
 });

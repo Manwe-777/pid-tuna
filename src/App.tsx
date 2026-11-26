@@ -57,7 +57,12 @@ import {
 } from './dsp/spectrogram';
 import { computeErrorSetpointDensity } from './dsp/errorSetpoint';
 import { motorRpmSeries, rpmAxisMax, throttlePercentSeries } from './dsp/spectralDomains';
-import { combineStepResponses, computeStepResponse, STEP_DEFAULTS } from './dsp/stepResponse';
+import { combineStepResponses } from './dsp/stepResponse';
+import { type StepLogOptions, stepResponseForLog } from './dsp/stepResponseForLog';
+import { StepControls, type StepSettings, STEP_SETTINGS_DEFAULTS } from './components/step/StepControls';
+import { StepFrequencyPlot } from './components/step/StepFrequencyPlot';
+import { StepStatsTable } from './components/step/StepStatsTable';
+import { stepMetricOption } from './components/step/stepMetricOptions';
 import { parseLog } from './parser';
 import { sliceLog, type TimeRangeSec } from './sliceLog';
 import { buildTuneView } from './tuneView';
@@ -3317,17 +3322,21 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
   );
 }
 
-function computeAxisSteps(
-  log: ParsedLog,
-  options: { windowMs?: number; minExcitation?: number } = {},
-) {
-  const sampTimeUs = log.setup.looptimeUs;
-  return AXIS_NAMES.map((name, i) => {
-    const setpoint = log.setpoint[i]!;
-    const gyro = log.gyroFilt[i]!;
-    const result = computeStepResponse(setpoint, gyro, sampTimeUs, options);
-    return { name, color: AXIS_COLORS[i]!, ...result };
-  });
+function computeAxisSteps(log: ParsedLog, options: StepLogOptions = {}) {
+  return AXIS_NAMES.map((name, i) => ({ name, color: AXIS_COLORS[i]!, ...stepResponseForLog(log, i, options) }));
+}
+
+function stepOptionsFrom(settings: StepSettings): StepLogOptions {
+  return {
+    windowMs: settings.windowMs,
+    minExcitation: settings.minExcitation,
+    maxExcitation: settings.maxExcitation > 0 ? settings.maxExcitation : Infinity,
+    minThrottle: settings.minThrottle,
+    excludeSaturation: settings.excludeSaturation,
+    outlierK: settings.outlierK,
+    settleMin: settings.settleMin,
+    settleMax: settings.settleMax,
+  };
 }
 
 /* ---------------------------- Latency tab ------------------------------ */
@@ -3470,19 +3479,31 @@ function FilterDelayTable({ entries }: { entries: FilterDelayEntry[] }) {
 }
 
 function StepResponseSection({ entries }: { entries: LogEntry[] }) {
-  const [windowMs, setWindowMs] = useState<number>(STEP_DEFAULTS.windowMs);
-  const [minExcitation, setMinExcitation] = useState<number>(STEP_DEFAULTS.minExcitation);
+  const [settings, setSettings] = useState<StepSettings>(STEP_SETTINGS_DEFAULTS);
   const [mergeLogs, setMergeLogs] = useState(false);
-  const [showSegments, setShowSegments] = useState(true);
 
   const canMerge = entries.length > 1;
   const effectiveMerge = mergeLogs && canMerge;
+  const analysisOptions = useMemo(
+    () => stepOptionsFrom(settings),
+    // Only the analysis fields: display toggles must not trigger a recompute.
+    [
+      settings.windowMs,
+      settings.minExcitation,
+      settings.maxExcitation,
+      settings.minThrottle,
+      settings.excludeSaturation,
+      settings.outlierK,
+      settings.settleMin,
+      settings.settleMax,
+    ],
+  );
 
   const computed = useMemo(() => {
     const perLog = entries.map(({ slot, log, dash }) => ({
       slot,
       dash,
-      axes: computeAxisSteps(log, { windowMs, minExcitation }),
+      axes: computeAxisSteps(log, analysisOptions),
     }));
     if (!effectiveMerge) return perLog;
     const mergedAxes = AXIS_NAMES.map((name, i) => ({
@@ -3491,27 +3512,34 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
       ...combineStepResponses(perLog.map((p) => p.axes[i]!)),
     }));
     return [{ slot: makeMergedSlot(entries), dash: [], axes: mergedAxes }];
-  }, [entries, windowMs, minExcitation, effectiveMerge]);
+  }, [entries, analysisOptions, effectiveMerge]);
   const multi = computed.length > 1;
 
   const anyDetected = computed.some(({ axes }) => axes.some((d) => d.segments.length > 0));
 
   const diagSummary = useMemo(() => {
-    let windowsTotal = 0;
-    let windowsLowExcitation = 0;
-    let windowsBadSettle = 0;
-    let windowsAccepted = 0;
-    let peakSetpoint = 0;
+    const sum = {
+      windowsTotal: 0,
+      windowsLowExcitation: 0,
+      windowsHighExcitation: 0,
+      windowsMasked: 0,
+      windowsBadSettle: 0,
+      windowsAccepted: 0,
+      peakSetpoint: 0,
+    };
     for (const c of computed) {
       for (const a of c.axes) {
-        windowsTotal += a.diagnostics.windowsTotal;
-        windowsLowExcitation += a.diagnostics.windowsLowExcitation;
-        windowsBadSettle += a.diagnostics.windowsBadSettle;
-        windowsAccepted += a.diagnostics.windowsAccepted;
-        peakSetpoint = Math.max(peakSetpoint, a.diagnostics.peakSetpoint);
+        const d = a.diagnostics;
+        sum.windowsTotal += d.windowsTotal;
+        sum.windowsLowExcitation += d.windowsLowExcitation;
+        sum.windowsHighExcitation += d.windowsHighExcitation;
+        sum.windowsMasked += d.windowsMasked;
+        sum.windowsBadSettle += d.windowsBadSettle;
+        sum.windowsAccepted += d.windowsAccepted;
+        sum.peakSetpoint = Math.max(sum.peakSetpoint, d.peakSetpoint);
       }
     }
-    return { windowsTotal, windowsLowExcitation, windowsBadSettle, windowsAccepted, peakSetpoint };
+    return sum;
   }, [computed]);
 
   return (
@@ -3526,85 +3554,11 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
         to show how much the shape varies.
       </p>
 
-      <div className="controls" style={{ flexWrap: 'wrap' }}>
-        <label>
-          Window length:
-          <input
-            type="range"
-            min={250}
-            max={3000}
-            step={50}
-            value={windowMs}
-            onChange={(e) => setWindowMs(Number.parseInt(e.target.value, 10))}
-            style={{ width: '12rem' }}
-          />
-          <input
-            type="number"
-            min={100}
-            max={5000}
-            step={50}
-            value={windowMs}
-            onChange={(e) => setWindowMs(Number.parseInt(e.target.value, 10) || 0)}
-            style={{ width: '5rem' }}
-          />
-          <span className="muted" style={{ marginLeft: '0.3rem' }}>ms</span>
-        </label>
-        <label>
-          Min excitation:
-          <input
-            type="range"
-            min={5}
-            max={200}
-            step={5}
-            value={minExcitation}
-            onChange={(e) => setMinExcitation(Number.parseInt(e.target.value, 10))}
-            style={{ width: '10rem' }}
-          />
-          <input
-            type="number"
-            min={1}
-            max={1000}
-            step={5}
-            value={minExcitation}
-            onChange={(e) => setMinExcitation(Number.parseInt(e.target.value, 10) || 0)}
-            style={{ width: '4.5rem' }}
-          />
-          <span className="muted" style={{ marginLeft: '0.3rem' }}>deg/s</span>
-        </label>
-        <button
-          type="button"
-          onClick={() => {
-            setWindowMs(STEP_DEFAULTS.windowMs);
-            setMinExcitation(STEP_DEFAULTS.minExcitation);
-          }}
-          className="step-btn-reset"
-          title="The settings the scorecard uses"
-        >
-          Defaults ({STEP_DEFAULTS.windowMs} ms / {STEP_DEFAULTS.minExcitation})
-        </button>
-        <MergeLogsToggle checked={mergeLogs} canMerge={canMerge} onChange={setMergeLogs} />
-        <label
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            cursor: 'pointer',
-          }}
-          title="Hide the faint per-segment shadow lines and show only the bold mean."
-        >
-          <input
-            type="checkbox"
-            checked={showSegments}
-            onChange={(e) => setShowSegments(e.target.checked)}
-          />
-          Show segments
-        </label>
-      </div>
-      <p className="muted" style={{ fontSize: '0.78rem', marginTop: '-0.2rem' }}>
-        <strong>Window length</strong>: longer windows resolve the slow settling better; shorter
-        windows suit short logs. <strong>Min excitation</strong>: windows whose average |setpoint| is
-        below this are skipped, since there is too little stick movement to measure.
-      </p>
+      <StepControls
+        settings={settings}
+        onChange={setSettings}
+        mergeToggle={<MergeLogsToggle checked={mergeLogs} canMerge={canMerge} onChange={setMergeLogs} />}
+      />
 
       <div className="step-diag">
         <span className="step-diag__item">
@@ -3617,11 +3571,21 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
           <span className="step-diag__v">{diagSummary.windowsTotal}</span>
         </span>
         <span className="step-diag__item">
-          <span className="step-diag__k">skipped (low excitation)</span>
+          <span className="step-diag__k">too little stick</span>
           <span className="step-diag__v">{diagSummary.windowsLowExcitation}</span>
         </span>
+        {diagSummary.windowsHighExcitation > 0 && (
+          <span className="step-diag__item">
+            <span className="step-diag__k">too much stick</span>
+            <span className="step-diag__v">{diagSummary.windowsHighExcitation}</span>
+          </span>
+        )}
         <span className="step-diag__item">
-          <span className="step-diag__k">rejected (outliers)</span>
+          <span className="step-diag__k">low throttle / saturated</span>
+          <span className="step-diag__v">{diagSummary.windowsMasked}</span>
+        </span>
+        <span className="step-diag__item">
+          <span className="step-diag__k">outliers</span>
           <span className="step-diag__v">{diagSummary.windowsBadSettle}</span>
         </span>
         <span className="step-diag__item">
@@ -3633,32 +3597,24 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
       {!anyDetected && (
         <p className="muted">
           No usable windows. If <strong>windows</strong> above is 0, the time range is too short
-          for the chosen window length — widen the range or shorten the window. Otherwise the
-          excitation threshold may be too high for this axis — lower it.
+          for the chosen window length — widen the range or shorten the window. Otherwise lower the
+          stick-input or throttle thresholds.
         </p>
       )}
+
       {AXIS_NAMES.map((_name, i) => (
         <StepResponseAxisPanel
           key={AXIS_NAMES[i]}
           axisIndex={i}
           perLog={computed.map((c) => ({ slot: c.slot, dash: c.dash, data: c.axes[i]! }))}
-          showSegments={showSegments}
+          settings={settings}
         />
       ))}
     </section>
   );
 }
 
-interface AxisStepData {
-  name: string;
-  color: string;
-  time: Float32Array;
-  segments: Float32Array[];
-  rejectedSegments: Float32Array[];
-  mean: Float32Array;
-  metrics: import('./dsp/stepResponse').StepMetrics;
-  diagnostics: import('./dsp/stepResponse').StepDiagnostics;
-}
+type AxisStepData = ReturnType<typeof computeAxisSteps>[number];
 
 interface AxisStepWithSlot {
   slot: LogSlot;
@@ -3669,104 +3625,70 @@ interface AxisStepWithSlot {
 function StepResponseAxisPanel({
   axisIndex,
   perLog,
-  showSegments,
+  settings,
 }: {
   axisIndex: number;
   perLog: AxisStepWithSlot[];
-  showSegments: boolean;
+  settings: StepSettings;
 }) {
   const axisColor = AXIS_COLORS[axisIndex]!;
   const axisName = AXIS_NAMES[axisIndex]!;
   const primary = perLog.find((p) => p.data.time.length > 0) ?? perLog[0]!;
   const time = primary.data.time;
   const multi = perLog.length > 1;
+  const { showSegments, showSpread, showFrequency, yMax, dotMetrics } = settings;
 
   const series = useMemo<PlotSeries[]>(() => {
     const out: PlotSeries[] = [];
-    for (let idx = 0; idx < perLog.length; idx++) {
-      const { slot, data } = perLog[idx]!;
+    for (const { slot, dash, data } of perLog) {
       if (data.mean.length === 0) continue;
-      if (multi) {
-        // Multi: log color, no segments.
-        out.push({
-          label: `${shortName(slot)} mean`,
-          values: align(data.mean, time.length),
-          stroke: colorFor(slot),
-          width: 2,
-        });
-      } else {
-        // Single: optional faint per-segment shadows behind the axis-color mean.
-        if (showSegments) {
-          const segColor = hexWithAlpha(axisColor, 0.18);
-          for (const seg of data.segments) {
-            out.push({ label: '', values: seg, stroke: segColor, width: 0.6 });
-          }
-        }
-        out.push({
-          label: 'Mean',
-          values: data.mean,
-          stroke: axisColor,
-          width: 2,
-        });
+      const color = multi ? colorFor(slot) : axisColor;
+      const mean = align(data.mean, time.length);
+      if (!multi && showSegments) {
+        const segColor = hexWithAlpha(axisColor, 0.18);
+        for (const seg of data.segments) out.push({ label: '', values: seg, stroke: segColor, width: 0.6 });
       }
+      if (showSpread && data.spread.length === data.mean.length) {
+        const bandColor = hexWithAlpha(color, 0.55);
+        const lo = mean.map((v, k) => v - (data.spread[k] ?? 0));
+        const hi = mean.map((v, k) => v + (data.spread[k] ?? 0));
+        out.push({ label: '', values: lo, stroke: bandColor, width: 1, dash: [3, 3] });
+        out.push({ label: '', values: hi, stroke: bandColor, width: 1, dash: [3, 3] });
+      }
+      out.push({ label: multi ? `${shortName(slot)}` : 'Estimate', values: mean, stroke: color, width: 2, dash: multi ? dash : undefined });
     }
     return out;
-  }, [perLog, time.length, axisColor, multi, showSegments]);
+  }, [perLog, time.length, axisColor, multi, showSegments, showSpread]);
 
   const empty = perLog.every((p) => p.data.mean.length === 0);
 
-  const peakDots: LogDot[] = perLog.map((p) => ({
+  const dotPlots = dotMetrics.map((key) => {
+    const option = stepMetricOption(key);
+    const dots: LogDot[] = perLog.map((p) => ({
+      label: shortName(p.slot),
+      color: colorFor(p.slot),
+      value: p.data.metrics[key],
+    }));
+    return { option, dots };
+  });
+
+  const statsRows = perLog.map((p) => ({
+    id: p.slot.id,
     label: shortName(p.slot),
-    color: colorFor(p.slot),
-    value: p.data.metrics.peakResponse,
+    color: multi ? colorFor(p.slot) : axisColor,
+    windows: p.data.segments.length,
+    metrics: p.data.metrics,
   }));
-  const latencyDots: LogDot[] = perLog.map((p) => ({
-    label: shortName(p.slot),
-    color: colorFor(p.slot),
-    value: p.data.metrics.latencyHalfMs,
-  }));
+
+  const frequencyEntries = perLog
+    .filter((p) => p.data.frequency != null)
+    .map((p) => ({ label: shortName(p.slot), color: multi ? colorFor(p.slot) : axisColor, response: p.data.frequency! }));
 
   return (
     <div className="axis-plot">
       <h3 className="axis-plot__title">
         <span className="axis-plot__dot" style={{ background: axisColor }} />
         {axisName}
-        {perLog.map((p, idx) => (
-          <span key={p.slot.id} className={`step-metrics${idx === 0 ? '' : ' step-metrics--b'}`}>
-            {multi && (
-              <span className="muted" style={{ marginRight: '0.4rem' }}>
-                {shortName(p.slot)}:
-              </span>
-            )}
-            <span className="step-metrics__item">
-              <span className="step-metrics__k">n</span>
-              {p.data.segments.length}
-            </span>
-            <span className="step-metrics__item">
-              <span className="step-metrics__k">rise</span>
-              {p.data.metrics.riseTimeMs != null ? `${p.data.metrics.riseTimeMs.toFixed(1)} ms` : '—'}
-            </span>
-            <span className="step-metrics__item">
-              <span className="step-metrics__k">over</span>
-              {p.data.metrics.overshootPct != null ? `${p.data.metrics.overshootPct.toFixed(1)}%` : '—'}
-            </span>
-            <span className="step-metrics__item">
-              <span className="step-metrics__k">settle</span>
-              {p.data.metrics.settlingTimeMs != null ? `${p.data.metrics.settlingTimeMs.toFixed(1)} ms` : '—'}
-            </span>
-            <span className="step-metrics__item">
-              <span className="step-metrics__k">50%</span>
-              {p.data.metrics.latencyHalfMs != null ? `${p.data.metrics.latencyHalfMs.toFixed(1)} ms` : '—'}
-            </span>
-            <span
-              className="step-metrics__item"
-              title="Level gyro settles at, relative to setpoint (1.00 = tracks fully)"
-            >
-              <span className="step-metrics__k">level</span>
-              {p.data.metrics.steadyState != null ? p.data.metrics.steadyState.toFixed(2) : '—'}
-            </span>
-          </span>
-        ))}
       </h3>
       <div className="step-axis-row">
         {!empty ? (
@@ -3777,33 +3699,37 @@ function StepResponseAxisPanel({
               yLabel="× setpoint"
               xLabel="ms"
               height={220}
-              // Cap Y at 1.5 so a handful of overshooting segments don't squash
-              // the mean — anything above is visually clipped, not removed.
               yMin={0}
-              yMax={1.5}
+              yMax={yMax}
               showLegend={false}
             />
           </div>
         ) : (
-          <p className="muted step-axis-row__plot">No step events detected on this axis.</p>
+          <p className="muted step-axis-row__plot">No usable windows on this axis.</p>
         )}
         <div className="step-axis-row__dots">
-          <LogDotPlot
-            dots={peakDots}
-            title={`${axisName} peak`}
-            referenceY={1}
-            yMin={0.8}
-            yMax={1.4}
-            height={220}
-          />
-          <LogDotPlot
-            dots={latencyDots}
-            title={`${axisName} 50% latency`}
-            unit="ms"
-            height={220}
-          />
+          {dotPlots.map(({ option, dots }, idx) => (
+            <LogDotPlot
+              key={`${option.key}-${idx}`}
+              dots={dots}
+              title={`${axisName} ${option.label.toLowerCase()}`}
+              unit={option.unit || undefined}
+              referenceY={option.reference}
+              height={220}
+            />
+          ))}
         </div>
       </div>
+      {!empty && <StepStatsTable rows={statsRows} />}
+      {!empty && showFrequency && frequencyEntries.length > 0 && (
+        <div className="step-freq">
+          <div className="step-freq__caption muted">
+            Frequency response — solid: tracking |T| (−3 dB marks the bandwidth); dashed: disturbance
+            sensitivity |1 − T| (above 0 dB, disturbances get amplified).
+          </div>
+          <StepFrequencyPlot entries={frequencyEntries} />
+        </div>
+      )}
     </div>
   );
 }

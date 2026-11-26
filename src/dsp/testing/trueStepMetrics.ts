@@ -14,7 +14,19 @@ export function trueStepMetrics(plant: ClosedLoopPlant, sampleRateHz: number) {
   };
 
   let peak = 0;
-  for (const v of y) peak = Math.max(peak, v);
+  let peakAt = 0;
 
-  return { riseTimeMs: cross(0.9) - cross(0.1), latencyHalfMs: cross(0.5), overshootPct: (peak - 1) * 100 };
+  for (let i = 0; i < y.length; i++) {
+    if (y[i]! > peak) {
+      peak = y[i]!;
+      peakAt = i;
+    }
+  }
+
+  return {
+    riseTimeMs: cross(0.9) - cross(0.1),
+    latencyHalfMs: cross(0.5),
+    overshootPct: (peak - 1) * 100,
+    peakTimeMs: peakAt * msPerSample,
+  };
 }

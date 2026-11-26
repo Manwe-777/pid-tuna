@@ -5,7 +5,8 @@ import { analyzeBattery, type BatteryAnalysis } from './battery';
 import { computeFilterDelays, computeXcorrLatency, type LatencyResult } from './latency';
 import { analyzeMotorBalance, combineMotorBalances, type BalanceAnalysis } from './motorBalance';
 import { combinePsds, computePsd } from './spectrogram';
-import { combineStepResponses, computeStepResponse, type StepResponseResult } from './stepResponse';
+import { combineStepResponses, type StepResponseResult } from './stepResponse';
+import { stepResponseForLog } from './stepResponseForLog';
 
 export type ScoreStatus = 'good' | 'warn' | 'bad' | 'na';
 
@@ -63,7 +64,7 @@ export function buildScorecard(log: ParsedLog): Scorecard {
 
   // ---- Step response (only if any axis detected steps) ----
   const steps = AXIS_NAMES.map((_n, axis) =>
-    computeStepResponse(log.setpoint[axis]!, log.gyroFilt[axis]!, log.setup.looptimeUs),
+    stepResponseForLog(log, axis),
   );
   const stepRows = stepResponseEntries(steps);
   for (const row of stepRows) entries.push(row);
@@ -129,7 +130,7 @@ export function buildMergedScorecard(logs: ParsedLog[]): Scorecard {
   const pooledSteps: StepResponseResult[] = AXIS_NAMES.map((_n, axis) =>
     combineStepResponses(
       logs.map((l) =>
-        computeStepResponse(l.setpoint[axis]!, l.gyroFilt[axis]!, l.setup.looptimeUs),
+        stepResponseForLog(l, axis),
       ),
     ),
   );
