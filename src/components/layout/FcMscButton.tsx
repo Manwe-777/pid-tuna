@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { buildMscRequest } from '../../msp/buildMscRequest';
-import { isTauri } from '../../msp/isTauri';
 import { isWebSerialSupported } from '../../msp/isWebSerialSupported';
 import { mscReplyError } from '../../msp/mscReplyError';
 import type { FcPort, Phase } from '../../types';
+import { isTauri } from '../../utils/isTauri';
 import { UsbIcon } from '../icons/UsbIcon';
 import { FcMscPanel } from './FcMscPanel';
 

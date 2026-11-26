@@ -1,6 +1,6 @@
-import { isTauri } from '../../msp/isTauri';
 import type { Phase } from '../../types';
 import { isMacLike } from '../../utils/isMacLike';
+import { isTauri } from '../../utils/isTauri';
 import { PanelLayout } from './PanelLayout';
 
 export function FcMscPanel({

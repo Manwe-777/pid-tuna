@@ -4,6 +4,7 @@ import { useCanvasHeatmap } from '../../hooks/useCanvasHeatmap';
 import { drawSpectrogram } from '../../plot/drawSpectrogram';
 import { drawTimeCursor } from '../../plot/drawTimeCursor';
 import type { SpectrogramResult } from '../../types';
+import { PngExportButton } from '../common/PngExportButton';
 
 interface SpectrogramPlotProps {
   data: SpectrogramResult;
@@ -43,8 +44,13 @@ export function SpectrogramPlot({
   }, [cursorTime, data, width, height]);
 
   return (
-    <div className="plot relative p-0" ref={containerRef} onMouseMove={onMove} onMouseLeave={onLeave}>
+    <div className="plot group relative p-0" ref={containerRef} onMouseMove={onMove} onMouseLeave={onLeave}>
       <canvas className="block" ref={canvasRef} />
+      <PngExportButton
+        canvases={() => (canvasRef.current ? [canvasRef.current] : [])}
+        backgroundOf={() => containerRef.current}
+        fallbackName={`spectrogram ${title ?? ''}`}
+      />
       <canvas className="pointer-events-none absolute inset-0" ref={cursorCanvasRef} />
       <canvas className="pointer-events-none absolute inset-0" ref={overlayRef} />
     </div>

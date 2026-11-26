@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { useCanvasHeatmap } from '../../hooks/useCanvasHeatmap';
 import { drawBinnedSpectrogram } from '../../plot/drawBinnedSpectrogram';
 import type { BinnedSpectrogramResult } from '../../types';
+import { PngExportButton } from '../common/PngExportButton';
 
 interface BinnedSpecPlotProps {
   data: BinnedSpectrogramResult;
@@ -44,8 +45,13 @@ export function BinnedSpecPlot({
   const { containerRef, canvasRef, overlayRef, onMove, onLeave } = useCanvasHeatmap(height, draw);
 
   return (
-    <div className="plot relative p-0" ref={containerRef} onMouseMove={onMove} onMouseLeave={onLeave}>
+    <div className="plot group relative p-0" ref={containerRef} onMouseMove={onMove} onMouseLeave={onLeave}>
       <canvas className="block" ref={canvasRef} />
+      <PngExportButton
+        canvases={() => (canvasRef.current ? [canvasRef.current] : [])}
+        backgroundOf={() => containerRef.current}
+        fallbackName={`${yLabel} spectrum ${title ?? ''}`}
+      />
       <canvas className="pointer-events-none absolute inset-0" ref={overlayRef} />
     </div>
   );

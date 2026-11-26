@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { useCanvasHeatmap } from '../../hooks/useCanvasHeatmap';
 import { drawErrorDensity } from '../../plot/drawErrorDensity';
 import type { ErrorSetpointResult } from '../../types';
+import { PngExportButton } from '../common/PngExportButton';
 
 interface DensityPlotProps {
   data: ErrorSetpointResult;
@@ -32,8 +33,13 @@ export function DensityPlot({
   const { containerRef, canvasRef, overlayRef, onMove, onLeave } = useCanvasHeatmap(height, draw);
 
   return (
-    <div className="plot relative p-0" ref={containerRef} onMouseMove={onMove} onMouseLeave={onLeave}>
+    <div className="plot group relative p-0" ref={containerRef} onMouseMove={onMove} onMouseLeave={onLeave}>
       <canvas className="block" ref={canvasRef} />
+      <PngExportButton
+        canvases={() => (canvasRef.current ? [canvasRef.current] : [])}
+        backgroundOf={() => containerRef.current}
+        fallbackName={`error vs setpoint ${title ?? ''}`}
+      />
       <canvas className="pointer-events-none absolute inset-0" ref={overlayRef} />
     </div>
   );

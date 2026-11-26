@@ -8,6 +8,7 @@ import { sameArrays } from '../../plot/sameArrays';
 import { type TimeSeriesLive, timeSeriesOptions } from '../../plot/timeSeriesOptions';
 import { timeSeriesStructureKey } from '../../plot/timeSeriesStructureKey';
 import type { PlotBand, PlotMarker, PlotSeries } from '../../types';
+import { PngExportButton } from './PngExportButton';
 
 interface TimeSeriesPlotProps {
   /** X-axis values. */
@@ -37,6 +38,8 @@ interface TimeSeriesPlotProps {
   showLegend?: boolean;
   /** Pixel height; width tracks container. */
   height?: number;
+  /** Name for the PNG export; defaults to the title or Y label. */
+  exportName?: string;
 }
 
 export function TimeSeriesPlot({
@@ -54,6 +57,7 @@ export function TimeSeriesPlot({
   segmentStrokeColors,
   showLegend = true,
   height = 320,
+  exportName,
 }: TimeSeriesPlotProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
@@ -142,5 +146,14 @@ export function TimeSeriesPlot({
     plotRef.current?.redraw(false);
   }, [markers, bands, segmentStrokeColors]);
 
-  return <div ref={containerRef} className="plot" />;
+  return (
+    <div ref={containerRef} className="plot group relative">
+      <PngExportButton
+        canvases={() => (plotRef.current ? [plotRef.current.ctx.canvas] : [])}
+        backgroundOf={() => containerRef.current}
+        name={exportName ?? title}
+        fallbackName={yLabel ?? 'plot'}
+      />
+    </div>
+  );
 }

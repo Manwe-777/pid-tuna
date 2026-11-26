@@ -1,20 +1,14 @@
 import { useCallback, useRef, useState } from 'react';
 
+import { isTauri } from '../../utils/isTauri';
+
 interface FilePickerProps {
   onFile: (file: File) => void;
   disabled?: boolean;
 }
 
-/**
- * Tauri 2 exposes this object on `window` inside webviews; absent in regular browsers.
- * The HTML `<input type="file">` dialog doesn't reliably trigger from inside Tauri's
- * WKWebView (macOS) / WebKitGTK (Linux), so when running in Tauri we route through
- * the dialog + fs plugins instead.
- */
-function isTauri(): boolean {
-  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-}
-
+// The HTML file dialog doesn't reliably open inside Tauri's WKWebView (macOS) /
+// WebKitGTK (Linux), so in Tauri files are picked through the dialog + fs plugins.
 async function pickFileViaTauri(): Promise<File | null> {
   const [{ open }, { readFile }] = await Promise.all([
     import('@tauri-apps/plugin-dialog'),
