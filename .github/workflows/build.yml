@@ -2,8 +2,9 @@ name: Build desktop bundles
 
 # Builds Tauri desktop installers for macOS (universal), Windows, and Linux.
 # Called by the CI workflow after semantic-release cuts a version: the
-# installers are attached to that version's GitHub release. A manual run builds
-# without a release and keeps the bundles as workflow artifacts.
+# installers are attached to that version's GitHub release. A manual run
+# attaches them to the release given as `version`, or keeps them as workflow
+# artifacts when it is blank.
 on:
   workflow_call:
     inputs:
@@ -12,6 +13,11 @@ on:
         required: true
         type: string
   workflow_dispatch:
+    inputs:
+      version:
+        description: Existing release version to attach the installers to (blank for artifacts only)
+        required: false
+        type: string
 
 jobs:
   build:
@@ -49,6 +55,7 @@ jobs:
             librsvg2-dev \
             libxdo-dev \
             libssl-dev \
+            libudev-dev \
             build-essential \
             curl \
             wget \
@@ -99,7 +106,7 @@ jobs:
       # For manual (workflow_dispatch) runs there's no release to attach assets to,
       # so make the bundles downloadable as workflow artifacts.
       - name: Upload bundles as workflow artifacts
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.version == ''
         uses: actions/upload-artifact@v4
         with:
           name: pidtuna-${{ matrix.platform }}
