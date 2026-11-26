@@ -31,6 +31,10 @@ export interface FrequencyMetrics {
   sensitivityPeakHz: number | null;
   /** Mean coherence from 1 Hz to the bandwidth (or 30 Hz): 1 = gyro fully explained by setpoint. */
   confidence: number | null;
+  /** Where the implied open loop L = T / (1 − T) falls through 0 dB, Hz. */
+  crossoverHz: number | null;
+  /** 180° + phase of L at the crossover: how far the loop is from oscillating. */
+  phaseMarginDeg: number | null;
 }
 
 const MAX_HZ = 100;
@@ -106,7 +110,7 @@ export function stepFrequencyResponse(spectra: StepSpectra): { response: Frequen
 
 function frequencyMetrics(r: FrequencyResponse, valid: boolean): FrequencyMetrics {
   if (!valid || r.frequencies.length < 3) {
-    return { bandwidthHz: null, sensitivityPeakDb: null, sensitivityPeakHz: null, confidence: null };
+    return { bandwidthHz: null, sensitivityPeakDb: null, sensitivityPeakHz: null, confidence: null, crossoverHz: null, phaseMarginDeg: null };
   }
 
   let bandwidthHz: number | null = null;
@@ -144,11 +148,45 @@ function frequencyMetrics(r: FrequencyResponse, valid: boolean): FrequencyMetric
   }
 
   return {
+    ...phaseMargin(r),
     bandwidthHz,
     sensitivityPeakDb: Number.isFinite(sensitivityPeakDb) ? sensitivityPeakDb : null,
     sensitivityPeakHz: Number.isFinite(sensitivityPeakDb) ? sensitivityPeakHz : null,
     confidence: cohN > 0 ? cohSum / cohN : null,
   };
+}
+
+/** Open loop implied by the closed loop, L = T / (1 − T); crossover where |L| first falls through 1. */
+function phaseMargin(r: FrequencyResponse): { crossoverHz: number | null; phaseMarginDeg: number | null } {
+  const open = (k: number) => {
+    const mag = 10 ** (r.magnitudeDb[k]! / 20);
+    const ph = (r.phaseDeg[k]! * Math.PI) / 180;
+    const tRe = mag * Math.cos(ph);
+    const tIm = mag * Math.sin(ph);
+    const dRe = 1 - tRe;
+    const dIm = -tIm;
+    const den = dRe * dRe + dIm * dIm;
+
+    return { re: (tRe * dRe + tIm * dIm) / den, im: (tIm * dRe - tRe * dIm) / den };
+  };
+
+  for (let k = 1; k < r.frequencies.length; k++) {
+    if (r.frequencies[k]! < MIN_HZ) continue;
+
+    const a = open(k - 1);
+    const b = open(k);
+    const ma = Math.hypot(a.re, a.im);
+    const mb = Math.hypot(b.re, b.im);
+    if (!(ma >= 1 && mb < 1)) continue;
+
+    const frac = (ma - 1) / (ma - mb);
+    let margin = 180 + (Math.atan2(b.im, b.re) * 180) / Math.PI;
+    if (margin > 360) margin -= 360;
+
+    return { crossoverHz: r.frequencies[k - 1]! + frac * (r.frequencies[k]! - r.frequencies[k - 1]!), phaseMarginDeg: margin };
+  }
+
+  return { crossoverHz: null, phaseMarginDeg: null };
 }
 
 function lowBandGain(f: Float32Array, re: Float64Array, im: Float64Array): number {

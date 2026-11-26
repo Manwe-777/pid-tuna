@@ -6,6 +6,8 @@ export function trueFrequencyMetrics(plant: ClosedLoopPlant, sampleRateHz: numbe
   const tau = plant.delaySamples / sampleRateHz;
   let bandwidthHz = Number.NaN;
   let sensitivityPeakDb = -Infinity;
+  let crossoverHz = Number.NaN;
+  let phaseMarginDeg = Number.NaN;
 
   for (let f = 0.05; f <= 100; f += 0.05) {
     const w = 2 * Math.PI * f;
@@ -20,7 +22,16 @@ export function trueFrequencyMetrics(plant: ClosedLoopPlant, sampleRateHz: numbe
 
     if (Number.isNaN(bandwidthHz) && f >= 1 && magDb <= -3) bandwidthHz = f;
     if (f >= 1) sensitivityPeakDb = Math.max(sensitivityPeakDb, 20 * Math.log10(Math.hypot(1 - tRe, -tIm)));
+
+    const lDen = (1 - tRe) ** 2 + tIm ** 2;
+    const lRe = (tRe * (1 - tRe) - tIm * tIm) / lDen;
+    const lIm = tIm / lDen;
+    if (Number.isNaN(crossoverHz) && f >= 1 && Math.hypot(lRe, lIm) < 1) {
+      crossoverHz = f;
+      phaseMarginDeg = 180 + (Math.atan2(lIm, lRe) * 180) / Math.PI;
+      if (phaseMarginDeg > 360) phaseMarginDeg -= 360;
+    }
   }
 
-  return { bandwidthHz, sensitivityPeakDb };
+  return { bandwidthHz, sensitivityPeakDb, crossoverHz, phaseMarginDeg };
 }

@@ -103,6 +103,10 @@ export interface StepMetrics {
   sensitivityPeakHz: number | null;
   /** Mean coherence across the control band, 0–1: how much of gyro setpoint explains. */
   confidence: number | null;
+  /** Gain crossover of the implied open loop, Hz. */
+  crossoverHz: number | null;
+  /** Phase margin of the implied open loop, degrees. Below ~30° the loop is close to oscillating. */
+  phaseMarginDeg: number | null;
 }
 
 export interface StepResponseOptions {
@@ -293,6 +297,8 @@ function finish(
       sensitivityPeakDb: freq?.metrics.sensitivityPeakDb ?? null,
       sensitivityPeakHz: freq?.metrics.sensitivityPeakHz ?? null,
       confidence: freq?.metrics.confidence ?? null,
+      crossoverHz: freq?.metrics.crossoverHz ?? null,
+      phaseMarginDeg: freq?.metrics.phaseMarginDeg ?? null,
     },
     diagnostics,
     pooled: spectra,
@@ -527,6 +533,8 @@ function nullMetrics(): StepMetrics {
     sensitivityPeakDb: null,
     sensitivityPeakHz: null,
     confidence: null,
+    crossoverHz: null,
+    phaseMarginDeg: null,
   };
 }
 

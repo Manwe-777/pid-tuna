@@ -193,6 +193,20 @@ describe('frequency-domain metrics', () => {
     expect(Math.abs(estimate(plant).metrics.sensitivityPeakDb! - truth)).toBeLessThan(1);
   });
 
+  test.each([
+    ['acro', ACRO],
+    ['underdamped', UNDERDAMPED],
+  ])('crossover on an %s tune is within 10%% and phase margin within 5° of the truth', (_name, plant) => {
+    const truth = trueFrequencyMetrics(plant, 2000);
+    const m = estimate(plant).metrics;
+    expect(Math.abs(m.crossoverHz! / truth.crossoverHz - 1)).toBeLessThan(0.1);
+    expect(Math.abs(m.phaseMarginDeg! - truth.phaseMarginDeg)).toBeLessThan(5);
+  });
+
+  test('a more oscillatory tune shows a smaller phase margin', () => {
+    expect(estimate(UNDERDAMPED).metrics.phaseMarginDeg!).toBeLessThan(estimate(ACRO).metrics.phaseMarginDeg! - 10);
+  });
+
   test('a more oscillatory tune shows a higher sensitivity peak', () => {
     expect(estimate(UNDERDAMPED).metrics.sensitivityPeakDb!).toBeGreaterThan(estimate(ACRO).metrics.sensitivityPeakDb! + 2);
   });
