@@ -93,8 +93,9 @@ export function computeSpectrogram(
 
   for (let t = 0; t < timeBins; t++) {
     const start = t * hopSize;
+    const mean = segmentMean(signal, start, windowSize);
     for (let i = 0; i < windowSize; i++) {
-      windowed[i] = signal[start + i]! * hann[i]!;
+      windowed[i] = (signal[start + i]! - mean) * hann[i]!;
     }
     fft.realTransform(fftOut, windowed);
 
@@ -157,6 +158,14 @@ export function computeSpectrogram(
     peakMagnitude: peak,
     valueMode: mode,
   };
+}
+
+/** Each window's mean is removed so a constant offset doesn't leak into the lowest bins. */
+function segmentMean(signal: Float32Array, start: number, len: number): number {
+  let s = 0;
+  for (let i = 0; i < len; i++) s += signal[start + i]!;
+
+  return s / len;
 }
 
 function makeHannWindow(n: number): Float32Array {
@@ -259,7 +268,7 @@ export function computeBinnedSpectrogram(
     return empty();
   }
 
-  const numSegments = Math.floor(signal.length / segmentLen) - 1;
+  const numSegments = Math.floor(signal.length / segmentLen);
   if (numSegments <= 0) return empty();
 
   // Mean domain value per segment.
@@ -297,9 +306,10 @@ export function computeBinnedSpectrogram(
       if (!(m > lo && m <= hi)) continue;
 
       const segStart = s * segmentLen;
+      const mean = segmentMean(signal, segStart, segmentLen);
       buf.fill(0);
       for (let k = 0; k < segmentLen; k++) {
-        buf[k] = signal[segStart + k]! * hann[k]!;
+        buf[k] = (signal[segStart + k]! - mean) * hann[k]!;
       }
       fft.realTransform(fftOut, buf);
 
@@ -428,7 +438,8 @@ export function computePsd(
 
   for (let w = 0; w < numWindows; w++) {
     const start = w * hopSize;
-    for (let i = 0; i < windowSize; i++) buf[i] = signal[start + i]! * hann[i]!;
+    const mean = segmentMean(signal, start, windowSize);
+    for (let i = 0; i < windowSize; i++) buf[i] = (signal[start + i]! - mean) * hann[i]!;
     fft.realTransform(fftOut, buf);
 
     for (let f = 0; f < freqBins; f++) {
