@@ -1,12 +1,13 @@
 import { describe, expect, test } from 'vitest';
+
 import { STEP_DEFAULTS } from '../../constants';
-import { combineStepResponses } from './combineStepResponses';
-import { computeStepResponse } from './computeStepResponse';
 import type { ClosedLoopPlant } from '../testing/simulateClosedLoop';
 import { stickSetpoint } from '../testing/stickSetpoint';
 import { syntheticFlight, type SyntheticFlightOptions } from '../testing/syntheticFlight';
 import { trueFrequencyMetrics } from '../testing/trueFrequencyMetrics';
 import { trueStepMetrics } from '../testing/trueStepMetrics';
+import { combineStepResponses } from './combineStepResponses';
+import { computeStepResponse } from './computeStepResponse';
 
 const ACRO: ClosedLoopPlant = { naturalHz: 14, damping: 0.55, delaySamples: 8 };
 const UNDERDAMPED: ClosedLoopPlant = { naturalHz: 22, damping: 0.35, delaySamples: 6 };

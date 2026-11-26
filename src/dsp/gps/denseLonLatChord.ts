@@ -27,6 +27,7 @@ function prevValidCoord(lat: Float32Array, lon: Float32Array, start: number): nu
   for (let k = start; k >= 0; k--) {
     if (gpsCoordValid(lat[k]!, lon[k]!)) return k;
   }
+
   return -1;
 }
 
@@ -34,6 +35,7 @@ function nextValidCoord(lat: Float32Array, lon: Float32Array, start: number, n: 
   for (let k = start; k < n; k++) {
     if (gpsCoordValid(lat[k]!, lon[k]!)) return k;
   }
+
   return -1;
 }
 
@@ -55,6 +57,7 @@ export function denseLonLatChord(
   const Ao = lon[i1]!;
   const B = lat[i2]!;
   const Bo = lon[i2]!;
+
   if (steps <= 1) {
     return [
       [A, Ao],
@@ -64,19 +67,21 @@ export function denseLonLatChord(
 
   const n = lat.length;
   const out: [number, number][] = [];
-  let i0 = prevValidCoord(lat, lon, i1 - 1);
-  let i3 = nextValidCoord(lat, lon, i2 + 1, n);
+  const i0 = prevValidCoord(lat, lon, i1 - 1);
+  const i3 = nextValidCoord(lat, lon, i2 + 1, n);
 
   const xy1 = toXY(A, Ao, centerLat, centerLon, mPerDegLon);
   const xy2 = toXY(B, Bo, centerLat, centerLon, mPerDegLon);
 
   let p0v: V2;
   let p3v: V2;
+
   if (i0 >= 0) {
     p0v = toXY(lat[i0]!, lon[i0]!, centerLat, centerLon, mPerDegLon);
   } else {
     p0v = { x: 2 * xy1.x - xy2.x, y: 2 * xy1.y - xy2.y };
   }
+
   if (i3 >= 0) {
     p3v = toXY(lat[i3]!, lon[i3]!, centerLat, centerLon, mPerDegLon);
   } else {
@@ -88,5 +93,6 @@ export function denseLonLatChord(
     const p = catmullRom(p0v, xy1, xy2, p3v, t);
     out.push(toLatLon(p, centerLat, centerLon, mPerDegLon));
   }
+
   return out;
 }

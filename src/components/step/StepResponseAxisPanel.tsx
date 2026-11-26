@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
+
 import { AXIS_COLORS, AXIS_NAMES } from '../../constants';
-import type { AxisStepWithSlot, LogDot, PlotSeries, StepSettings } from '../../types';
-import { align } from '../../utils/align';
-import { hexWithAlpha } from '../../utils/hexWithAlpha';
+import type { AxisStepWithSlot, LogDot, StepSettings } from '../../types';
 import { stepMetricOption } from '../../utils/stepMetricOption';
+import { stepPlotSeries } from '../../utils/stepPlotSeries';
 import { LogDotPlot } from '../common/LogDotPlot';
 import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 import { StepFrequencyPlot } from './StepFrequencyPlot';
@@ -25,33 +25,10 @@ export function StepResponseAxisPanel({
   const multi = perLog.length > 1;
   const { showSegments, showSpread, showFrequency, yMax, dotMetrics } = settings;
 
-  const series = useMemo<PlotSeries[]>(() => {
-    const out: PlotSeries[] = [];
-    for (const { label, color: entryColor, dash, data } of perLog) {
-      if (data.mean.length === 0) continue;
-      const color = multi ? entryColor : axisColor;
-      const mean = align(data.mean, time.length);
-      if (!multi && showSegments) {
-        const segColor = hexWithAlpha(axisColor, 0.18);
-        for (const seg of data.segments) out.push({ label: '', values: seg, stroke: segColor, width: 0.6 });
-      }
-      if (showSpread && data.spread.length === data.mean.length) {
-        const bandColor = hexWithAlpha(color, 0.55);
-        const lo = mean.map((v, k) => v - (data.spread[k] ?? 0));
-        const hi = mean.map((v, k) => v + (data.spread[k] ?? 0));
-        out.push({ label: '', values: lo, stroke: bandColor, width: 1, dash: [3, 3] });
-        out.push({ label: '', values: hi, stroke: bandColor, width: 1, dash: [3, 3] });
-      }
-      out.push({
-        label: multi ? label : 'Estimate',
-        values: mean,
-        stroke: color,
-        width: 2,
-        dash: multi && dash.length ? dash : undefined,
-      });
-    }
-    return out;
-  }, [perLog, time.length, axisColor, multi, showSegments, showSpread]);
+  const series = useMemo(
+    () => stepPlotSeries(perLog, { timeLength: time.length, axisColor, showSegments, showSpread }),
+    [perLog, time.length, axisColor, showSegments, showSpread],
+  );
 
   const empty = perLog.every((p) => p.data.mean.length === 0);
 

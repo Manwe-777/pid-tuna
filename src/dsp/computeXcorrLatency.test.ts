@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { computeXcorrLatency } from './computeXcorrLatency';
 import { mulberry32 } from './mulberry32';
 import { stickSetpoint } from './testing/stickSetpoint';

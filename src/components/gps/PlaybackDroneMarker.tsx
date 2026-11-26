@@ -1,6 +1,7 @@
 import L from 'leaflet';
 import { useEffect, useMemo, useRef } from 'react';
 import { Marker, useMap } from 'react-leaflet';
+
 import { DRONE_SVG } from '../../constants';
 
 export function PlaybackDroneMarker({

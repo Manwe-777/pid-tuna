@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { computeBinnedSpectrogram } from './computeBinnedSpectrogram';
 import { computePsd } from './computePsd';
 

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+
 import { AXIS_NAMES } from '../../constants';
 import { computePsd } from '../../dsp/spectrum/computePsd';
 import type { LogEntry } from '../../types';
@@ -12,11 +13,13 @@ export function DiffSummarySection({ entries }: { entries: LogEntry[] }) {
   // Order by Log start datetime if every log has one; otherwise use sidebar order.
   const ordered = useMemo(() => {
     const stamps = entries.map((e) => parseLogStartMs(e.log));
+
     if (stamps.every((t) => t != null)) {
       const indexed = entries.map((e, i) => ({ e, t: stamps[i]! }));
       indexed.sort((a, b) => a.t - b.t);
       return indexed.map((x) => x.e);
     }
+
     return entries;
   }, [entries]);
 

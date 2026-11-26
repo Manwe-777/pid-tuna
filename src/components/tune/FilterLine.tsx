@@ -19,6 +19,7 @@ export function FilterLine({
       </li>
     );
   }
+
   let value = `${hz} Hz`;
   if (cutoff != null && cutoff !== 0) value += ` (cutoff ${cutoff} Hz)`;
   if (dyn && dyn.min !== dyn.max && dyn.min > 0) value = `${dyn.min}–${dyn.max} Hz (dynamic)`;

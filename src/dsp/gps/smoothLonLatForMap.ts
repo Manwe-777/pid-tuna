@@ -10,6 +10,35 @@ function hannWeight(d: number, half: number): number {
   return 0.5 * (1 + Math.cos((Math.PI * d) / half));
 }
 
+/** The next contiguous valid-fix span at or after `from`, as [start, endExclusive). */
+function nextValidRun(lat: Float32Array, lon: Float32Array, from: number): [number, number] {
+  const n = lat.length;
+  let i = from;
+  while (i < n && !gpsCoordValid(lat[i]!, lon[i]!)) i++;
+  let j = i;
+  while (j < n && gpsCoordValid(lat[j]!, lon[j]!)) j++;
+
+  return [i, j];
+}
+
+/** Mean position of a run and the meters per degree of longitude there. */
+function runCenter(lat: Float32Array, lon: Float32Array, start: number, end: number) {
+  let sumLat = 0;
+  let sumLon = 0;
+  let kc = 0;
+
+  for (let k = start; k < end; k++) {
+    sumLat += lat[k]!;
+    sumLon += lon[k]!;
+    kc++;
+  }
+
+  const cLat = sumLat / kc;
+  const cLon = sumLon / kc;
+
+  return { cLat, cLon, mPerDegLon: M_PER_DEG_LAT * Math.cos((cLat * Math.PI) / 180) };
+}
+
 /**
  * Bidirectional exponential smoothing along each contiguous valid-fix span in local meters —
  * attenuates quantized latitude/longitude staircase motion at the latch rate.
@@ -22,80 +51,88 @@ function bidirectionalEwmaMeterRuns(
   lambdaRaw: number,
 ): void {
   const n = lat.length;
-  const λ = lambdaRaw;
 
   /** Grow-on-demand meter scratch (+ forward / backward EWMA halves). */
   let pool = new Float64Array(Math.min(8192, Math.max(256, n)));
 
   let iScan = 0;
+
   while (iScan < n) {
-    while (iScan < n && !gpsCoordValid(lat[iScan]!, lon[iScan]!)) iScan++;
-    const iStart = iScan;
-    while (iScan < n && gpsCoordValid(lat[iScan]!, lon[iScan]!)) iScan++;
-    const iEndExclusive = iScan;
+    const [iStart, iEndExclusive] = nextValidRun(lat, lon, iScan);
+    iScan = iEndExclusive;
     const runLen = iEndExclusive - iStart;
+
     if (runLen < 2) {
       for (let k = iStart; k < iEndExclusive; k++) {
         outLat[k] = lat[k]!;
         outLon[k] = lon[k]!;
       }
+
       continue;
     }
 
-    let sumLat = 0;
-    let sumLon = 0;
-    for (let k = iStart; k < iEndExclusive; k++) {
-      sumLat += lat[k]!;
-      sumLon += lon[k]!;
-    }
-    const cLat = sumLat / runLen;
-    const cLon = sumLon / runLen;
-    const mPerDegLon = M_PER_DEG_LAT * Math.cos((cLat * Math.PI) / 180);
-
     if (pool.length < runLen * 6) pool = new Float64Array(runLen * 6);
-    const rawX = pool.subarray(0, runLen);
-    const rawY = pool.subarray(runLen, runLen * 2);
-    const fwdX = pool.subarray(runLen * 2, runLen * 3);
-    const fwdY = pool.subarray(runLen * 3, runLen * 4);
-    const bkX = pool.subarray(runLen * 4, runLen * 5);
-    const bkY = pool.subarray(runLen * 5, runLen * 6);
-
-    for (let o = 0; o < runLen; o++) {
-      const k = iStart + o;
-      const m = toXY(lat[k]!, lon[k]!, cLat, cLon, mPerDegLon);
-      rawX[o] = m.x;
-      rawY[o] = m.y;
-    }
-
-    const oneMλ = 1 - λ;
-
-    fwdX[0] = rawX[0]!;
-    fwdY[0] = rawY[0]!;
-    for (let o = 1; o < runLen; o++) {
-      fwdX[o] = λ * rawX[o]! + oneMλ * fwdX[o - 1]!;
-      fwdY[o] = λ * rawY[o]! + oneMλ * fwdY[o - 1]!;
-    }
-
-    const Lm1 = runLen - 1;
-    bkX[Lm1] = rawX[Lm1]!;
-    bkY[Lm1] = rawY[Lm1]!;
-    for (let o = Lm1 - 1; o >= 0; o--) {
-      bkX[o] = λ * rawX[o]! + oneMλ * bkX[o + 1]!;
-      bkY[o] = λ * rawY[o]! + oneMλ * bkY[o + 1]!;
-    }
-
-    const halfBlend = 0.5;
-    for (let o = 0; o < runLen; o++) {
-      const xm = halfBlend * (fwdX[o]! + bkX[o]!);
-      const ym = halfBlend * (fwdY[o]! + bkY[o]!);
-      const p: V2 = { x: xm, y: ym };
-      const k = iStart + o;
-      const [qla, qlo] = toLatLon(p, cLat, cLon, mPerDegLon);
-      outLat[k] = qla;
-      outLon[k] = qlo;
-    }
+    ewmaRun(lat, lon, outLat, outLon, iStart, runLen, lambdaRaw, pool);
 
     /** Copy-forward path above already filled every `[iStart,iEndExclusive)` interior. */
+  }
+}
+
+/** Forward and backward EWMA of one run in meters, averaged, written back as lat/lon. */
+function ewmaRun(
+  lat: Float32Array,
+  lon: Float32Array,
+  outLat: Float32Array,
+  outLon: Float32Array,
+  iStart: number,
+  runLen: number,
+  λ: number,
+  pool: Float64Array,
+): void {
+  const { cLat, cLon, mPerDegLon } = runCenter(lat, lon, iStart, iStart + runLen);
+  const rawX = pool.subarray(0, runLen);
+  const rawY = pool.subarray(runLen, runLen * 2);
+  const fwdX = pool.subarray(runLen * 2, runLen * 3);
+  const fwdY = pool.subarray(runLen * 3, runLen * 4);
+  const bkX = pool.subarray(runLen * 4, runLen * 5);
+  const bkY = pool.subarray(runLen * 5, runLen * 6);
+
+  for (let o = 0; o < runLen; o++) {
+    const k = iStart + o;
+    const m = toXY(lat[k]!, lon[k]!, cLat, cLon, mPerDegLon);
+    rawX[o] = m.x;
+    rawY[o] = m.y;
+  }
+
+  const oneMλ = 1 - λ;
+
+  fwdX[0] = rawX[0]!;
+  fwdY[0] = rawY[0]!;
+
+  for (let o = 1; o < runLen; o++) {
+    fwdX[o] = λ * rawX[o]! + oneMλ * fwdX[o - 1]!;
+    fwdY[o] = λ * rawY[o]! + oneMλ * fwdY[o - 1]!;
+  }
+
+  const Lm1 = runLen - 1;
+  bkX[Lm1] = rawX[Lm1]!;
+  bkY[Lm1] = rawY[Lm1]!;
+
+  for (let o = Lm1 - 1; o >= 0; o--) {
+    bkX[o] = λ * rawX[o]! + oneMλ * bkX[o + 1]!;
+    bkY[o] = λ * rawY[o]! + oneMλ * bkY[o + 1]!;
+  }
+
+  const halfBlend = 0.5;
+
+  for (let o = 0; o < runLen; o++) {
+    const xm = halfBlend * (fwdX[o]! + bkX[o]!);
+    const ym = halfBlend * (fwdY[o]! + bkY[o]!);
+    const p: V2 = { x: xm, y: ym };
+    const k = iStart + o;
+    const [qla, qlo] = toLatLon(p, cLat, cLon, mPerDegLon);
+    outLat[k] = qla;
+    outLon[k] = qlo;
   }
 }
 
@@ -108,57 +145,62 @@ function smoothOnePass(
   minRun: number,
 ): void {
   const n = srcLat.length;
+
   for (let k = 0; k < n; k++) {
     dstLat[k] = srcLat[k]!;
     dstLon[k] = srcLon[k]!;
   }
 
   let i = 0;
+
   while (i < n) {
-    while (i < n && !gpsCoordValid(srcLat[i]!, srcLon[i]!)) i++;
-    let j = i;
-    while (j < n && gpsCoordValid(srcLat[j]!, srcLon[j]!)) j++;
+    const [start, j] = nextValidRun(srcLat, srcLon, i);
+    i = start;
     const runLen = j - i;
+
     if (runLen < minRun) {
       i = j;
       continue;
     }
 
     const half = Math.min(halfWinCap, Math.max(2, Math.floor(runLen / 3)));
-
-    let sumLat = 0;
-    let sumLon = 0;
-    let kc = 0;
-    for (let k = i; k < j; k++) {
-      sumLat += srcLat[k]!;
-      sumLon += srcLon[k]!;
-      kc++;
-    }
-    const cLat = sumLat / kc;
-    const cLon = sumLon / kc;
-    const mPerDegLon = M_PER_DEG_LAT * Math.cos((cLat * Math.PI) / 180);
-
-    for (let k = i; k < j; k++) {
-      let sx = 0;
-      let sy = 0;
-      let sw = 0;
-      for (let d = -half; d <= half; d++) {
-        const idx = k + d;
-        if (idx < i || idx >= j) continue;
-        const w = hannWeight(d, half);
-        sx += (srcLon[idx]! - cLon) * mPerDegLon * w;
-        sy += (srcLat[idx]! - cLat) * M_PER_DEG_LAT * w;
-        sw += w;
-      }
-      if (sw <= 1e-9) continue;
-      const mx = sx / sw;
-      const my = sy / sw;
-      dstLon[k] = mx / mPerDegLon + cLon;
-      dstLat[k] = my / M_PER_DEG_LAT + cLat;
-    }
+    const center = runCenter(srcLat, srcLon, i, j);
+    for (let k = i; k < j; k++) hannSmoothPoint(srcLat, srcLon, dstLat, dstLon, k, i, j, half, center);
 
     i = j;
   }
+}
+
+/** Hann-weighted mean in meters around point k, limited to the run [i, j); left as is if no weight. */
+function hannSmoothPoint(
+  srcLat: Float32Array,
+  srcLon: Float32Array,
+  dstLat: Float32Array,
+  dstLon: Float32Array,
+  k: number,
+  i: number,
+  j: number,
+  half: number,
+  { cLat, cLon, mPerDegLon }: { cLat: number; cLon: number; mPerDegLon: number },
+): void {
+  let sx = 0;
+  let sy = 0;
+  let sw = 0;
+
+  for (let d = -half; d <= half; d++) {
+    const idx = k + d;
+    if (idx < i || idx >= j) continue;
+    const w = hannWeight(d, half);
+    sx += (srcLon[idx]! - cLon) * mPerDegLon * w;
+    sy += (srcLat[idx]! - cLat) * M_PER_DEG_LAT * w;
+    sw += w;
+  }
+
+  if (sw <= 1e-9) return;
+  const mx = sx / sw;
+  const my = sy / sw;
+  dstLon[k] = mx / mPerDegLon + cLon;
+  dstLat[k] = my / M_PER_DEG_LAT + cLat;
 }
 
 /**

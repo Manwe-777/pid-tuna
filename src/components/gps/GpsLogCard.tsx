@@ -1,11 +1,15 @@
-import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
+
 import { buildValidGpsSamples } from '../../dsp/gps/buildValidGpsSamples';
 import { gpsAltitudeViridisSegments } from '../../dsp/gps/gpsAltitudeViridisSegments';
+import { gpsSampleTimeRange } from '../../dsp/gps/gpsSampleTimeRange';
+import { useGpsPlayback } from '../../hooks/useGpsPlayback';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
 import type { GpsAnalysis, LogSlot, ParsedLog, PlotMarker, PlotSeries } from '../../types';
-import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
+import { gpsStatTexts } from '../../utils/gpsStatTexts';
 import { GpsMapTrack } from './GpsMapTrack';
+import { GpsSeriesPlot } from './GpsSeriesPlot';
 import { GpsStat } from './GpsStat';
 
 export function GpsLogCard({
@@ -23,21 +27,11 @@ export function GpsLogCard({
     () => buildValidGpsSamples(log.gps.time, log.gps.lat, log.gps.lon),
     [log.gps.time, log.gps.lat, log.gps.lon],
   );
-  const gpsTMin = gpsSamples[0]?.t ?? 0;
-  const gpsTMax = gpsSamples[gpsSamples.length - 1]?.t ?? 0;
+  const { tMin: gpsTMin, tMax: gpsTMax } = gpsSampleTimeRange(gpsSamples);
 
-  const [playbackT, setPlaybackT] = useState(gpsTMin);
-  const [playing, setPlaying] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
-
-  useLayoutEffect(() => {
-    setPlaybackT(gpsTMin);
-    setPlaying(false);
-  }, [gpsTMin, gpsTMax, slot.id]);
-
-  const onPlaybackTChange = useCallback((t: number) => setPlaybackT(t), []);
-  const onPlayingChange = useCallback((playingNext: boolean) => setPlaying(playingNext), []);
-  const onPlaybackSpeedChange = useCallback((speed: number) => setPlaybackSpeed(speed), []);
+  const playback = useGpsPlayback(gpsTMin, gpsTMax, slot.id);
+  const { playbackT } = playback;
+  const stats = gpsStatTexts(analysis);
 
   const gpsPlaybackMarkers: PlotMarker[] = useMemo(() => {
     if (!(gpsTMax > gpsTMin)) return [];
@@ -69,31 +63,16 @@ export function GpsLogCard({
         {multi && <span className="diff-log__chip" style={{ background: colorFor(slot) }} />}
         <span className="diff-log__name">{shortName(slot)}</span>
         <span className="diff-log__vs">
-          {(analysis.totalDistanceM / 1000).toFixed(2)} km · max alt{' '}
-          {analysis.maxAltitudeM != null ? `${analysis.maxAltitudeM.toFixed(0)} m` : '—'} · max{' '}
-          {analysis.maxSpeedMs != null ? `${analysis.maxSpeedMs.toFixed(1)} m/s` : '—'}
+          {stats.distance} · max alt {stats.maxAlt} · max {stats.maxSpeedShort}
         </span>
       </h4>
 
       <div className="battery-stats">
-        <GpsStat label="Distance" value={`${(analysis.totalDistanceM / 1000).toFixed(2)} km`} />
-        <GpsStat
-          label="Max alt"
-          value={analysis.maxAltitudeM != null ? `${analysis.maxAltitudeM.toFixed(0)} m` : '—'}
-        />
-        <GpsStat
-          label="Max speed"
-          value={
-            analysis.maxSpeedMs != null
-              ? `${analysis.maxSpeedMs.toFixed(1)} m/s · ${(analysis.maxSpeedMs * 3.6).toFixed(0)} km/h`
-              : '—'
-          }
-        />
-        <GpsStat
-          label="Avg speed"
-          value={analysis.meanSpeedMs != null ? `${analysis.meanSpeedMs.toFixed(1)} m/s` : '—'}
-        />
-        <GpsStat label="Sats min" value={analysis.minSats != null ? `${analysis.minSats}` : '—'} />
+        <GpsStat label="Distance" value={stats.distance} />
+        <GpsStat label="Max alt" value={stats.maxAlt} />
+        <GpsStat label="Max speed" value={stats.maxSpeed} />
+        <GpsStat label="Avg speed" value={stats.avgSpeed} />
+        <GpsStat label="Sats min" value={stats.minSats} />
       </div>
 
       <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
@@ -107,46 +86,29 @@ export function GpsLogCard({
           altitude={log.gps.altitude}
           colorByLabel="altitude (m)"
           height={360}
-          playbackT={playbackT}
-          onPlaybackTChange={onPlaybackTChange}
-          playing={playing}
-          onPlayingChange={onPlayingChange}
-          playbackSpeed={playbackSpeed}
-          onPlaybackSpeedChange={onPlaybackSpeedChange}
+          {...playback}
         />
       </div>
 
       {altSeries.length > 0 && (
-        <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
-          <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
-            Altitude (m)
-          </h5>
-          <TimeSeriesPlot
-            time={log.gps.time}
-            series={altSeries}
-            yLabel="m"
-            height={180}
-            showLegend={false}
-            markers={gpsPlaybackMarkers}
-            segmentStrokeColors={altitudeSegmentStrokeColors}
-          />
-        </div>
+        <GpsSeriesPlot
+          title="Altitude (m)"
+          time={log.gps.time}
+          series={altSeries}
+          yLabel="m"
+          markers={gpsPlaybackMarkers}
+          segmentStrokeColors={altitudeSegmentStrokeColors}
+        />
       )}
 
       {speedSeries.length > 0 && (
-        <div className="axis-plot" style={{ marginTop: '0.5rem' }}>
-          <h5 className="axis-plot__title" style={{ fontSize: '0.78rem' }}>
-            Speed (m/s)
-          </h5>
-          <TimeSeriesPlot
-            time={log.gps.time}
-            series={speedSeries}
-            yLabel="m/s"
-            height={180}
-            showLegend={false}
-            markers={gpsPlaybackMarkers}
-          />
-        </div>
+        <GpsSeriesPlot
+          title="Speed (m/s)"
+          time={log.gps.time}
+          series={speedSeries}
+          yLabel="m/s"
+          markers={gpsPlaybackMarkers}
+        />
       )}
     </div>
   );

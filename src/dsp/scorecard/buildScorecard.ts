@@ -2,16 +2,16 @@ import { AXIS_NAMES } from '../../constants';
 import type { ParsedLog, Scorecard, ScoreEntry } from '../../types';
 import { analyzeBattery } from '../analyzeBattery';
 import { analyzeMotorBalance } from '../balance/analyzeMotorBalance';
-import { balanceEntry } from './balanceEntry';
-import { batteryEntry } from './batteryEntry';
-import { computePsd } from '../spectrum/computePsd';
-import { filterDelayEntry } from './filterDelayEntry';
 import { filterDelaysForLog } from '../filters/filterDelaysForLog';
-import { latencyEntry } from './latencyEntry';
 import { latencyForLog } from '../latencyForLog';
-import { noiseFloorEntry } from './noiseFloorEntry';
+import { computePsd } from '../spectrum/computePsd';
 import { stepResponseForLog } from '../step/stepResponseForLog';
 import { stepScoreEntries } from '../step/stepScoreEntries';
+import { balanceEntry } from './balanceEntry';
+import { batteryEntry } from './batteryEntry';
+import { filterDelayEntry } from './filterDelayEntry';
+import { latencyEntry } from './latencyEntry';
+import { noiseFloorEntry } from './noiseFloorEntry';
 
 export function buildScorecard(log: ParsedLog): Scorecard {
   const entries: ScoreEntry[] = [];

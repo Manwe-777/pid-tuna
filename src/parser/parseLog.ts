@@ -1,4 +1,5 @@
-import { FirmwareKind, getWasm, type LogHeaders, Parser, ParserEventKind } from 'blackbox-log';
+import { type DataParser, FirmwareKind, getWasm, type LogHeaders, Parser, ParserEventKind } from 'blackbox-log';
+
 import { MAX_PARSER_DEBUG_MODE } from '../constants';
 import type {
   Axis3,
@@ -18,6 +19,7 @@ function getParser(): Promise<Parser> {
   if (!parserState.parser) {
     parserState.parser = Parser.init(getWasm());
   }
+
   return parserState.parser;
 }
 
@@ -50,107 +52,24 @@ export async function parseLog(
   const parser = await getParser();
   const logFile = parser.loadFile(patched);
   const logCount = logFile.logCount;
+
   if (logIndex >= logCount) {
     throw new Error(`Log index ${logIndex} out of range (file has ${logCount} log(s))`);
   }
 
   const headers = logFile.parseHeaders(logIndex);
+
   if (!headers) {
     throw new Error(`Failed to parse headers for log ${logIndex} of ${file.name}`);
   }
+
   const dataParser = headers.getDataParser();
-
-  // Growing column buffers — push into JS arrays, convert to Float32Array at end.
-  const time: number[] = [];
-  const cols = new Map<string, number[]>();
-
-  const ensure = (name: string): number[] => {
-    let arr = cols.get(name);
-    if (!arr) {
-      arr = [];
-      cols.set(name, arr);
-    }
-    return arr;
-  };
-
-  let lastProgressEmit = 0;
-  let rowCount = 0;
-
-  // Slow + GPS frames are interleaved. Slow frames have no `time` field of
-  // their own, so we associate each one with the most recent main-frame time.
-  const slowTime: number[] = [];
-  const slowVbat: number[] = [];
-  const slowAmperage: number[] = [];
-  let lastMainTime = 0;
-  let sawSlowVbat = false;
-  let sawSlowAmperage = false;
-
-  const gpsTime: number[] = [];
-  const gpsLat: number[] = [];
-  const gpsLon: number[] = [];
-  const gpsAlt: number[] = [];
-  const gpsSpeed: number[] = [];
-  const gpsNumSat: number[] = [];
-  let sawGps = false;
-
-  for (const event of dataParser) {
-    if (event.kind === ParserEventKind.MainFrame) {
-      const frame = event.data;
-      time.push(frame.time);
-      lastMainTime = frame.time;
-      for (const [name, value] of frame.fields) {
-        ensure(name).push(value);
-      }
-      rowCount++;
-
-      if (onProgress && rowCount % 4096 === 0) {
-        const now = performance.now();
-        if (now - lastProgressEmit > 100) {
-          const stats = dataParser.stats();
-          onProgress({ progress: stats.progress, rows: rowCount });
-          lastProgressEmit = now;
-        }
-      }
-    } else if (event.kind === ParserEventKind.SlowFrame) {
-      const f = event.data.fields;
-      slowTime.push(lastMainTime);
-      const vb = f.get('vbatLatest');
-      if (vb !== undefined) {
-        slowVbat.push(vb);
-        sawSlowVbat = true;
-      } else slowVbat.push(NaN);
-      const am = f.get('amperageLatest');
-      if (am !== undefined) {
-        slowAmperage.push(am);
-        sawSlowAmperage = true;
-      } else slowAmperage.push(NaN);
-    } else if (event.kind === ParserEventKind.GpsFrame) {
-      const f = event.data.fields;
-      gpsTime.push(event.data.time);
-      gpsLat.push(gpsCoordDegrees(f.get('GPS_coord[0]') ?? NaN, 'lat'));
-      gpsLon.push(gpsCoordDegrees(f.get('GPS_coord[1]') ?? NaN, 'lon'));
-      gpsAlt.push(f.get('GPS_altitude') ?? NaN);
-      gpsSpeed.push(f.get('GPS_speed') ?? NaN);
-      gpsNumSat.push(f.get('GPS_numSat') ?? NaN);
-      sawGps = true;
-    }
-  }
-
-  if (onProgress) onProgress({ progress: 1, rows: rowCount });
+  const frames = collectFrames(dataParser, onProgress);
+  const { cols, rowCount } = frames;
 
   // Normalize time to start at 0.
-  const t0 = time[0] ?? 0;
-  const timeArr = new Float32Array(time.length);
-  for (let i = 0; i < time.length; i++) timeArr[i] = time[i]! - t0;
-
-  // Normalize slow + GPS frame times to the same t0.
-  const slowTimeArr = new Float32Array(slowTime.length);
-  for (let i = 0; i < slowTime.length; i++) slowTimeArr[i] = slowTime[i]! - t0;
-  const gpsTimeArr = new Float32Array(gpsTime.length);
-  for (let i = 0; i < gpsTime.length; i++) gpsTimeArr[i] = gpsTime[i]! - t0;
-
-  const gpsAltMul = gpsAltitudeMetersMultiplier(gpsAlt);
-  const gpsSpdMul = gpsSpeedMpsMultiplier(gpsSpeed);
+  const t0 = frames.time[0] ?? 0;
+  const timeArr = offsetFrom(frames.time, t0);
 
   // Helper to pull a triplet `name[0]`, `name[1]`, `name[2]` or fall back to zeros.
   const triplet = (base: string): Axis3 => [
@@ -171,43 +90,12 @@ export async function parseLog(
   const setup = extractSetup(headers, timeArr, originalFirmwareLine, originalDebugMode);
 
   // Collect motors: motor[0], motor[1], ... until missing.
-  const motor: Float32Array[] = [];
-  for (let i = 0; ; i++) {
-    const col = cols.get(`motor[${i}]`);
-    if (!col) break;
-    motor.push(toF32(col, rowCount));
-  }
-
+  const motor = indexedColumns(cols, 'motor', rowCount);
   // eRPM telemetry, one channel per motor (from BiDirectional DSHOT). May be absent.
-  const eRpm: Float32Array[] = [];
-  for (let i = 0; ; i++) {
-    const col = cols.get(`eRPM[${i}]`);
-    if (!col) break;
-    eRpm.push(toF32(col, rowCount));
-  }
+  const eRpm = indexedColumns(cols, 'eRPM', rowCount);
 
-  // Build slow/gps series. Apply blackbox-log's natural units conversion:
-  // GPS altitude/speed: blackbox-log often surfaces raw ints; coerce to SI for the UI:
-  //   altitude → meters (cm/decimeters/int meters vary by FW / receiver),
-  //   speed → m/s (Betaflight frequently logs cm/s).
-  const slow: SlowFrameSeries =
-    !sawSlowVbat && !sawSlowAmperage && (cols.has('vbatLatest') || cols.has('amperageLatest'))
-      ? batteryFromMainFrames(timeArr, cols.get('vbatLatest'), cols.get('amperageLatest'))
-      : {
-          time: slowTimeArr,
-          vbat: sawSlowVbat ? floatsFromNums(slowVbat) : new Float32Array(),
-          amperage: sawSlowAmperage ? floatsFromNums(slowAmperage) : new Float32Array(),
-        };
-  const gps: GpsFrameSeries = sawGps
-    ? {
-        time: gpsTimeArr,
-        lat: floatsFromNums(gpsLat),
-        lon: floatsFromNums(gpsLon),
-        altitude: scaledFloat32FromNums(gpsAlt, gpsAltMul),
-        speed: scaledFloat32FromNums(gpsSpeed, gpsSpdMul),
-        numSat: floatsFromNums(gpsNumSat),
-      }
-    : emptyGps();
+  const slow = slowSeries(frames, timeArr, t0);
+  const gps = gpsSeries(frames, t0);
 
   // Track which optional fields were actually present in the source log.
   // For PID, only consider it "present" if at least one axis was logged — the
@@ -216,13 +104,13 @@ export async function parseLog(
   const rawSource = rawGyroSource(cols.has('gyroUnfilt[0]'), cols.has('debug[0]'), setup.debugMode ?? '');
   const presence: DataPresence = {
     gyroRaw: rawSource != null,
-    pidTerms: cols.has('axisP[0]') || cols.has('axisI[0]') || cols.has('axisD[0]') || cols.has('axisF[0]'),
+    pidTerms: hasAnyPidTerm(cols),
     iTerm: cols.has('axisI[0]'),
     motors: motor.length > 0,
     eRpm: eRpm.length > 0,
     vbat: slow.vbat.length > 0,
     amperage: slow.amperage.length > 0,
-    gps: sawGps,
+    gps: frames.sawGps,
   };
 
   const result: ParsedLog = {
@@ -255,6 +143,189 @@ export async function parseLog(
   return result;
 }
 
+/** Everything read from the data frames, before conversion to typed columns. */
+interface FrameBuffers {
+  // Growing column buffers — push into JS arrays, convert to Float32Array at end.
+  time: number[];
+  cols: Map<string, number[]>;
+  rowCount: number;
+  lastProgressEmit: number;
+  // Slow + GPS frames are interleaved. Slow frames have no `time` field of
+  // their own, so we associate each one with the most recent main-frame time.
+  slowTime: number[];
+  slowVbat: number[];
+  slowAmperage: number[];
+  lastMainTime: number;
+  sawSlowVbat: boolean;
+  sawSlowAmperage: boolean;
+  gpsTime: number[];
+  gpsLat: number[];
+  gpsLon: number[];
+  gpsAlt: number[];
+  gpsSpeed: number[];
+  gpsNumSat: number[];
+  sawGps: boolean;
+}
+
+type FrameFields = ReadonlyMap<string, number>;
+
+/** Read every main, slow and GPS frame, reporting progress along the way. */
+function collectFrames(dataParser: DataParser, onProgress: ProgressCallback | undefined): FrameBuffers {
+  const buf: FrameBuffers = {
+    time: [],
+    cols: new Map<string, number[]>(),
+    rowCount: 0,
+    lastProgressEmit: 0,
+    slowTime: [],
+    slowVbat: [],
+    slowAmperage: [],
+    lastMainTime: 0,
+    sawSlowVbat: false,
+    sawSlowAmperage: false,
+    gpsTime: [],
+    gpsLat: [],
+    gpsLon: [],
+    gpsAlt: [],
+    gpsSpeed: [],
+    gpsNumSat: [],
+    sawGps: false,
+  };
+
+  for (const event of dataParser) {
+    if (event.kind === ParserEventKind.MainFrame) {
+      addMainFrame(buf, event.data.time, event.data.fields);
+      if (onProgress && buf.rowCount % 4096 === 0) emitProgress(buf, dataParser, onProgress);
+    } else if (event.kind === ParserEventKind.SlowFrame) {
+      addSlowFrame(buf, event.data.fields);
+    } else if (event.kind === ParserEventKind.GpsFrame) {
+      addGpsFrame(buf, event.data.time, event.data.fields);
+    }
+  }
+
+  if (onProgress) onProgress({ progress: 1, rows: buf.rowCount });
+
+  return buf;
+}
+
+function addMainFrame(buf: FrameBuffers, time: number, fields: FrameFields): void {
+  buf.time.push(time);
+  buf.lastMainTime = time;
+
+  for (const [name, value] of fields) {
+    let arr = buf.cols.get(name);
+
+    if (!arr) {
+      arr = [];
+      buf.cols.set(name, arr);
+    }
+
+    arr.push(value);
+  }
+
+  buf.rowCount++;
+}
+
+/** Report progress at most every 100 ms. */
+function emitProgress(buf: FrameBuffers, dataParser: DataParser, onProgress: ProgressCallback): void {
+  const now = performance.now();
+  if (!(now - buf.lastProgressEmit > 100)) return;
+
+  const stats = dataParser.stats();
+  onProgress({ progress: stats.progress, rows: buf.rowCount });
+  buf.lastProgressEmit = now;
+}
+
+function addSlowFrame(buf: FrameBuffers, f: FrameFields): void {
+  buf.slowTime.push(buf.lastMainTime);
+  if (pushOrNaN(buf.slowVbat, f.get('vbatLatest'))) buf.sawSlowVbat = true;
+  if (pushOrNaN(buf.slowAmperage, f.get('amperageLatest'))) buf.sawSlowAmperage = true;
+}
+
+/** Push the value, or NaN when the field is missing; true when it was present. */
+function pushOrNaN(target: number[], value: number | undefined): boolean {
+  if (value === undefined) {
+    target.push(NaN);
+    return false;
+  }
+
+  target.push(value);
+  return true;
+}
+
+function addGpsFrame(buf: FrameBuffers, time: number, f: FrameFields): void {
+  buf.gpsTime.push(time);
+  buf.gpsLat.push(gpsCoordDegrees(f.get('GPS_coord[0]') ?? NaN, 'lat'));
+  buf.gpsLon.push(gpsCoordDegrees(f.get('GPS_coord[1]') ?? NaN, 'lon'));
+  buf.gpsAlt.push(f.get('GPS_altitude') ?? NaN);
+  buf.gpsSpeed.push(f.get('GPS_speed') ?? NaN);
+  buf.gpsNumSat.push(f.get('GPS_numSat') ?? NaN);
+  buf.sawGps = true;
+}
+
+/** Times relative to t0, as Float32. */
+function offsetFrom(times: number[], t0: number): Float32Array {
+  const out = new Float32Array(times.length);
+  for (let i = 0; i < times.length; i++) out[i] = times[i]! - t0;
+  return out;
+}
+
+/** Columns `name[0]`, `name[1]`, ... until the first missing one. */
+function indexedColumns(cols: Map<string, number[]>, name: string, rowCount: number): Float32Array[] {
+  const out: Float32Array[] = [];
+
+  for (let i = 0; ; i++) {
+    const col = cols.get(`${name}[${i}]`);
+    if (!col) break;
+    out.push(toF32(col, rowCount));
+  }
+
+  return out;
+}
+
+/** Battery from slow frames, or from main frames when only those carry it. */
+function slowSeries(frames: FrameBuffers, timeArr: Float32Array, t0: number): SlowFrameSeries {
+  const { cols, sawSlowVbat, sawSlowAmperage } = frames;
+  // Normalize slow frame times to the same t0.
+  const slowTimeArr = offsetFrom(frames.slowTime, t0);
+
+  if (!sawSlowVbat && !sawSlowAmperage && (cols.has('vbatLatest') || cols.has('amperageLatest'))) {
+    return batteryFromMainFrames(timeArr, cols.get('vbatLatest'), cols.get('amperageLatest'));
+  }
+
+  return {
+    time: slowTimeArr,
+    vbat: sawSlowVbat ? floatsFromNums(frames.slowVbat) : new Float32Array(),
+    amperage: sawSlowAmperage ? floatsFromNums(frames.slowAmperage) : new Float32Array(),
+  };
+}
+
+/**
+ * Build the GPS series. Apply blackbox-log's natural units conversion:
+ * GPS altitude/speed: blackbox-log often surfaces raw ints; coerce to SI for the UI:
+ *   altitude → meters (cm/decimeters/int meters vary by FW / receiver),
+ *   speed → m/s (Betaflight frequently logs cm/s).
+ */
+function gpsSeries(frames: FrameBuffers, t0: number): GpsFrameSeries {
+  // Normalize GPS frame times to the same t0.
+  const gpsTimeArr = offsetFrom(frames.gpsTime, t0);
+  const gpsAltMul = gpsAltitudeMetersMultiplier(frames.gpsAlt);
+  const gpsSpdMul = gpsSpeedMpsMultiplier(frames.gpsSpeed);
+  if (!frames.sawGps) return emptyGps();
+
+  return {
+    time: gpsTimeArr,
+    lat: floatsFromNums(frames.gpsLat),
+    lon: floatsFromNums(frames.gpsLon),
+    altitude: scaledFloat32FromNums(frames.gpsAlt, gpsAltMul),
+    speed: scaledFloat32FromNums(frames.gpsSpeed, gpsSpdMul),
+    numSat: floatsFromNums(frames.gpsNumSat),
+  };
+}
+
+function hasAnyPidTerm(cols: Map<string, number[]>): boolean {
+  return cols.has('axisP[0]') || cols.has('axisI[0]') || cols.has('axisD[0]') || cols.has('axisF[0]');
+}
+
 function floatsFromNums(xs: number[]): Float32Array {
   const out = new Float32Array(xs.length);
   for (let i = 0; i < xs.length; i++) out[i] = xs[i]!;
@@ -263,10 +334,12 @@ function floatsFromNums(xs: number[]): Float32Array {
 
 function scaledFloat32FromNums(xs: number[], multiplier: number): Float32Array {
   const out = new Float32Array(xs.length);
+
   for (let i = 0; i < xs.length; i++) {
     const x = xs[i]!;
     out[i] = Number.isFinite(x) ? x * multiplier : NaN;
   }
+
   return out;
 }
 
@@ -275,12 +348,14 @@ function scaledFloat32FromNums(xs: number[], multiplier: number): Float32Array {
  */
 function gpsSpeedMpsMultiplier(speeds: number[]): number {
   let mx = 0;
+
   for (let i = 0; i < speeds.length; i++) {
     const x = speeds[i]!;
     if (!Number.isFinite(x)) continue;
     const ax = Math.abs(x);
     if (ax > mx) mx = ax;
   }
+
   return mx > 130 ? 0.01 : 1;
 }
 
@@ -289,46 +364,12 @@ function gpsAltitudeMetersMultiplier(alts: number[]): number {
   if (raw.length === 0) return 1;
   const mxRaw = raw.reduce((a, x) => Math.max(a, Math.abs(x)), 0);
 
-  /** Lower cost is better — reject impossible Earth-surface ranges. */
-  function costWithMul(mul: number): number | null {
-    let mxScaled = 0;
-    let sum = 0;
-    const scaledArr: number[] = [];
-    for (let i = 0; i < raw.length; i++) {
-      const v = raw[i]! * mul;
-      scaledArr.push(v);
-      const ax = Math.abs(v);
-      if (ax > mxScaled) mxScaled = ax;
-      sum += Math.abs(v);
-    }
-
-    scaledArr.sort((x, y) => x - y);
-    const med = scaledArr.length ? scaledArr[Math.floor(scaledArr.length / 2)]! : NaN;
-    if (!Number.isFinite(med)) return null;
-    const minV = scaledArr[0]!;
-    const maxV = scaledArr[scaledArr.length - 1]!;
-
-    if (mxScaled > 9800 || med < -800 || med > 12_000) return null;
-    if (maxV > 9800 || minV < -1200) return null;
-
-    const meanAbs = sum / scaledArr.length;
-    let c = mxScaled + meanAbs * 0.06;
-
-    if (mxRaw >= 8200 && mul === 1) c += 35_000;
-    // Over-shrunk altitude (/cm) when magnitude clearly large in raw ints.
-    if (mxRaw > 7800 && mul === 0.01 && mxScaled < 180) c += 12_500;
-    if (mxRaw > 7800 && mul === 0.01 && med < 180) c += 9000;
-    // Mild preference for middling AMSL / AGL-ish medians vs sea-level artefacts.
-    if (med > 260 && med < 6500 && mxScaled < 8500) c -= med > 520 ? 40 : 0;
-
-    return c;
-  }
-
   let bestMul = 1;
   let best = Infinity;
 
   const tryMul = (m: number) => {
-    const c = costWithMul(m);
+    const c = altitudeScaleCost(raw, mxRaw, m);
+
     if (c != null && c < best) {
       best = c;
       bestMul = m;
@@ -341,6 +382,78 @@ function gpsAltitudeMetersMultiplier(alts: number[]): number {
 
   if (best !== Infinity) return bestMul;
   return mxRaw >= 45_000 ? 0.01 : mxRaw >= 9200 ? 0.1 : 1;
+}
+
+interface ScaledAltitudes {
+  mxScaled: number;
+  sum: number;
+  med: number;
+  minV: number;
+  maxV: number;
+  count: number;
+}
+
+/** Lower cost is better — reject impossible Earth-surface ranges. */
+function altitudeScaleCost(raw: number[], mxRaw: number, mul: number): number | null {
+  const scaled = scaleAltitudes(raw, mul);
+  if (!Number.isFinite(scaled.med)) return null;
+  if (!plausibleAltitudes(scaled)) return null;
+
+  const meanAbs = scaled.sum / scaled.count;
+
+  const c = rawMagnitudePenalty(scaled.mxScaled + meanAbs * 0.06, mxRaw, mul, scaled);
+
+  return medianPreference(c, scaled);
+}
+
+function rawMagnitudePenalty(base: number, mxRaw: number, mul: number, { mxScaled, med }: ScaledAltitudes): number {
+  let c = base;
+
+  if (mxRaw >= 8200 && mul === 1) c += 35_000;
+  // Over-shrunk altitude (/cm) when magnitude clearly large in raw ints.
+  if (mxRaw > 7800 && mul === 0.01 && mxScaled < 180) c += 12_500;
+  if (mxRaw > 7800 && mul === 0.01 && med < 180) c += 9000;
+
+  return c;
+}
+
+/** Mild preference for middling AMSL / AGL-ish medians vs sea-level artefacts. */
+function medianPreference(base: number, { mxScaled, med }: ScaledAltitudes): number {
+  let c = base;
+  if (med > 260 && med < 6500 && mxScaled < 8500) c -= med > 520 ? 40 : 0;
+
+  return c;
+}
+
+function scaleAltitudes(raw: number[], mul: number): ScaledAltitudes {
+  let mxScaled = 0;
+  let sum = 0;
+  const scaledArr: number[] = [];
+
+  for (let i = 0; i < raw.length; i++) {
+    const v = raw[i]! * mul;
+    scaledArr.push(v);
+    const ax = Math.abs(v);
+    if (ax > mxScaled) mxScaled = ax;
+    sum += Math.abs(v);
+  }
+
+  scaledArr.sort((x, y) => x - y);
+  const med = scaledArr.length ? scaledArr[Math.floor(scaledArr.length / 2)]! : NaN;
+
+  return {
+    mxScaled,
+    sum,
+    med,
+    minV: scaledArr[0]!,
+    maxV: scaledArr[scaledArr.length - 1]!,
+    count: scaledArr.length,
+  };
+}
+
+function plausibleAltitudes({ mxScaled, med, minV, maxV }: ScaledAltitudes): boolean {
+  if (mxScaled > 9800 || med < -800 || med > 12_000) return false;
+  return !(maxV > 9800 || minV < -1200);
 }
 
 /** Integer lat/lon in blackbox are degrees × 1e7; normalize when clearly not decimal degrees. */
@@ -449,9 +562,11 @@ function patchFirmwareVersion(input: Uint8Array): { patched: Uint8Array; origina
   const head = decoder.decode(input.subarray(0, scanLen));
 
   const prefixIdx = head.indexOf(FIRMWARE_HEADER_PREFIX);
+
   if (prefixIdx < 0) {
     return { patched: input, originalFirmwareLine: null };
   }
+
   const lineStart = prefixIdx + FIRMWARE_HEADER_PREFIX.length;
   const lineEnd = head.indexOf('\n', lineStart);
   if (lineEnd < 0) return { patched: input, originalFirmwareLine: null };
@@ -461,6 +576,7 @@ function patchFirmwareVersion(input: Uint8Array): { patched: Uint8Array; origina
   // Inside the line, find the first version-shaped token: digits.dots[.-alpha…].
   // Example: "Betaflight 2026.6.0-alpha (norevision) STM32F405"
   const versionMatch = /(\d+(?:\.\d+){1,3})(-[\w.]+)?/.exec(fullLine);
+
   if (!versionMatch) {
     return { patched: input, originalFirmwareLine: fullLine };
   }
@@ -543,6 +659,7 @@ function isSupportedVersion(firmwareLine: string, major: number, minor: number):
     if (major === 6) return minor === 0;
     return false;
   }
+
   // Treat Betaflight/EmuFlight/Cleanflight derivatives the same way.
   return major === 4 && minor >= 2 && minor < 5;
 }

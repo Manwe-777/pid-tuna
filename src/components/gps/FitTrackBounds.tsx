@@ -1,5 +1,5 @@
 import L from 'leaflet';
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 
 /**
@@ -19,15 +19,19 @@ export function FitTrackBounds({
 }) {
   const map = useMap();
   const pointsRef = useRef(boundsPoints);
-  pointsRef.current = boundsPoints;
+  useLayoutEffect(() => {
+    pointsRef.current = boundsPoints;
+  });
 
   useEffect(() => {
     const points = pointsRef.current;
     if (points.length === 0) return;
+
     if (points.length === 1) {
       map.setView(points[0]!, 15);
       return;
     }
+
     map.fitBounds(L.latLngBounds(points), { padding: [28, 28], maxZoom: 17 });
     // Denser draw paths change boundsPoints without changing anchors — avoids zoom reset.
   }, [map, anchorLat, anchorLon, anchorGpsTime]);

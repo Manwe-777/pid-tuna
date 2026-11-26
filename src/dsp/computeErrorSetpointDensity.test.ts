@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { computeErrorSetpointDensity } from './computeErrorSetpointDensity';
 import { stickSetpoint } from './testing/stickSetpoint';
 
@@ -31,6 +32,7 @@ describe('error vs setpoint', () => {
 
   test('the mean-error line follows the tilt: about +10% of setpoint at the right, −10% at the left', () => {
     const r = computeErrorSetpointDensity({ setpoint: sp, gyro: follower(0.9), lagSamples: LAG });
+
     const pick = (x: number) => {
       let best = 0;
       r.xCenters.forEach((c, i) => {
@@ -38,6 +40,7 @@ describe('error vs setpoint', () => {
       });
       return { x: r.xCenters[best]!, e: r.meanError[best]! };
     };
+
     const hi = pick(r.setpointRange * 0.7);
     const lo = pick(-r.setpointRange * 0.7);
     expect(hi.e / hi.x).toBeCloseTo(0.1, 2);

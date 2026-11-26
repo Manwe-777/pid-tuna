@@ -1,7 +1,11 @@
 import type { SpectralValueMode, SpectrogramOptions, SpectrogramResult } from '../../types';
 import { createFft } from '../../utils/createFft';
 import { makeHannWindow } from '../../utils/makeHannWindow';
-import { segmentMean } from './segmentMean';
+import { binFrequencies } from './binFrequencies';
+import { fillPeakRelativeDb } from './fillPeakRelativeDb';
+import { fillWindowedSegment } from './fillWindowedSegment';
+import { flooredDb } from './flooredDb';
+import { windowPower } from './windowPower';
 
 const DEFAULT_WINDOW_SIZE = 512;
 
@@ -17,19 +21,9 @@ export function computeSpectrogram(
   sampleRateHz: number,
   options: SpectrogramOptions = {},
 ): SpectrogramResult {
-  const windowSize = options.windowSize ?? DEFAULT_WINDOW_SIZE;
-  const hopSize = options.hopSize ?? windowSize >> 1;
-  const mode: SpectralValueMode = options.mode ?? 'magnitude';
-  const floorDb = options.floorDb ?? (mode === 'psd' ? -200 : DEFAULT_FLOOR_DB);
-
-  if ((windowSize & (windowSize - 1)) !== 0 || windowSize < 2) {
-    throw new Error(`Spectrogram windowSize must be a power of two >= 2 (got ${windowSize})`);
-  }
-  if (hopSize < 1) {
-    throw new Error(`Spectrogram hopSize must be >= 1 (got ${hopSize})`);
-  }
-
+  const { windowSize, hopSize, mode, floorDb } = spectrogramSettings(options);
   const freqBins = (windowSize >> 1) + 1;
+
   if (signal.length < windowSize || sampleRateHz <= 0) {
     return {
       times: new Float32Array(0),
@@ -43,6 +37,57 @@ export function computeSpectrogram(
   }
 
   const timeBins = Math.floor((signal.length - windowSize) / hopSize) + 1;
+  const { linear, peak } = stftMagnitudes(signal, windowSize, hopSize, timeBins);
+  const magnitudes = new Float32Array(linear.length);
+
+  if (mode === 'psd') {
+    fillPsdDb(magnitudes, linear, sampleRateHz, windowSize, floorDb);
+  } else {
+    // Magnitude in dB relative to peak; floor at floorDb.
+    fillPeakRelativeDb(magnitudes, linear, peak, floorDb);
+  }
+
+  return {
+    times: windowCentreTimes(timeBins, windowSize, hopSize, sampleRateHz),
+    frequencies: binFrequencies(freqBins, sampleRateHz, windowSize),
+    magnitudes,
+    freqBins,
+    timeBins,
+    peakMagnitude: peak,
+    valueMode: mode,
+  };
+}
+
+function spectrogramSettings(options: SpectrogramOptions): {
+  windowSize: number;
+  hopSize: number;
+  mode: SpectralValueMode;
+  floorDb: number;
+} {
+  const windowSize = options.windowSize ?? DEFAULT_WINDOW_SIZE;
+  const hopSize = options.hopSize ?? windowSize >> 1;
+  const mode: SpectralValueMode = options.mode ?? 'magnitude';
+  const floorDb = options.floorDb ?? (mode === 'psd' ? -200 : DEFAULT_FLOOR_DB);
+
+  if ((windowSize & (windowSize - 1)) !== 0 || windowSize < 2) {
+    throw new Error(`Spectrogram windowSize must be a power of two >= 2 (got ${windowSize})`);
+  }
+
+  if (hopSize < 1) {
+    throw new Error(`Spectrogram hopSize must be >= 1 (got ${hopSize})`);
+  }
+
+  return { windowSize, hopSize, mode, floorDb };
+}
+
+/** Raw |X| per time bin (row-major, `timeBins × freqBins`) and the largest one. */
+function stftMagnitudes(
+  signal: Float32Array,
+  windowSize: number,
+  hopSize: number,
+  timeBins: number,
+): { linear: Float32Array; peak: number } {
+  const freqBins = (windowSize >> 1) + 1;
   const hann = makeHannWindow(windowSize);
   const fft = createFft(windowSize);
   const fftOut = new Float64Array(windowSize * 2); // [re0, im0, re1, im1, ...]
@@ -53,14 +98,11 @@ export function computeSpectrogram(
   let peak = 0;
 
   for (let t = 0; t < timeBins; t++) {
-    const start = t * hopSize;
-    const mean = segmentMean(signal, start, windowSize);
-    for (let i = 0; i < windowSize; i++) {
-      windowed[i] = (signal[start + i]! - mean) * hann[i]!;
-    }
+    fillWindowedSegment(windowed, signal, t * hopSize, hann);
     fft.realTransform(fftOut, windowed);
 
     const rowBase = t * freqBins;
+
     for (let f = 0; f < freqBins; f++) {
       const re = fftOut[2 * f]!;
       const im = fftOut[2 * f + 1]!;
@@ -70,53 +112,38 @@ export function computeSpectrogram(
     }
   }
 
-  const magnitudes = new Float32Array(linear.length);
-  if (mode === 'psd') {
-    // Absolute one-sided PSD in dB (power per Hz). `linear` holds raw |X|, so
-    // power = |X|^2 scaled by the window energy, doubled off the DC/Nyquist bins.
-    const hann = makeHannWindow(windowSize);
-    let winSqSum = 0;
-    for (let i = 0; i < windowSize; i++) winSqSum += hann[i]! * hann[i]!;
-    const psdNorm = 1 / (sampleRateHz * winSqSum);
-    const nyquistBin = windowSize >> 1;
-    for (let t = 0; t < timeBins; t++) {
-      const rowBase = t * freqBins;
-      for (let f = 0; f < freqBins; f++) {
-        const mag = linear[rowBase + f]!;
-        const factor = f === 0 || f === nyquistBin ? 1 : 2;
-        const power = mag * mag * psdNorm * factor;
-        const db = power > 0 ? 10 * Math.log10(power) : floorDb;
-        magnitudes[rowBase + f] = db < floorDb ? floorDb : db;
-      }
-    }
-  } else if (peak > 0) {
-    // Magnitude in dB relative to peak; floor at floorDb.
-    const invPeak = 1 / peak;
-    for (let i = 0; i < linear.length; i++) {
-      const norm = linear[i]! * invPeak;
-      // 20*log10(norm); guard against 0 → -Infinity.
-      const db = norm > 0 ? 20 * Math.log10(norm) : floorDb;
-      magnitudes[i] = db < floorDb ? floorDb : db;
-    }
-  }
+  return { linear, peak };
+}
 
-  // Bin time = (center of window) / sampleRate.
+/**
+ * Absolute one-sided PSD in dB (power per Hz). `linear` holds raw |X|, so
+ * power = |X|^2 scaled by the window energy, doubled off the DC/Nyquist bins.
+ */
+function fillPsdDb(
+  out: Float32Array,
+  linear: Float32Array,
+  sampleRateHz: number,
+  windowSize: number,
+  floorDb: number,
+): void {
+  const freqBins = (windowSize >> 1) + 1;
+  const psdNorm = 1 / (sampleRateHz * windowPower(makeHannWindow(windowSize)));
+  const nyquistBin = windowSize >> 1;
+
+  for (let i = 0; i < linear.length; i++) {
+    const f = i % freqBins;
+    const mag = linear[i]!;
+    const factor = f === 0 || f === nyquistBin ? 1 : 2;
+    out[i] = flooredDb(mag * mag * psdNorm * factor, 10, floorDb);
+  }
+}
+
+/** Bin time = (center of window) / sampleRate. */
+function windowCentreTimes(timeBins: number, windowSize: number, hopSize: number, sampleRateHz: number): Float32Array {
   const times = new Float32Array(timeBins);
   const halfWindowSec = windowSize / (2 * sampleRateHz);
   const hopSec = hopSize / sampleRateHz;
   for (let t = 0; t < timeBins; t++) times[t] = halfWindowSec + t * hopSec;
 
-  const frequencies = new Float32Array(freqBins);
-  const fStep = sampleRateHz / windowSize;
-  for (let f = 0; f < freqBins; f++) frequencies[f] = f * fStep;
-
-  return {
-    times,
-    frequencies,
-    magnitudes,
-    freqBins,
-    timeBins,
-    peakMagnitude: peak,
-    valueMode: mode,
-  };
+  return times;
 }

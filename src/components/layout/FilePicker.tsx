@@ -62,12 +62,14 @@ export function FilePicker({ onFile, disabled }: FilePickerProps) {
 
   const onClick = useCallback(() => {
     if (disabled) return;
+
     if (isTauri()) {
       pickFileViaTauri()
         .then((f) => handle(f))
         .catch((err) => console.error('Tauri file picker failed:', err));
       return;
     }
+
     inputRef.current?.click();
   }, [disabled, handle]);
 

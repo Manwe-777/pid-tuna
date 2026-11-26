@@ -2,20 +2,20 @@ import { AXIS_NAMES } from '../../constants';
 import type { BatteryAnalysis, LatencyResult, ParsedLog, Scorecard, ScoreEntry, StepResponseResult } from '../../types';
 import { analyzeBattery } from '../analyzeBattery';
 import { analyzeMotorBalance } from '../balance/analyzeMotorBalance';
+import { combineMotorBalances } from '../balance/combineMotorBalances';
+import { filterDelaysForLog } from '../filters/filterDelaysForLog';
+import { latencyForLog } from '../latencyForLog';
+import { combinePsds } from '../spectrum/combinePsds';
+import { computePsd } from '../spectrum/computePsd';
+import { combineStepResponses } from '../step/combineStepResponses';
+import { stepResponseForLog } from '../step/stepResponseForLog';
+import { stepScoreEntries } from '../step/stepScoreEntries';
 import { balanceEntry } from './balanceEntry';
 import { batteryEntry } from './batteryEntry';
 import { buildScorecard } from './buildScorecard';
-import { combineMotorBalances } from '../balance/combineMotorBalances';
-import { combinePsds } from '../spectrum/combinePsds';
-import { combineStepResponses } from '../step/combineStepResponses';
-import { computePsd } from '../spectrum/computePsd';
 import { filterDelayEntry } from './filterDelayEntry';
-import { filterDelaysForLog } from '../filters/filterDelaysForLog';
 import { latencyEntry } from './latencyEntry';
-import { latencyForLog } from '../latencyForLog';
 import { noiseFloorEntry } from './noiseFloorEntry';
-import { stepResponseForLog } from '../step/stepResponseForLog';
-import { stepScoreEntries } from '../step/stepScoreEntries';
 
 /**
  * Pooled scorecard across N logs. Uses the same merge primitives the other
@@ -34,9 +34,11 @@ export function buildMergedScorecard(logs: ParsedLog[]): Scorecard {
   const meanLatencies: LatencyResult[] = AXIS_NAMES.map((_n, axis) => {
     const perLog = logs.map((l) => latencyForLog(l, axis));
     const reliable = perLog.filter((l) => l.reliable);
+
     if (reliable.length === 0) {
       return { lagMs: 0, correlation: 0, reliable: false };
     }
+
     const lagMs = reliable.reduce((s, l) => s + l.lagMs, 0) / reliable.length;
     const correlation = reliable.reduce((s, l) => s + l.correlation, 0) / reliable.length;
     return { lagMs, correlation, reliable: true };
@@ -71,6 +73,7 @@ export function buildMergedScorecard(logs: ParsedLog[]): Scorecard {
 
   // ---- Battery sag: average per-log analyses where battery was logged ----
   const batteries = logs.map((l) => analyzeBattery(l)).filter((b) => b.hasVoltage);
+
   if (batteries.length > 0) {
     const batteryRow = batteryEntry(averageBatteries(batteries));
     if (batteryRow) entries.push(batteryRow);
@@ -85,10 +88,12 @@ function averageBatteries(batteries: BatteryAnalysis[]): BatteryAnalysis {
     const xs = batteries.map(pick).filter((x): x is number => x != null);
     return xs.length > 0 ? xs.reduce((s, x) => s + x, 0) / xs.length : null;
   };
+
   const sum = (pick: (b: BatteryAnalysis) => number | null) => {
     const xs = batteries.map(pick).filter((x): x is number => x != null);
     return xs.length > 0 ? xs.reduce((s, x) => s + x, 0) : null;
   };
+
   return {
     hasVoltage: true,
     hasCurrent: batteries.some((b) => b.hasCurrent),

@@ -7,6 +7,7 @@ import type { LogEntry, ParsedLog, TabId } from '../types';
  */
 export function tabHasData(tabId: TabId, entries: LogEntry[]): boolean {
   const some = (pick: (p: ParsedLog['presence']) => boolean) => entries.some((e) => pick(e.log.presence));
+
   switch (tabId) {
     case 'filtering':
     case 'filterSim':

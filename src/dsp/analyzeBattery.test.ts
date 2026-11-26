@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import type { ParsedLog } from '../types';
 import { analyzeBattery } from './analyzeBattery';
 import { mulberry32 } from './mulberry32';

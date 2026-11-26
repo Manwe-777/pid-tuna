@@ -31,9 +31,11 @@ export function analyzeImbalance(
   const m3 = motors[2]!.pwmMean;
   const m4 = motors[3]!.pwmMean;
   const overall = (m1 + m2 + m3 + m4) / 4;
+
   if (overall <= 0) {
     return { axes: [], dominantAxis: null, singleMotorOutlier: null };
   }
+
   const pct = (delta: number) => (delta / overall) * 100;
 
   const axes: AxisImbalance[] = [
@@ -44,6 +46,7 @@ export function analyzeImbalance(
 
   let dominantAxis: AxisKind | null = null;
   let best = DOMINANT_THRESHOLD_PCT;
+
   for (const a of axes) {
     if (Math.abs(a.deltaPct) > best) {
       best = Math.abs(a.deltaPct);

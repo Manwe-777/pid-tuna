@@ -15,12 +15,14 @@ export function gpsDisplayProjection(
   let sLa = 0;
   let sLo = 0;
   let c = 0;
+
   for (let i = 0; i < n; i++) {
     if (!gpsCoordValid(lat[i]!, lon[i]!)) continue;
     sLa += lat[i]!;
     sLo += lon[i]!;
     c++;
   }
+
   if (c === 0) return null;
   const centerLat = sLa / c;
   const centerLon = sLo / c;

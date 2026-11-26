@@ -12,6 +12,7 @@ export function BalanceAxisStrip({
   if (axes.length === 0 && singleOutlier == null) {
     return <span className="balance-tag balance-tag--ok">balanced</span>;
   }
+
   return (
     <span className="balance-axis-strip">
       {axes.map((a) => {

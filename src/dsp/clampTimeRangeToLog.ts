@@ -10,9 +10,11 @@ export function clampTimeRangeToLog(range: TimeRangeSec, log: ParsedLog): TimeRa
   const tHi = log.time[log.time.length - 1]!;
   let start = Math.min(Math.max(range.start, tLo), tHi);
   let end = Math.min(Math.max(range.end, tLo), tHi);
+
   if (!(end > start)) {
     start = tLo;
     end = Math.max(start, tHi);
   }
+
   return { start, end };
 }

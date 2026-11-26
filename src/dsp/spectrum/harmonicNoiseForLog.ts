@@ -1,8 +1,8 @@
 import type { AxisHarmonicNoise, ParsedLog } from '../../types';
 import { flightRange } from '../flightRange';
+import { throttlePercentSeries } from '../throttlePercentSeries';
 import { motorHarmonicNoise } from './motorHarmonicNoise';
 import { motorHzSeries } from './motorHzSeries';
-import { throttlePercentSeries } from '../throttlePercentSeries';
 
 /** Motor-harmonic noise per axis, takeoff to landing. Null without RPM telemetry. */
 export function harmonicNoiseForLog(log: ParsedLog, polePairs?: number, harmonics = 3): AxisHarmonicNoise[] | null {

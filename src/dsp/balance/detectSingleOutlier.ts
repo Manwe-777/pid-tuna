@@ -10,11 +10,14 @@ export function detectSingleOutlier(motors: MotorStats[]): { motorIndex: number;
   const botGap = sorted[1]!.pwmMean - sorted[0]!.pwmMean;
   const topPct = (topGap / overall) * 100;
   const botPct = (botGap / overall) * 100;
+
   if (topPct >= botPct && topPct >= SINGLE_OUTLIER_THRESHOLD_PCT) {
     return { motorIndex: sorted[motors.length - 1]!.motorIndex, deltaPct: topPct };
   }
+
   if (botPct > topPct && botPct >= SINGLE_OUTLIER_THRESHOLD_PCT) {
     return { motorIndex: sorted[0]!.motorIndex, deltaPct: -botPct };
   }
+
   return null;
 }

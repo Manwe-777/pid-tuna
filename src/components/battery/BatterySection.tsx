@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+
 import { analyzeBattery } from '../../dsp/analyzeBattery';
 import type { LogEntry } from '../../types';
 import { BatteryLogCard } from './BatteryLogCard';

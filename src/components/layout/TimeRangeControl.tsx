@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useNumberDraft } from '../../hooks/useNumberDraft';
 import type { TimeRangeSec } from '../../types';
 
 interface TimeRangeControlProps {
@@ -10,17 +10,15 @@ interface TimeRangeControlProps {
 
 export function TimeRangeControl({ max, value, onChange }: TimeRangeControlProps) {
   // Local string state so user can type freely without value clamps mid-edit.
-  const [startStr, setStartStr] = useState(value.start.toFixed(2));
-  const [endStr, setEndStr] = useState(value.end.toFixed(2));
-
-  useEffect(() => setStartStr(value.start.toFixed(2)), [value.start]);
-  useEffect(() => setEndStr(value.end.toFixed(2)), [value.end]);
+  const [startStr, setStartStr] = useNumberDraft(value.start);
+  const [endStr, setEndStr] = useNumberDraft(value.end);
 
   const commitStart = () => {
     const n = clamp(Number.parseFloat(startStr), 0, value.end);
     if (!Number.isFinite(n)) return setStartStr(value.start.toFixed(2));
     onChange({ start: n, end: value.end });
   };
+
   const commitEnd = () => {
     const n = clamp(Number.parseFloat(endStr), value.start, max);
     if (!Number.isFinite(n)) return setEndStr(value.end.toFixed(2));

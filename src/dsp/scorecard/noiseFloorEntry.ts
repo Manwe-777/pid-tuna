@@ -3,6 +3,7 @@ import type { ScoreEntry, ScoreStatus } from '../../types';
 export function noiseFloorEntry(psds: { frequencies: Float32Array; psdDb: Float32Array }[]): ScoreEntry | null {
   let sum = 0;
   let n = 0;
+
   for (const p of psds) {
     for (let i = 0; i < p.frequencies.length; i++) {
       const f = p.frequencies[i]!;
@@ -11,6 +12,7 @@ export function noiseFloorEntry(psds: { frequencies: Float32Array; psdDb: Float3
       n++;
     }
   }
+
   const midBandMean = n > 0 ? sum / n : Number.NaN;
   if (!Number.isFinite(midBandMean)) return null;
   const status: ScoreStatus = midBandMean < 5 ? 'good' : midBandMean < 15 ? 'warn' : 'bad';

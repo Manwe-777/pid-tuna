@@ -21,6 +21,7 @@ export function useLogLibrary() {
     async (file: File) => {
       const id = newSlotId();
       update((lib) => lib.add(id, file.name));
+
       try {
         const log = await parseLog(file, {
           onProgress: ({ progress, rows }) => update((lib) => lib.setProgress(id, file.name, progress, rows)),

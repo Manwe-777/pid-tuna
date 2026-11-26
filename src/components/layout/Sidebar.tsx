@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+
 import type { LogSlot } from '../../types';
 import { LogCard } from './LogCard';
 

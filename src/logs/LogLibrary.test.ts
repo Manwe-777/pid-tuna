@@ -7,6 +7,7 @@ const log = (fileName: string) => ({ fileName }) as unknown as ParsedLog;
 
 function libraryWith(...ids: string[]): LogLibrary {
   const lib = new LogLibrary();
+
   for (const id of ids) {
     lib.add(id, `${id}.bbl`);
     lib.setReady(id, log(`${id}.bbl`));

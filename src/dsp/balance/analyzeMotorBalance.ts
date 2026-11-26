@@ -1,8 +1,8 @@
 import type { BalanceAnalysis, MotorPsd, MotorStats, ParsedLog } from '../../types';
-import { analyzeImbalance } from './analyzeImbalance';
-import { computePsd } from '../spectrum/computePsd';
 import { flightRange } from '../flightRange';
+import { computePsd } from '../spectrum/computePsd';
 import { throttlePercentSeries } from '../throttlePercentSeries';
+import { analyzeImbalance } from './analyzeImbalance';
 
 /**
  * Per-motor balance + noise analysis. Projects per-motor means onto the
@@ -26,13 +26,16 @@ export function analyzeMotorBalance(log: ParsedLog, options: { psdWindow?: numbe
     const eRpm = log.eRpm[i] ? cut(log.eRpm[i]!) : undefined;
     let meanERpm: number | null = null;
     let erpmCv: number | null = null;
+
     if (eRpm && eRpm.length > 0) {
       const { mean: em, std: es } = meanStd(eRpm);
+
       if (em > 0) {
         meanERpm = em * 100; // BF logs eRPM/100
         erpmCv = es / em;
       }
     }
+
     return {
       motorIndex: i,
       pwmMean: mean,
@@ -45,6 +48,7 @@ export function analyzeMotorBalance(log: ParsedLog, options: { psdWindow?: numbe
 
   // Relative load: each motor's pwmMean as % of the max-mean across motors.
   const maxMean = stats.reduce((m, s) => Math.max(m, s.pwmMean), 0);
+
   if (maxMean > 0) {
     for (const s of stats) s.relativeLoad = (s.pwmMean / maxMean) * 100;
   }
@@ -72,9 +76,11 @@ function meanStd(x: Float32Array): { mean: number; std: number } {
   for (let i = 0; i < x.length; i++) sum += x[i]!;
   const mean = sum / x.length;
   let s2 = 0;
+
   for (let i = 0; i < x.length; i++) {
     const d = x[i]! - mean;
     s2 += d * d;
   }
+
   return { mean, std: Math.sqrt(s2 / x.length) };
 }

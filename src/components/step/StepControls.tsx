@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+
 import { STEP_SETTINGS_DEFAULTS } from '../../constants';
 import type { StepSettings } from '../../types';
 import { MetricSelect } from './MetricSelect';

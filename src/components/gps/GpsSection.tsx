@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+
 import { analyzeGps } from '../../dsp/gps/analyzeGps';
 import { gpsViewerEffectiveRange } from '../../dsp/gps/gpsViewerEffectiveRange';
 import { colorFor } from '../../logs/colorFor';
@@ -26,6 +27,7 @@ export function GpsSection({
   );
 
   const anyFix = analyses.some((a) => a.analysis.hasFix);
+
   if (!anyFix) {
     return (
       <section className="plot-section">

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+
 import { buildMscRequest } from '../../msp/buildMscRequest';
 import { isTauri } from '../../msp/isTauri';
 import { isWebSerialSupported } from '../../msp/isWebSerialSupported';
-import { parseMscResponse } from '../../msp/parseMscResponse';
+import { mscReplyError } from '../../msp/mscReplyError';
 import type { FcPort, Phase } from '../../types';
 import { UsbIcon } from '../icons/UsbIcon';
 import { FcMscPanel } from './FcMscPanel';
@@ -16,16 +17,20 @@ export function FcMscButton() {
   // Close the panel on outside click / Escape.
   useEffect(() => {
     if (!panelOpen) return;
+
     const onClick = (e: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         setPanelOpen(false);
       }
     };
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setPanelOpen(false);
     };
+
     document.addEventListener('mousedown', onClick);
     document.addEventListener('keydown', onKey);
+
     return () => {
       document.removeEventListener('mousedown', onClick);
       document.removeEventListener('keydown', onKey);
@@ -34,6 +39,7 @@ export function FcMscButton() {
 
   const runMscFlow = useCallback(async () => {
     setPhase({ kind: 'connecting' });
+
     try {
       const port = await acquirePort();
       portRef.current = port;
@@ -53,27 +59,20 @@ export function FcMscButton() {
       //
       // We only ever surface a failure if the FC explicitly told us "no".
       let response: Uint8Array | null = null;
+
       try {
         response = await port.read(8, 1500);
       } catch (readErr) {
         console.warn('[MSC] no response after MSC request (FC likely rebooted before ACK):', readErr);
       }
-      if (response) {
-        try {
-          const parsed = parseMscResponse(response);
-          if (!parsed.storageReady) {
-            setPhase({
-              kind: 'error',
-              message:
-                'FC reports no storage device — check that the SD card is inserted and Blackbox is set to write to it (or to onboard flash).',
-            });
-            return;
-          }
-        } catch (parseErr) {
-          // Garbage / truncated response — FC was already mid-reboot.
-          console.warn('[MSC] could not parse response (truncated reboot):', parseErr);
-        }
+
+      const replyError = mscReplyError(response);
+
+      if (replyError) {
+        setPhase({ kind: 'error', message: replyError });
+        return;
       }
+
       setPhase({ kind: 'success', portLabel: port.label });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -85,18 +84,21 @@ export function FcMscButton() {
       } catch {
         /* ignore */
       }
+
       portRef.current = null;
     }
   }, []);
 
   const onButtonClick = useCallback(() => {
     setPanelOpen(true);
+
     // If the runtime can't handle this at all, show the explainer rather
     // than failing on connect.
     if (!isTauri() && !isWebSerialSupported()) {
       setPhase({ kind: 'unsupported' });
       return;
     }
+
     setPhase({ kind: 'idle' });
   }, []);
 
@@ -136,11 +138,13 @@ async function acquirePort(): Promise<FcPort> {
       import('../../msp/openTauriPort'),
     ]);
     const ports = await listTauriFcPorts();
+
     if (ports.length === 0) {
       throw new Error(
         'No FC detected. Plug the FC into USB and click again — make sure it powers up in flight mode, not bootloader.',
       );
     }
+
     if (ports.length > 1) {
       // Cheap heuristic: prefer the first match. A multi-FC picker is more
       // work than this feature deserves; users with multiple boards plugged
@@ -150,11 +154,14 @@ async function acquirePort(): Promise<FcPort> {
         ports.map((p) => p.path),
       );
     }
+
     return openTauriPort(ports[0]!);
   }
+
   if (isWebSerialSupported()) {
     const { openWebSerialPort } = await import('../../msp/openWebSerialPort');
     return openWebSerialPort();
   }
+
   throw new Error('No USB serial transport available in this runtime.');
 }

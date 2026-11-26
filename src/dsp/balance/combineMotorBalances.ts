@@ -22,6 +22,7 @@ export function combineMotorBalances(analyses: BalanceAnalysis[]): BalanceAnalys
       motorPsds: [],
     };
   }
+
   if (analyses.length === 1) return analyses[0]!;
 
   const ref = analyses[0]!;
@@ -30,6 +31,7 @@ export function combineMotorBalances(analyses: BalanceAnalysis[]): BalanceAnalys
   if (valid.length === 0) return ref;
 
   const motors: MotorStats[] = [];
+
   for (let i = 0; i < motorCount; i++) {
     let pwmMeanSum = 0;
     let pwmStdSum = 0;
@@ -38,20 +40,24 @@ export function combineMotorBalances(analyses: BalanceAnalysis[]): BalanceAnalys
     let erpmCount = 0;
     let erpmCvSum = 0;
     let erpmCvCount = 0;
+
     for (const a of valid) {
       const m = a.motors[i]!;
       pwmMeanSum += m.pwmMean;
       pwmStdSum += m.pwmStd;
       relLoadSum += m.relativeLoad;
+
       if (m.meanERpm != null) {
         erpmSum += m.meanERpm;
         erpmCount++;
       }
+
       if (m.erpmCv != null) {
         erpmCvSum += m.erpmCv;
         erpmCvCount++;
       }
     }
+
     motors.push({
       motorIndex: i,
       pwmMean: pwmMeanSum / valid.length,
@@ -69,19 +75,23 @@ export function combineMotorBalances(analyses: BalanceAnalysis[]): BalanceAnalys
     if (bins === 0) return refPsd;
     const accum = new Float64Array(bins);
     let count = 0;
+
     for (const a of valid) {
       const p = a.motorPsds[mi];
       if (!p || p.psdDb.length !== bins) continue;
       for (let f = 0; f < bins; f++) accum[f] = accum[f]! + Math.pow(10, p.psdDb[f]! / 10);
       count++;
     }
+
     if (count === 0) return refPsd;
     const inv = 1 / count;
     const psdDb = new Float32Array(bins);
+
     for (let f = 0; f < bins; f++) {
       const lin = accum[f]! * inv;
       psdDb[f] = lin > 0 ? 10 * Math.log10(lin) : -200;
     }
+
     return { frequencies: refPsd.frequencies, psdDb };
   });
 

@@ -36,6 +36,7 @@ export function analyzeSaturation(log: ParsedLog): SaturationAnalysis {
       const v = Math.abs(iTerm[j]!);
       sumAbs += v;
       if (v > peakAbs) peakAbs = v;
+
       if (v >= threshold) {
         satCount++;
         if (runStart < 0) runStart = j;
@@ -44,6 +45,7 @@ export function analyzeSaturation(log: ParsedLog): SaturationAnalysis {
         runStart = -1;
       }
     }
+
     if (runStart >= 0) runs.push({ t0: time[runStart]!, t1: time[end]! });
 
     const n = Math.max(0, end - range.start + 1);
@@ -66,10 +68,12 @@ export function analyzeSaturation(log: ParsedLog): SaturationAnalysis {
 
 function itermLimits(log: ParsedLog): { limits: [number, number, number]; source: ItermLimitSource } {
   const h = log.setup.rawHeaders;
+
   const num = (k: string) => {
     const n = Number.parseFloat(h[k] ?? '');
     return Number.isFinite(n) ? n : null;
   };
+
   const major = Number.parseInt(log.setup.firmwareVersion ?? '', 10);
   const windup = num('iterm_windup');
   const sum = num('pidsum_limit');

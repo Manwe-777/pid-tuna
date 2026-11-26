@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+
 import type { TauriFcPortInfo } from '../types';
 
 /** List USB serial ports that match a known Betaflight FC USB ID. */

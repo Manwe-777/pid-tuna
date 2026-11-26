@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { MOTOR_COLORS } from '../../constants';
-import { colorFor } from '../../logs/colorFor';
-import { shortName } from '../../logs/shortName';
-import type { LogEntry, PlotSeries } from '../../types';
-import { align } from '../../utils/align';
+
+import type { LogEntry } from '../../types';
+import { motorChannelSeries } from '../../utils/motorChannelSeries';
+import { throttleSeries } from '../../utils/throttleSeries';
 import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
+import { MotorPicker } from './MotorPicker';
 
 export function MotorsSection({ entries }: { entries: LogEntry[] }) {
   const primary = entries[0]!;
@@ -30,72 +30,12 @@ export function MotorsSection({ entries }: { entries: LogEntry[] }) {
 
   const N = primary.log.time.length;
 
-  // Throttle plot: rcCommand[3], shared across modes.
-  const throttleSeries: PlotSeries[] = multi
-    ? entries.map((e) => ({
-        label: shortName(e.slot),
-        values: align(e.log.rcCommand[3]!, N),
-        stroke: colorFor(e.slot),
-        width: 1,
-      }))
-    : [
-        {
-          label: 'Throttle',
-          values: primary.log.rcCommand[3]!,
-          stroke: '#bd5dff',
-          width: 1,
-        },
-      ];
-
-  // Motor plots.
-  const motorSeries: PlotSeries[] = [];
-  if (multi) {
-    for (const e of entries) {
-      const sig = e.log.motor[selectedMotor];
-      if (!sig) continue;
-      motorSeries.push({
-        label: shortName(e.slot),
-        values: align(sig, N),
-        stroke: colorFor(e.slot),
-        width: 1,
-      });
-    }
-  } else {
-    primary.log.motor.forEach((sig, idx) => {
-      motorSeries.push({
-        label: `Motor ${idx + 1}`,
-        values: sig,
-        stroke: MOTOR_COLORS[idx % MOTOR_COLORS.length]!,
-        width: 1,
-      });
-    });
-  }
-
-  // eRPM plots (mirror motor logic).
-  const erpmSeries: PlotSeries[] = [];
-  if (hasERpm) {
-    if (multi) {
-      for (const e of entries) {
-        const sig = e.log.eRpm[selectedMotor];
-        if (!sig || sig.length === 0) continue;
-        erpmSeries.push({
-          label: shortName(e.slot),
-          values: align(sig, N),
-          stroke: colorFor(e.slot),
-          width: 1,
-        });
-      }
-    } else {
-      primary.log.eRpm.forEach((sig, idx) => {
-        erpmSeries.push({
-          label: `Motor ${idx + 1}`,
-          values: sig,
-          stroke: MOTOR_COLORS[idx % MOTOR_COLORS.length]!,
-          width: 1,
-        });
-      });
-    }
-  }
+  const throttle = throttleSeries(entries, N);
+  const motorSeries = motorChannelSeries(entries, (log) => log.motor, selectedMotor, { length: N, skipEmpty: false });
+  // eRPM plots mirror the motor plots.
+  const erpmSeries = hasERpm
+    ? motorChannelSeries(entries, (log) => log.eRpm, selectedMotor, { length: N, skipEmpty: true })
+    : [];
 
   return (
     <section className="plot-section">
@@ -106,27 +46,11 @@ export function MotorsSection({ entries }: { entries: LogEntry[] }) {
           : 'Throttle command, per-motor PWM output, and (if logged) eRPM telemetry over time.'}
       </p>
 
-      {multi && (
-        <div className="controls">
-          <span className="muted">Motor:</span>
-          {Array.from({ length: motorCount }, (_, idx) => (
-            <label key={idx} className={`signal-chip${selectedMotor === idx ? ' signal-chip--on' : ''}`}>
-              <input
-                type="radio"
-                name="motor-pick"
-                checked={selectedMotor === idx}
-                onChange={() => setSelectedMotor(idx)}
-              />
-              <span className="signal-chip__swatch" style={{ background: MOTOR_COLORS[idx % MOTOR_COLORS.length] }} />M
-              {idx + 1}
-            </label>
-          ))}
-        </div>
-      )}
+      {multi && <MotorPicker count={motorCount} selected={selectedMotor} onSelect={setSelectedMotor} />}
 
       <div className="axis-plot">
         <h3 className="axis-plot__title">Throttle command</h3>
-        <TimeSeriesPlot time={primary.log.time} series={throttleSeries} yLabel="PWM" height={180} />
+        <TimeSeriesPlot time={primary.log.time} series={throttle} yLabel="PWM" height={180} />
       </div>
 
       <div className="axis-plot">

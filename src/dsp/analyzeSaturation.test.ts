@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import type { ParsedLog } from '../types';
 import { analyzeSaturation } from './analyzeSaturation';
 

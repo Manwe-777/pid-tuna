@@ -1,9 +1,10 @@
 import { describe, expect, test } from 'vitest';
-import { stepResponseBands } from './stepResponseBands';
+
 import { simulateClosedLoop } from '../testing/simulateClosedLoop';
 import { stickSetpoint } from '../testing/stickSetpoint';
 import { syntheticLog } from '../testing/syntheticLog';
 import { trueStepMetrics } from '../testing/trueStepMetrics';
+import { stepResponseBands } from './stepResponseBands';
 
 const FS = 2000;
 const SLOW = { naturalHz: 10, damping: 0.6, delaySamples: 8 };

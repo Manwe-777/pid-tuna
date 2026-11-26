@@ -14,17 +14,22 @@ export function motorRpmSeries(log: ParsedLog, polePairs: number = DEFAULT_POLE_
   const n = log.time.length;
   const scale = 100 / polePairs;
   const out = new Float32Array(n);
+
   for (let i = 0; i < n; i++) {
     let sum = 0;
     let count = 0;
+
     for (const m of motors) {
       const v = m[i]!;
+
       if (Number.isFinite(v) && v > 0) {
         sum += v;
         count++;
       }
     }
+
     out[i] = count > 0 ? (sum / count) * scale : 0;
   }
+
   return out;
 }

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+
 import { AXIS_COLORS, AXIS_NAMES } from '../../constants';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
@@ -13,6 +14,7 @@ export function FilteringSection({ entries }: { entries: LogEntry[] }) {
     () => entries.some(({ log }) => log.gyroRaw.some((arr) => arr.some((v) => v !== 0))),
     [entries],
   );
+
   if (!anyRaw) {
     return (
       <section className="plot-section">
@@ -24,6 +26,7 @@ export function FilteringSection({ entries }: { entries: LogEntry[] }) {
       </section>
     );
   }
+
   return (
     <section className="plot-section">
       <h2>Raw vs filtered gyro</h2>
@@ -35,8 +38,10 @@ export function FilteringSection({ entries }: { entries: LogEntry[] }) {
       {AXIS_NAMES.map((name, i) => {
         const N = primary.log.time.length;
         const series: PlotSeries[] = [];
+
         if (multi) {
           const primaryHasRaw = primary.log.gyroRaw[i]!.some((v) => v !== 0);
+
           if (primaryHasRaw) {
             series.push({
               label: 'Raw (primary)',
@@ -45,6 +50,7 @@ export function FilteringSection({ entries }: { entries: LogEntry[] }) {
               width: 0.75,
             });
           }
+
           for (const e of entries) {
             series.push({
               label: `${shortName(e.slot)} filtered`,
@@ -55,6 +61,7 @@ export function FilteringSection({ entries }: { entries: LogEntry[] }) {
           }
         } else {
           const hasRaw = primary.log.gyroRaw[i]!.some((v) => v !== 0);
+
           if (hasRaw) {
             series.push({
               label: 'Raw',
@@ -63,6 +70,7 @@ export function FilteringSection({ entries }: { entries: LogEntry[] }) {
               width: 0.75,
             });
           }
+
           series.push({
             label: 'Filtered',
             values: primary.log.gyroFilt[i]!,
@@ -70,6 +78,7 @@ export function FilteringSection({ entries }: { entries: LogEntry[] }) {
             width: 1.4,
           });
         }
+
         return (
           <div key={name} className="axis-plot">
             <h3 className="axis-plot__title">

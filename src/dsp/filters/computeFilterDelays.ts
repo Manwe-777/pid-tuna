@@ -36,6 +36,7 @@ export function computeFilterDelays(view: TuneView, ctx: FilterDelayContext = {}
   const gyroHz = view.gyroRateHz ?? 8000;
   const pidHz = view.pidRateHz ?? gyroHz;
   const entries: FilterDelayEntry[] = [];
+
   const add = (e: Omit<FilterDelayEntry, 'delayMs' | 'phaseDeg'>, parts: FilterPart[], loopHz: number) => {
     const { delayMs, phaseDeg } = partsDelay(parts, loopHz, referenceHz);
     if (parts.length > 0) entries.push({ ...e, delayMs, phaseDeg });

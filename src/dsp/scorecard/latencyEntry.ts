@@ -3,6 +3,7 @@ import type { LatencyResult, ScoreEntry, ScoreStatus } from '../../types';
 
 export function latencyEntry(latencies: LatencyResult[]): ScoreEntry {
   const reliable = RATED_AXES.map((i) => latencies[i]!).filter((l) => l.reliable);
+
   if (reliable.length === 0) {
     return {
       key: 'Tracking latency',
@@ -11,6 +12,7 @@ export function latencyEntry(latencies: LatencyResult[]): ScoreEntry {
       detail: 'No stick activity in the window',
     };
   }
+
   const max = Math.max(...reliable.map((l) => l.lagMs));
   const status: ScoreStatus = max < 25 ? 'good' : max < 45 ? 'warn' : 'bad';
   return {

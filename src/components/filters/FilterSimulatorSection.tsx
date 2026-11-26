@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+
 import {
   AXIS_COLORS,
   AXIS_NAMES,
@@ -10,10 +11,10 @@ import {
 } from '../../constants';
 import { applyFilterChain } from '../../dsp/filters/applyFilterChain';
 import { computeFilterChainResponse } from '../../dsp/filters/computeFilterChainResponse';
-import { computePsd } from '../../dsp/spectrum/computePsd';
 import { gyroChainFromTune } from '../../dsp/filters/gyroChainFromTune';
-import { medianMotorHz } from '../../dsp/spectrum/medianMotorHz';
 import { newFilterId } from '../../dsp/filters/newFilterId';
+import { computePsd } from '../../dsp/spectrum/computePsd';
+import { medianMotorHz } from '../../dsp/spectrum/medianMotorHz';
 import { buildTuneView } from '../../tune/buildTuneView';
 import type { FilterSpec, FilterType, LogEntry, PlotSeries } from '../../types';
 import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
@@ -22,7 +23,6 @@ import { TestSignalPlot } from './TestSignalPlot';
 
 export function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
   const log = entries[0]!.log;
-  const multi = entries.length > 1;
   const nyquist = Math.floor(log.setup.sampleRateHz / 2);
   const tune = useMemo(() => buildTuneView(log), [log]);
   const gyroRateHz = tune.gyroRateHz ?? log.setup.sampleRateHz;
@@ -35,9 +35,11 @@ export function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
   const addFilter = (type: FilterType) => {
     setChain((prev) => [...prev, { ...DEFAULT_FILTER_SPECS[type], id: newFilterId() }]);
   };
+
   const removeFilter = (id: string) => {
     setChain((prev) => prev.filter((f) => f.id !== id));
   };
+
   const updateFilter = (id: string, patch: Partial<FilterSpec>) => {
     setChain((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   };
@@ -251,6 +253,7 @@ export function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
 
       {AXIS_NAMES.map((name, axis) => {
         const psd = psdByAxis[axis];
+
         if (!psd) {
           return (
             <div key={name} className="axis-plot">
@@ -262,6 +265,7 @@ export function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
             </div>
           );
         }
+
         const series: PlotSeries[] = [
           { label: 'Gyro prefilt', values: psd.rawPsd.psdDb, stroke: SIM_ORIGINAL_COLOR, width: 1 },
           {

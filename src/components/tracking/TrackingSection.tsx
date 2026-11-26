@@ -19,6 +19,7 @@ export function TrackingSection({ entries }: { entries: LogEntry[] }) {
       {AXIS_NAMES.map((name, i) => {
         const N = primary.log.time.length;
         const series: PlotSeries[] = [];
+
         if (multi) {
           // Single shared setpoint reference (primary), gyro per log in log color.
           series.push({
@@ -27,6 +28,7 @@ export function TrackingSection({ entries }: { entries: LogEntry[] }) {
             stroke: '#7a8597',
             width: 1,
           });
+
           for (const e of entries) {
             series.push({
               label: `${shortName(e.slot)} gyro`,
@@ -42,6 +44,7 @@ export function TrackingSection({ entries }: { entries: LogEntry[] }) {
             { label: 'Gyro', values: primary.log.gyroFilt[i]!, stroke: AXIS_COLORS[i]!, width: 1.5 },
           );
         }
+
         return (
           <div key={name} className="axis-plot">
             <h3 className="axis-plot__title">

@@ -17,21 +17,26 @@ function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: number):
 /** Bearing of the local GPS chord that contains playback time `t`. */
 function segmentHeadingAt(samples: GpsSample[], t: number): number | null {
   if (samples.length < 2) return null;
+
   if (t <= samples[0]!.t) {
     const a = samples[0]!;
     const b = samples[1]!;
     return bearingDegrees(a.lat, a.lon, b.lat, b.lon);
   }
+
   const end = samples[samples.length - 1]!;
+
   if (t >= end.t) {
     const prev = samples[samples.length - 2]!;
     return bearingDegrees(prev.lat, prev.lon, end.lat, end.lon);
   }
+
   for (let i = 1; i < samples.length; i++) {
     const a = samples[i - 1]!;
     const b = samples[i]!;
     if (a.t <= t && t <= b.t) return bearingDegrees(a.lat, a.lon, b.lat, b.lon);
   }
+
   return null;
 }
 
@@ -57,15 +62,20 @@ export function headingAlongTrack(samples: GpsSample[], t: number): number {
   for (let i = 0; i < LOOK_DELTA_SEC.length; i++) {
     const dt = LOOK_DELTA_SEC[i]!;
     const tForward = Math.min(tMax, tc + dt);
+
     if (tForward > tc + 1e-9) {
       const pf = interpolateGps(samples, tForward)!;
+
       if (distanceMeters(p0[0], p0[1], pf[0], pf[1]) >= MIN_STEP_M) {
         return bearingDegrees(p0[0], p0[1], pf[0], pf[1]);
       }
     }
+
     const tBack = Math.max(tMin, tc - dt);
+
     if (tBack < tc - 1e-9) {
       const pb = interpolateGps(samples, tBack)!;
+
       if (distanceMeters(pb[0], pb[1], p0[0], p0[1]) >= MIN_STEP_M) {
         return bearingDegrees(pb[0], pb[1], p0[0], p0[1]);
       }

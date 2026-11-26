@@ -491,3 +491,28 @@ export const FC_USB_FILTERS: ReadonlyArray<{ vendorId: number; productId: number
  * (`FAILSAFE`); 79 and up are rejected — confirmed by probing the WASM directly.
  */
 export const MAX_PARSER_DEBUG_MODE = 78;
+
+/** Canvas fonts for the heatmap plots: title, empty-state message and tick labels. */
+export const CANVAS_TITLE_FONT = '600 13px -apple-system, system-ui, sans-serif';
+export const CANVAS_MESSAGE_FONT = '12px -apple-system, system-ui, sans-serif';
+export const CANVAS_TICK_FONT = '11px -apple-system, system-ui, sans-serif';
+
+/** Canvas margins of the heatmap plots. */
+export const SPECTROGRAM_MARGIN = { top: 28, right: 64, bottom: 32, left: 52 } as const;
+export const BINNED_SPEC_MARGIN = { top: 24, right: 72, bottom: 40, left: 60 } as const;
+export const DENSITY_MARGIN = { top: 28, right: 24, bottom: 40, left: 60 } as const;
+
+/** Common Betaflight filter type IDs. */
+export const BF_LPF_TYPES: Record<string, string> = {
+  '0': 'PT1',
+  '1': 'BIQUAD',
+  '2': 'PT2',
+  '3': 'PT3',
+};
+
+/** Dark basemap tiles for the GPS map. */
+export const MAP_TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+export const MAP_TILE_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
+  '&copy; <a href="https://carto.com/attributions">CARTO</a>';

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+
 import { DEFAULT_FILTER_SPECS } from '../../constants';
 import type { FilterSpec } from '../../types';
 import { computeFilterChainResponse } from './computeFilterChainResponse';
@@ -26,11 +27,13 @@ describe('filter test signals', () => {
 
   test('a chirp sweeps from its start to its end frequency', () => {
     const r = filterTestSignal([], LOOP, 'chirp', { startHz: 10, endHz: 500, duration: 1 });
+
     const zeroCrossings = (from: number, to: number) => {
       let c = 0;
       for (let i = from + 1; i < to; i++) if (Math.sign(r.input[i]!) !== Math.sign(r.input[i - 1]!)) c++;
       return c;
     };
+
     const late = zeroCrossings(LOOP * 0.9, LOOP) / 2 / 0.1;
     expect(Math.abs(late - (10 + 490 * 0.95))).toBeLessThan(20);
   });

@@ -1112,3 +1112,56 @@ export interface ParseProgress {
 }
 
 export type ProgressCallback = (p: ParseProgress) => void;
+
+/** Space around a canvas plot's data area, in CSS px. */
+export interface PlotMargin {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+/** The step settings that change the analysis (display toggles excluded). */
+export type StepAnalysisSettings = Pick<
+  StepSettings,
+  | 'windowMs'
+  | 'minExcitation'
+  | 'maxExcitation'
+  | 'minThrottle'
+  | 'excludeSaturation'
+  | 'outlierK'
+  | 'settleMin'
+  | 'settleMax'
+>;
+
+/** Step-response window counts summed over every curve and axis on screen. */
+export interface StepDiagnosticsSummary {
+  windowsTotal: number;
+  windowsLowExcitation: number;
+  windowsHighExcitation: number;
+  windowsMasked: number;
+  windowsBadSettle: number;
+  windowsAccepted: number;
+  peakSetpoint: number;
+}
+
+/** One label/value line in a tune settings list; null values are left out. */
+export type TuneItem = readonly [label: string, value: string | number | null | undefined];
+
+/** One signal's PSD on one axis, per log (or pooled), on the primary log's frequency grid. */
+export interface PsdAxisItem {
+  def: SignalDef;
+  freq: Float32Array;
+  perLog: Array<{ slot: LogSlot; dash: number[]; psd: Float32Array }>;
+}
+
+/** What the GPS map draws: coloured track segments, the fit bounds, start/end marks and the altitude legend range. */
+export interface GpsTrackOverlay {
+  segments: { positions: [number, number][]; color: string }[];
+  boundsPoints: [number, number][];
+  startMark: [number, number] | null;
+  endMark: [number, number] | null;
+  center: [number, number];
+  /** Altitude range of the colour scale, or null when the track isn't coloured by altitude. */
+  legend: { min: number; max: number } | null;
+}

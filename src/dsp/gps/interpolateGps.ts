@@ -10,11 +10,13 @@ export function interpolateGps(samples: GpsSample[], t: number): [number, number
 
   let lo = 0;
   let hi = samples.length - 1;
+
   while (lo < hi - 1) {
     const mid = (lo + hi) >>> 1;
     if (samples[mid]!.t <= t) lo = mid;
     else hi = mid;
   }
+
   const a = samples[lo]!;
   const b = samples[hi]!;
   const u = (t - a.t) / (b.t - a.t);

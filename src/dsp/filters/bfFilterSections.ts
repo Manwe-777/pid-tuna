@@ -26,8 +26,13 @@ export function bfFilterSections(spec: BfFilterSpec, loopHz: number): Biquad[] {
     case 'biquad':
       return [rbj(spec.hz, dT, BUTTERWORTH_Q, 'lowpass')];
     case 'notch':
-      return spec.q && spec.q > 0 ? [rbj(spec.hz, dT, spec.q, 'notch')] : [];
+      return notch(spec.q, spec.hz, dT);
   }
+}
+
+/** A notch needs a positive Q; without one there is nothing to apply. */
+function notch(q: number | undefined, hz: number, dT: number): Biquad[] {
+  return q && q > 0 ? [rbj(hz, dT, q, 'notch')] : [];
 }
 
 function pt1(hz: number, dT: number): Biquad {

@@ -7,9 +7,11 @@ import type { LogEntry, LogSlot } from '../types';
  */
 export function makeMergedSlot(entries: LogEntry[]): LogSlot {
   const first = entries[0]?.slot;
+
   if (!first || first.state.kind !== 'ready') {
     return first ?? ({} as LogSlot);
   }
+
   return {
     id: '__merged__',
     enabled: true,

@@ -28,26 +28,32 @@ export function computeXcorrLatency(
   sampleRateHz: number,
   options: LatencyOptions = {},
 ): LatencyResult {
-  const maxLagMs = options.maxLagMs ?? 80;
-  const minSetpointRms = options.minSetpointRms ?? 5;
-  const minCorrelation = options.minCorrelation ?? 0.3;
-
   const N = Math.min(setpoint.length, gyro.length);
-  const maxLag = Math.max(1, Math.round((maxLagMs * sampleRateHz) / 1000));
+  const maxLag = maxLagSamples(options, sampleRateHz);
   if (N < maxLag + 100 || sampleRateHz <= 0) return UNRELIABLE;
 
   const sp = detrend(setpoint, N, options.mask);
   const gy = detrend(gyro, N, options.mask);
-  const used = options.mask ? countUsable(options.mask, N) : N;
+  const used = countUsable(options.mask, N);
   if (used < maxLag + 100) return UNRELIABLE;
 
   const spEnergy = energy(sp);
-  if (Math.sqrt(spEnergy / used) < minSetpointRms) return UNRELIABLE;
+  if (Math.sqrt(spEnergy / used) < (options.minSetpointRms ?? 5)) return UNRELIABLE;
 
   const denom = Math.sqrt(spEnergy * energy(gy));
   if (!Number.isFinite(denom) || denom <= 0) return UNRELIABLE;
 
-  const corr = crossCorrelation(sp, gy, maxLag);
+  return peakLatency(crossCorrelation(sp, gy, maxLag), maxLag, denom, sampleRateHz, options.minCorrelation ?? 0.3);
+}
+
+/** Lag of the correlation peak, refined to a fraction of a sample, as a latency result. */
+function peakLatency(
+  corr: Float64Array,
+  maxLag: number,
+  denom: number,
+  sampleRateHz: number,
+  minCorrelation: number,
+): LatencyResult {
   let best = 0;
   for (let lag = 1; lag <= maxLag; lag++) if (corr[lag]! > corr[best]!) best = lag;
 
@@ -80,6 +86,7 @@ function crossCorrelation(x: Float64Array, y: Float64Array, maxLag: number): Flo
   fft.completeSpectrum(Y);
 
   const P = new Float64Array(size * 2);
+
   for (let k = 0; k < size; k++) {
     const xr = X[2 * k]!;
     const xi = X[2 * k + 1]!;
@@ -123,7 +130,17 @@ function detrend(src: ArrayLike<number>, n: number, mask?: Uint8Array): Float64A
   return out;
 }
 
-function countUsable(mask: Uint8Array, n: number): number {
+/** The lag search limit in whole samples, at least one. */
+function maxLagSamples(options: LatencyOptions, sampleRateHz: number): number {
+  const maxLagMs = options.maxLagMs ?? 80;
+
+  return Math.max(1, Math.round((maxLagMs * sampleRateHz) / 1000));
+}
+
+/** Usable samples among the first n: all of them without a mask. */
+function countUsable(mask: Uint8Array | undefined, n: number): number {
+  if (!mask) return n;
+
   let c = 0;
   for (let i = 0; i < n; i++) c += mask[i] ?? 0;
 

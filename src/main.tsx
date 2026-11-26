@@ -1,9 +1,11 @@
 import './parser/compat'; // Must run before any blackbox-log code is imported.
+import './index.css';
+
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+
 import { App } from './App';
 import { applyTheme } from './theme/applyTheme';
-import './index.css';
 
 // Stamp the resolved theme onto <html> before first paint so there's no flash.
 applyTheme();

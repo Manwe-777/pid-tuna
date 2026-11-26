@@ -26,6 +26,7 @@ export function trueFrequencyMetrics(plant: ClosedLoopPlant, sampleRateHz: numbe
     const lDen = (1 - tRe) ** 2 + tIm ** 2;
     const lRe = (tRe * (1 - tRe) - tIm * tIm) / lDen;
     const lIm = tIm / lDen;
+
     if (Number.isNaN(crossoverHz) && f >= 1 && Math.hypot(lRe, lIm) < 1) {
       crossoverHz = f;
       phaseMarginDeg = 180 + (Math.atan2(lIm, lRe) * 180) / Math.PI;

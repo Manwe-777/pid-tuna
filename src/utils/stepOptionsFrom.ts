@@ -1,6 +1,6 @@
-import type { StepLogOptions, StepSettings } from '../types';
+import type { StepAnalysisSettings, StepLogOptions } from '../types';
 
-export function stepOptionsFrom(settings: StepSettings): StepLogOptions {
+export function stepOptionsFrom(settings: StepAnalysisSettings): StepLogOptions {
   return {
     windowMs: settings.windowMs,
     minExcitation: settings.minExcitation,

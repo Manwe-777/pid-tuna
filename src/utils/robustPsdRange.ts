@@ -2,12 +2,14 @@
  *  so their heatmaps are directly comparable. */
 export function robustPsdRange(arrays: Float32Array[]): { floor: number; ceil: number } {
   const vals: number[] = [];
+
   for (const a of arrays) {
     for (let i = 0; i < a.length; i++) {
       const v = a[i]!;
       if (Number.isFinite(v) && v > -199) vals.push(v);
     }
   }
+
   if (vals.length === 0) return { floor: -80, ceil: 0 };
   vals.sort((x, y) => x - y);
   const pct = (p: number) => vals[Math.min(vals.length - 1, Math.floor(vals.length * p))]!;

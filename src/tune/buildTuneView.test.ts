@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { buildTuneView } from './buildTuneView';
+
 import type { ParsedLog } from '../types';
+import { buildTuneView } from './buildTuneView';
 
 const view = (rawHeaders: Record<string, string>) => buildTuneView({ setup: { rawHeaders } } as unknown as ParsedLog);
 

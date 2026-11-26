@@ -5,6 +5,7 @@ import type { GpsMapSmoothSettings } from '../../types';
  */
 export function gpsMapSmoothSettingsFromKnob(position01: number): GpsMapSmoothSettings {
   const x = Math.max(0, Math.min(1, position01));
+
   if (x <= 1e-4) {
     return {
       spatialSmooth: false,

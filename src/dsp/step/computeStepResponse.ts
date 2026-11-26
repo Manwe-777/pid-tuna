@@ -1,5 +1,5 @@
 import { MIN_USABLE_FRACTION, STEP_DEFAULTS } from '../../constants';
-import type { StepResponseOptions, StepResponseResult } from '../../types';
+import type { StepDiagnostics, StepResponseOptions, StepResponseResult } from '../../types';
 import { meanAbs } from '../../utils/meanAbs';
 import { meanOf } from '../../utils/meanOf';
 import { nextPow2 } from '../../utils/nextPow2';
@@ -53,11 +53,8 @@ export function computeStepResponse(
   const fftSize = nextPow2(winSamples * 2);
   const steadyFrom = steadyIndex(sampleTimeMs, stepLen);
 
-  const time = new Float32Array(stepLen);
-  for (let i = 0; i < stepLen; i++) time[i] = i * sampleTimeMs;
-
-  let peakSetpoint = 0;
-  for (let i = 0; i < n; i++) peakSetpoint = Math.max(peakSetpoint, Math.abs(setpoint[i]!));
+  const time = stepTimeAxis(stepLen, sampleTimeMs);
+  const peakSetpoint = peakAbs(setpoint, n);
 
   const ctx = makeStepFftContext(fftSize, winSamples);
   const starts: number[] = [];
@@ -67,24 +64,7 @@ export function computeStepResponse(
   diagnostics.peakSetpoint = peakSetpoint;
 
   for (let start = 0; start + winSamples <= n; start += hopSamples) {
-    diagnostics.windowsTotal++;
-
-    const excitation = meanAbs(setpoint, start, winSamples);
-
-    if (excitation < opts.minExcitation) {
-      diagnostics.windowsLowExcitation++;
-      continue;
-    }
-
-    if (excitation > opts.maxExcitation) {
-      diagnostics.windowsHighExcitation++;
-      continue;
-    }
-
-    if (opts.mask && usableFraction(opts.mask, start, winSamples) < MIN_USABLE_FRACTION) {
-      diagnostics.windowsMasked++;
-      continue;
-    }
+    if (!windowIsUsable(setpoint, start, winSamples, opts, diagnostics)) continue;
 
     transformWindow(ctx, setpoint, gyro, start);
     const trace = segmentStep(ctx, stepLen);
@@ -113,4 +93,55 @@ export function computeStepResponse(
   diagnostics.windowsAccepted = segments.length;
 
   return finishStepResponse(time, segments, rejectedSegments, segments.length > 0 ? spectra : null, diagnostics);
+}
+
+function stepTimeAxis(stepLen: number, sampleTimeMs: number): Float32Array {
+  const time = new Float32Array(stepLen);
+  for (let i = 0; i < stepLen; i++) time[i] = i * sampleTimeMs;
+
+  return time;
+}
+
+function peakAbs(x: Float32Array, n: number): number {
+  let peak = 0;
+  for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(x[i]!));
+
+  return peak;
+}
+
+/**
+ * Counts the window in `diagnostics` and reports whether it has the right
+ * amount of stick input and enough usable samples; a rejected window is
+ * counted under its reason.
+ */
+function windowIsUsable(
+  setpoint: Float32Array,
+  start: number,
+  winSamples: number,
+  opts: Pick<StepResponseOptions, 'mask'> & { minExcitation: number; maxExcitation: number },
+  diagnostics: StepDiagnostics,
+): boolean {
+  diagnostics.windowsTotal++;
+
+  const excitation = meanAbs(setpoint, start, winSamples);
+
+  if (excitation < opts.minExcitation) {
+    diagnostics.windowsLowExcitation++;
+
+    return false;
+  }
+
+  if (excitation > opts.maxExcitation) {
+    diagnostics.windowsHighExcitation++;
+
+    return false;
+  }
+
+  if (opts.mask && usableFraction(opts.mask, start, winSamples) < MIN_USABLE_FRACTION) {
+    diagnostics.windowsMasked++;
+
+    return false;
+  }
+
+  return true;
 }

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { motorHarmonicNoise } from './motorHarmonicNoise';
+
 import { mulberry32 } from '../mulberry32';
+import { motorHarmonicNoise } from './motorHarmonicNoise';
 
 const FS = 4000;
 const SECONDS = 20;

@@ -1,34 +1,18 @@
 import type { ParsedLog, PidRow, TuneView } from '../types';
 
+type RawHeaders = ParsedLog['setup']['rawHeaders'];
+
 export function buildTuneView(log: ParsedLog): TuneView {
   const h = log.setup.rawHeaders;
-  const num = (k: string): number | undefined => {
-    const v = h[k];
-    if (v == null) return undefined;
-    const n = Number.parseFloat(v);
-    return Number.isFinite(n) ? n : undefined;
-  };
-  const list = (k: string): number[] => {
-    const v = h[k];
-    if (!v) return [];
-    return v
-      .split(',')
-      .map((x) => Number.parseFloat(x.trim()))
-      .filter(Number.isFinite);
-  };
+
+  const num = (k: string): number | undefined => headerNum(h, k);
+  const list = (k: string): number[] => headerList(h, k);
+  /** The first of these headers that holds a number. */
+  const first = (...keys: string[]): number | undefined => firstHeaderNum(h, keys);
 
   const axisKeys = ['roll', 'pitch', 'yaw'] as const;
   const dMinList = list('d_min');
-  const pidByAxis: PidRow[] = axisKeys.map((key, axis) => {
-    const arr = list(`${key}PID`);
-    return {
-      p: arr[0],
-      i: arr[1],
-      d: dMinList[axis] ?? num(`d_min_${key}`),
-      dMax: num(`d_max_${key}`) ?? arr[2],
-      f: arr[3] ?? num(`${key}FF`) ?? num(`feedforward_${key}`) ?? num(`ff_${key}`),
-    };
-  });
+  const pidByAxis: PidRow[] = axisKeys.map((key, axis) => pidRow(h, key, dMinList[axis]));
   const hasPid = pidByAxis.some((row) => row.p != null || row.i != null);
 
   const rcRates = list('rc_rates');
@@ -52,19 +36,19 @@ export function buildTuneView(log: ParsedLog): TuneView {
     rcRates,
     rcExpo,
     superRates,
-    gyroLpf1Hz: num('gyro_lpf1_static_hz') ?? num('gyro_lowpass_hz') ?? num('gyro_lpf_hz'),
-    gyroLpf1Type: num('gyro_lpf1_type') ?? num('gyro_lowpass_type') ?? num('gyro_lpf_type'),
-    gyroLpf2Hz: num('gyro_lpf2_static_hz') ?? num('gyro_lowpass2_hz') ?? num('gyro_lpf2_hz'),
-    gyroLpf2Type: num('gyro_lpf2_type') ?? num('gyro_lowpass2_type'),
+    gyroLpf1Hz: first('gyro_lpf1_static_hz', 'gyro_lowpass_hz', 'gyro_lpf_hz'),
+    gyroLpf1Type: first('gyro_lpf1_type', 'gyro_lowpass_type', 'gyro_lpf_type'),
+    gyroLpf2Hz: first('gyro_lpf2_static_hz', 'gyro_lowpass2_hz', 'gyro_lpf2_hz'),
+    gyroLpf2Type: first('gyro_lpf2_type', 'gyro_lowpass2_type'),
     gyroDynRange: gyroDyn,
     gyroNotch1Hz: num('gyro_notch1_hz') ?? gyroNotchHz[0],
     gyroNotch1Cutoff: num('gyro_notch1_cutoff') ?? gyroNotchCutoff[0],
     gyroNotch2Hz: num('gyro_notch2_hz') ?? gyroNotchHz[1],
     gyroNotch2Cutoff: num('gyro_notch2_cutoff') ?? gyroNotchCutoff[1],
-    dtermLpf1Hz: num('dterm_lpf1_static_hz') ?? num('dterm_lpf_hz') ?? num('dterm_lowpass_hz'),
-    dtermLpf1Type: num('dterm_lpf1_type') ?? num('dterm_lpf_type') ?? num('dterm_lowpass_type'),
-    dtermLpf2Hz: num('dterm_lpf2_static_hz') ?? num('dterm_lpf2_hz') ?? num('dterm_lowpass2_hz'),
-    dtermLpf2Type: num('dterm_lpf2_type') ?? num('dterm_lowpass2_type'),
+    dtermLpf1Hz: first('dterm_lpf1_static_hz', 'dterm_lpf_hz', 'dterm_lowpass_hz'),
+    dtermLpf1Type: first('dterm_lpf1_type', 'dterm_lpf_type', 'dterm_lowpass_type'),
+    dtermLpf2Hz: first('dterm_lpf2_static_hz', 'dterm_lpf2_hz', 'dterm_lowpass2_hz'),
+    dtermLpf2Type: first('dterm_lpf2_type', 'dterm_lowpass2_type'),
     dtermDynRange: dtermDyn,
     dtermNotchHz: num('dterm_notch_hz'),
     dtermNotchCutoff: num('dterm_notch_cutoff'),
@@ -79,6 +63,43 @@ export function buildTuneView(log: ParsedLog): TuneView {
     dynNotchQ: num('dyn_notch_q'),
     gyroRateHz,
     pidRateHz: gyroRateHz ? gyroRateHz / Math.max(1, pidDenom) : undefined,
+  };
+}
+
+function headerNum(h: RawHeaders, k: string): number | undefined {
+  const v = h[k];
+  if (v == null) return undefined;
+  const n = Number.parseFloat(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function headerList(h: RawHeaders, k: string): number[] {
+  const v = h[k];
+  if (!v) return [];
+  return v
+    .split(',')
+    .map((x) => Number.parseFloat(x.trim()))
+    .filter(Number.isFinite);
+}
+
+function firstHeaderNum(h: RawHeaders, keys: string[]): number | undefined {
+  for (const k of keys) {
+    const n = headerNum(h, k);
+    if (n !== undefined) return n;
+  }
+
+  return undefined;
+}
+
+/** One axis's PIDs: `<axis>PID` is P,I,D,F; newer firmware splits D into d_min / d_max. */
+function pidRow(h: RawHeaders, key: string, dMin: number | undefined): PidRow {
+  const arr = headerList(h, `${key}PID`);
+  return {
+    p: arr[0],
+    i: arr[1],
+    d: dMin ?? headerNum(h, `d_min_${key}`),
+    dMax: headerNum(h, `d_max_${key}`) ?? arr[2],
+    f: arr[3] ?? firstHeaderNum(h, [`${key}FF`, `feedforward_${key}`, `ff_${key}`]),
   };
 }
 

@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+
 import { tokenClass } from '../../utils/tokenClass';
 
 /** Renders a comma-separated value, coloring each numeric token vs the prior value's same position. */

@@ -7,9 +7,11 @@ import type { ParsedLog } from '../types';
 export function throttlePercentSeries(log: ParsedLog): Float32Array {
   const raw = log.rcCommand[3];
   const out = new Float32Array(raw.length);
+
   for (let i = 0; i < raw.length; i++) {
     const p = (raw[i]! - 1000) / 10;
     out[i] = p < 0 ? 0 : p > 100 ? 100 : p;
   }
+
   return out;
 }

@@ -8,5 +8,6 @@ export function LatencyCell({ result }: { result: LatencyResult }) {
       </span>
     );
   }
+
   return <span title={`Correlation ${result.correlation.toFixed(2)}`}>{result.lagMs.toFixed(1)} ms</span>;
 }

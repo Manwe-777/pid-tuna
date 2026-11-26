@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+
 import { PLOT_COLORS } from '../../constants';
 import { useTheme } from '../../hooks/useTheme';
 import type { LogDot } from '../../types';
@@ -52,6 +53,7 @@ export function LogDotPlot({
     );
     let lo: number;
     let hi: number;
+
     if (extents.length === 0) {
       lo = yMin ?? 0;
       hi = yMax ?? 1;
@@ -63,26 +65,31 @@ export function LogDotPlot({
       hi = dMax + pad;
       if (yMin != null) lo = Math.min(lo, yMin);
       if (yMax != null) hi = Math.max(hi, yMax);
+
       if (referenceY != null) {
         lo = Math.min(lo, referenceY - pad);
         hi = Math.max(hi, referenceY + pad);
       }
+
       if (hi - lo < 1e-6) {
         lo -= 0.5;
         hi += 0.5;
       }
     }
+
     return { effYMin: lo, effYMax: hi, yTicks: niceTicks(lo, hi, 5) };
   }, [dots, yMin, yMax, referenceY]);
 
   const xCount = Math.max(dots.length, 1);
   // Inset so end dots don't kiss the frame.
   const X_INSET = 18;
+
   const xPos = (i: number) => {
     if (xCount === 1) return PAD.left + innerW / 2;
     const usableW = Math.max(1, innerW - 2 * X_INSET);
     return PAD.left + X_INSET + (i / (xCount - 1)) * usableW;
   };
+
   const yPos = (v: number) => {
     const t = (v - effYMin) / (effYMax - effYMin || 1);
     return PAD.top + (1 - t) * innerH;
@@ -123,6 +130,7 @@ export function LogDotPlot({
       {dots.map((d, i) => {
         const x = xPos(i);
         const tickY = chartBottom + 14;
+
         if (d.value == null) {
           return (
             <g key={i}>
@@ -133,6 +141,7 @@ export function LogDotPlot({
             </g>
           );
         }
+
         return (
           <g key={i}>
             <text x={x} y={tickY} fill={AXIS_TICK_FILL} fontSize="10" textAnchor="middle">

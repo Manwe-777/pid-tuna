@@ -12,9 +12,11 @@ import type { Axis3, Axis4, GpsFrameSeries, ParsedLog, SlowFrameSeries, TimeRang
 export function sliceLog(log: ParsedLog, range: TimeRangeSec): ParsedLog {
   const i0 = lowerBound(log.time, range.start);
   const i1 = upperBound(log.time, range.end);
+
   if (i0 >= i1) {
     return emptySlice(log);
   }
+
   const slice = (a: Float32Array) => a.slice(i0, i1);
   const triplet = (t: Axis3): Axis3 => [slice(t[0]), slice(t[1]), slice(t[2])] as const;
   const quad = (t: Axis4): Axis4 => [slice(t[0]), slice(t[1]), slice(t[2]), slice(t[3])] as const;
@@ -53,6 +55,7 @@ function sliceGps(gps: GpsFrameSeries, range: TimeRangeSec): GpsFrameSeries {
   if (gps.time.length === 0) return gps;
   const i0 = lowerBound(gps.time, range.start);
   const i1 = upperBound(gps.time, range.end);
+
   if (i0 >= i1) {
     return {
       time: new Float32Array(),
@@ -63,6 +66,7 @@ function sliceGps(gps: GpsFrameSeries, range: TimeRangeSec): GpsFrameSeries {
       numSat: new Float32Array(),
     };
   }
+
   return {
     time: gps.time.slice(i0, i1),
     lat: gps.lat.slice(i0, i1),
@@ -99,11 +103,13 @@ function emptySlice(log: ParsedLog): ParsedLog {
 function lowerBound(arr: Float32Array, target: number): number {
   let lo = 0;
   let hi = arr.length;
+
   while (lo < hi) {
     const mid = (lo + hi) >>> 1;
     if (arr[mid]! < target) lo = mid + 1;
     else hi = mid;
   }
+
   return lo;
 }
 
@@ -111,10 +117,12 @@ function lowerBound(arr: Float32Array, target: number): number {
 function upperBound(arr: Float32Array, target: number): number {
   let lo = 0;
   let hi = arr.length;
+
   while (lo < hi) {
     const mid = (lo + hi) >>> 1;
     if (arr[mid]! <= target) lo = mid + 1;
     else hi = mid;
   }
+
   return lo;
 }

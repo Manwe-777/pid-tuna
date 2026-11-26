@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+
 import { buildMergedScorecard } from '../../dsp/scorecard/buildMergedScorecard';
 import { buildScorecard } from '../../dsp/scorecard/buildScorecard';
 import { colorFor } from '../../logs/colorFor';
@@ -24,6 +25,7 @@ export function ScorecardSection({ entries, onJump }: { entries: LogEntry[]; onJ
         },
       ];
     }
+
     return entries.map(({ slot, log }) => ({ slot, scorecard: buildScorecard(log) }));
   }, [entries, effectiveMerge]);
 

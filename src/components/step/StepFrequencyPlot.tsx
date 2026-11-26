@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+
 import type { PlotSeries, StepFrequencyEntry } from '../../types';
 import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 

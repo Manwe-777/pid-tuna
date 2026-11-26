@@ -25,6 +25,23 @@ export function stepFrequencyResponse(spectra: StepSpectra): {
   const half = Math.max(0, Math.round(SMOOTH_HZ / df));
   const lambda = relativeLambda(spectra.inputPower, spectra.regularization);
 
+  const { frequencies, tRe, tIm, coherence } = smoothedTransfer(spectra, bins, half, lambda, df);
+  const gain = lowBandGain(frequencies, tRe, tIm);
+  const { magnitudeDb, phaseDeg, sensitivityDb } = normalisedPolar(tRe, tIm, gain);
+  const response = { frequencies, magnitudeDb, phaseDeg, sensitivityDb, coherence };
+
+  return { response, metrics: frequencyMetrics(response, gain > 0) };
+}
+
+/** T = Sxy / (Sxx + λ) and coherence per bin, each summed over ±half bins. */
+function smoothedTransfer(
+  spectra: StepSpectra,
+  bins: number,
+  half: number,
+  lambda: number,
+  df: number,
+): { frequencies: Float32Array; tRe: Float64Array; tIm: Float64Array; coherence: Float32Array } {
+  const { fftSize } = spectra;
   const frequencies = new Float32Array(bins);
   const tRe = new Float64Array(bins);
   const tIm = new Float64Array(bins);
@@ -51,7 +68,16 @@ export function stepFrequencyResponse(spectra: StepSpectra): {
     coherence[k] = px > 0 && py > 0 ? Math.min(1, (cr * cr + ci * ci) / (px * py)) : 0;
   }
 
-  const gain = lowBandGain(frequencies, tRe, tIm);
+  return { frequencies, tRe, tIm, coherence };
+}
+
+/** Magnitude, unwrapped phase and sensitivity |1 − T| of T divided by its low-band gain. */
+function normalisedPolar(
+  tRe: Float64Array,
+  tIm: Float64Array,
+  gain: number,
+): { magnitudeDb: Float32Array; phaseDeg: Float32Array; sensitivityDb: Float32Array } {
+  const bins = tRe.length;
   const magnitudeDb = new Float32Array(bins);
   const phaseDeg = new Float32Array(bins);
   const sensitivityDb = new Float32Array(bins);
@@ -65,6 +91,7 @@ export function stepFrequencyResponse(spectra: StepSpectra): {
     sensitivityDb[k] = toDb(Math.hypot(1 - re, -im));
 
     const raw = (Math.atan2(im, re) * 180) / Math.PI;
+
     if (k > 0) {
       if (raw - lastPhase > 180) unwrap -= 360;
       else if (raw - lastPhase < -180) unwrap += 360;
@@ -74,9 +101,7 @@ export function stepFrequencyResponse(spectra: StepSpectra): {
     phaseDeg[k] = raw + unwrap;
   }
 
-  const response = { frequencies, magnitudeDb, phaseDeg, sensitivityDb, coherence };
-
-  return { response, metrics: frequencyMetrics(response, gain > 0) };
+  return { magnitudeDb, phaseDeg, sensitivityDb };
 }
 
 function frequencyMetrics(r: FrequencyResponse, valid: boolean): FrequencyMetrics {
@@ -91,7 +116,23 @@ function frequencyMetrics(r: FrequencyResponse, valid: boolean): FrequencyMetric
     };
   }
 
-  let bandwidthHz: number | null = null;
+  const bandwidthHz = bandwidth(r);
+  const { sensitivityPeakDb, sensitivityPeakHz, cohSum, cohN } = sensitivityAndCoherence(
+    r,
+    bandwidthHz ?? CONFIDENCE_FALLBACK_HZ,
+  );
+
+  return {
+    ...phaseMargin(r),
+    bandwidthHz,
+    sensitivityPeakDb: Number.isFinite(sensitivityPeakDb) ? sensitivityPeakDb : null,
+    sensitivityPeakHz: Number.isFinite(sensitivityPeakDb) ? sensitivityPeakHz : null,
+    confidence: cohN > 0 ? cohSum / cohN : null,
+  };
+}
+
+/** First frequency from MIN_HZ where the magnitude reaches −3 dB, interpolated between bins. */
+function bandwidth(r: FrequencyResponse): number | null {
   for (let k = 1; k < r.frequencies.length; k++) {
     if (r.frequencies[k]! < MIN_HZ) continue;
 
@@ -99,17 +140,23 @@ function frequencyMetrics(r: FrequencyResponse, valid: boolean): FrequencyMetric
       const a = r.magnitudeDb[k - 1]!;
       const b = r.magnitudeDb[k]!;
       const frac = a === b ? 0 : (a + 3) / (a - b);
-      bandwidthHz =
-        r.frequencies[k - 1]! + Math.min(1, Math.max(0, frac)) * (r.frequencies[k]! - r.frequencies[k - 1]!);
-      break;
+
+      return r.frequencies[k - 1]! + Math.min(1, Math.max(0, frac)) * (r.frequencies[k]! - r.frequencies[k - 1]!);
     }
   }
 
+  return null;
+}
+
+/** Sensitivity peak from MIN_HZ up, and the coherence sum and count from MIN_HZ to `cohTop`. */
+function sensitivityAndCoherence(
+  r: FrequencyResponse,
+  cohTop: number,
+): { sensitivityPeakDb: number; sensitivityPeakHz: number; cohSum: number; cohN: number } {
   let sensitivityPeakDb = -Infinity;
   let sensitivityPeakHz = 0;
   let cohSum = 0;
   let cohN = 0;
-  const cohTop = bandwidthHz ?? CONFIDENCE_FALLBACK_HZ;
 
   for (let k = 0; k < r.frequencies.length; k++) {
     const f = r.frequencies[k]!;
@@ -126,13 +173,7 @@ function frequencyMetrics(r: FrequencyResponse, valid: boolean): FrequencyMetric
     }
   }
 
-  return {
-    ...phaseMargin(r),
-    bandwidthHz,
-    sensitivityPeakDb: Number.isFinite(sensitivityPeakDb) ? sensitivityPeakDb : null,
-    sensitivityPeakHz: Number.isFinite(sensitivityPeakDb) ? sensitivityPeakHz : null,
-    confidence: cohN > 0 ? cohSum / cohN : null,
-  };
+  return { sensitivityPeakDb, sensitivityPeakHz, cohSum, cohN };
 }
 
 /** Open loop implied by the closed loop, L = T / (1 − T); crossover where |L| first falls through 1. */

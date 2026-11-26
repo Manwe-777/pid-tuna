@@ -18,6 +18,7 @@ export function gyroChainFromTune(view: TuneView, ctx: FilterDelayContext = {}):
   const lpf = (hz: number | undefined, type: number | undefined) => {
     if (hz && hz > 0) push({ ...base, type: LPF_TYPE[type ?? 0] ?? 'pt1', cutoffHz: hz });
   };
+
   const notch = (hz: number | undefined, cutoff: number | undefined) => {
     // Betaflight's Q = centre·cutoff / (centre² − cutoff²); the simulator uses Q = centre / bandwidth.
     if (hz && cutoff && hz > cutoff && cutoff > 0)
@@ -29,30 +30,45 @@ export function gyroChainFromTune(view: TuneView, ctx: FilterDelayContext = {}):
   notch(view.gyroNotch1Hz, view.gyroNotch1Cutoff);
   notch(view.gyroNotch2Hz, view.gyroNotch2Cutoff);
 
-  if ((view.rpmHarmonics ?? 0) > 0 && view.rpmMinHz != null) {
-    const fadeHz = view.rpmFadeHz ?? DEFAULT_RPM_FADE_HZ;
-    push({
-      ...base,
-      type: 'rpm',
-      cutoffHz: ctx.motorHz && ctx.motorHz > 0 ? Math.round(ctx.motorHz * 10) / 10 : view.rpmMinHz + fadeHz,
-      bfQ: view.rpmQ ?? 500,
-      count: view.rpmHarmonics,
-      minHz: view.rpmMinHz,
-      fadeHz,
-      weights: view.rpmWeights,
-      motors: ctx.motorCount ?? 4,
-    });
-  }
+  const rpm = rpmSpec(view, ctx, base);
+  if (rpm) push(rpm);
 
-  if ((view.dynNotchCount ?? 0) > 0 && view.dynNotchMin != null) {
-    push({
-      ...base,
-      type: 'dynNotch',
-      cutoffHz: view.dynNotchMin,
-      bfQ: view.dynNotchQ ?? 300,
-      count: view.dynNotchCount,
-    });
-  }
+  const dynNotch = dynNotchSpec(view, base);
+  if (dynNotch) push(dynNotch);
 
   return chain;
+}
+
+type BaseSpec = Pick<FilterSpec, 'enabled' | 'bandwidth'>;
+
+/** RPM notches at the median motor frequency, or minimum + fade range; null when RPM filtering is off. */
+function rpmSpec(view: TuneView, ctx: FilterDelayContext, base: BaseSpec): Omit<FilterSpec, 'id'> | null {
+  if (!((view.rpmHarmonics ?? 0) > 0 && view.rpmMinHz != null)) return null;
+
+  const fadeHz = view.rpmFadeHz ?? DEFAULT_RPM_FADE_HZ;
+
+  return {
+    ...base,
+    type: 'rpm',
+    cutoffHz: ctx.motorHz && ctx.motorHz > 0 ? Math.round(ctx.motorHz * 10) / 10 : view.rpmMinHz + fadeHz,
+    bfQ: view.rpmQ ?? 500,
+    count: view.rpmHarmonics,
+    minHz: view.rpmMinHz,
+    fadeHz,
+    weights: view.rpmWeights,
+    motors: ctx.motorCount ?? 4,
+  };
+}
+
+/** Dynamic notches at their minimum frequency; null when there are none. */
+function dynNotchSpec(view: TuneView, base: BaseSpec): Omit<FilterSpec, 'id'> | null {
+  if (!((view.dynNotchCount ?? 0) > 0 && view.dynNotchMin != null)) return null;
+
+  return {
+    ...base,
+    type: 'dynNotch',
+    cutoffHz: view.dynNotchMin,
+    bfQ: view.dynNotchQ ?? 300,
+    count: view.dynNotchCount,
+  };
 }

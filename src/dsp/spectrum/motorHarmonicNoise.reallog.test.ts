@@ -1,7 +1,10 @@
 import '../../parser/compat';
+
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { describe, expect, test } from 'vitest';
+
 import { parseLog } from '../../parser/parseLog';
 import { motorHarmonicNoise } from './motorHarmonicNoise';
 import { motorHzSeries } from './motorHzSeries';

@@ -1,5 +1,6 @@
 export function makeHannWindow(n: number): Float64Array {
   const out = new Float64Array(n);
+
   if (n < 2) {
     if (n === 1) out[0] = 1;
 

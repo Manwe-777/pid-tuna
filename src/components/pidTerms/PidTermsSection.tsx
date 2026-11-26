@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+
 import { AXIS_COLORS, AXIS_NAMES, PID_TERM_DEFS } from '../../constants';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
@@ -22,14 +23,17 @@ export function PidTermsSection({ entries }: { entries: LogEntry[] }) {
       return next;
     });
   };
+
   const pickSingleTerm = (key: PidTermKey) => setSelected(new Set([key]));
 
   const availability = useMemo<Record<PidTermKey, boolean>>(() => {
     const out = {} as Record<PidTermKey, boolean>;
+
     for (const def of PID_TERM_DEFS) {
       const sample = extractSignal(primary.log, def.signalKey, 0);
       out[def.key] = !!sample && sample.length > 0 && sample.some((v) => v !== 0);
     }
+
     return out;
   }, [primary.log]);
 
@@ -75,11 +79,13 @@ export function PidTermsSection({ entries }: { entries: LogEntry[] }) {
       {AXIS_NAMES.map((name, i) => {
         const N = primary.log.time.length;
         const series: PlotSeries[] = [];
+
         for (const def of activeDefs) {
           for (const entry of entries) {
             const sig = extractSignal(entry.log, def.signalKey, i);
             if (!sig || sig.length === 0) continue;
             const values = align(sig, N);
+
             if (multi) {
               series.push({
                 label: shortName(entry.slot),
@@ -97,6 +103,7 @@ export function PidTermsSection({ entries }: { entries: LogEntry[] }) {
             }
           }
         }
+
         return (
           <div key={name} className="axis-plot">
             <h3 className="axis-plot__title">

@@ -57,6 +57,7 @@ class WebSerialFcPort implements FcPort {
   async write(data: Uint8Array): Promise<void> {
     if (!this.port.writable) throw new Error('Port has no writable stream');
     const writer = this.port.writable.getWriter();
+
     try {
       await writer.write(data);
     } finally {
@@ -80,18 +81,22 @@ class WebSerialFcPort implements FcPort {
           setTimeout(() => resolve({ done: true }), remaining),
         ),
       ]);
+
       if (chunk.done) {
         if (this.buffer.length < len) throw new Error(`Read timeout (got ${this.buffer.length}/${len} bytes)`);
         break;
       }
+
       if (chunk.value) this.append(chunk.value);
     }
+
     return this.take(len);
   }
 
   async close(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
+
     try {
       if (this.reader) {
         try {
@@ -99,13 +104,16 @@ class WebSerialFcPort implements FcPort {
         } catch {
           /* port may have already dropped (e.g. FC rebooting into MSC) */
         }
+
         try {
           this.reader.releaseLock();
         } catch {
           /* ignore */
         }
+
         this.reader = null;
       }
+
       await this.port.close();
     } catch {
       // Closing a port that's already gone (FC rebooted) is the expected

@@ -15,18 +15,11 @@ export function gpsAltitudeViridisSegments(
     return undefined;
   }
 
-  let cMin = Infinity;
-  let cMax = -Infinity;
-  for (let i = 0; i < lat.length; i++) {
-    if (!gpsCoordValid(lat[i]!, lon[i]!)) continue;
-    const v = altitude[i]!;
-    if (!Number.isFinite(v)) continue;
-    if (v < cMin) cMin = v;
-    if (v > cMax) cMax = v;
-  }
+  const { cMin, cMax } = fixAltitudeRange(lat, lon, altitude);
   const colorize = Number.isFinite(cMin) && cMax !== -Infinity && cMax > cMin;
 
   const out: string[] = new Array(Math.max(0, altitude.length - 1));
+
   for (let i = 0; i < out.length; i++) {
     const la0 = lat[i]!;
     const lo0 = lon[i]!;
@@ -43,4 +36,20 @@ export function gpsAltitudeViridisSegments(
   }
 
   return out;
+}
+
+/** Altitude range over the valid fixes (Infinity / −Infinity when there are none). */
+function fixAltitudeRange(lat: Float32Array, lon: Float32Array, altitude: Float32Array) {
+  let cMin = Infinity;
+  let cMax = -Infinity;
+
+  for (let i = 0; i < lat.length; i++) {
+    if (!gpsCoordValid(lat[i]!, lon[i]!)) continue;
+    const v = altitude[i]!;
+    if (!Number.isFinite(v)) continue;
+    if (v < cMin) cMin = v;
+    if (v > cMax) cMax = v;
+  }
+
+  return { cMin, cMax };
 }

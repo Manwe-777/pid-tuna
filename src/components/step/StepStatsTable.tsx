@@ -49,18 +49,23 @@ function valueText(m: StepMetricOption, metrics: StepMetrics): string {
   return `${text} @ ${metrics.sensitivityPeakHz.toFixed(0)} Hz`;
 }
 
+/** Warning tone for a metric past its caution (warn) or severe (bad) threshold. */
+const TONES: Partial<Record<keyof StepMetrics, (m: StepMetrics) => string | undefined>> = {
+  sensitivityPeakDb: ({ sensitivityPeakDb: v }) => {
+    if (v == null) return undefined;
+    if (v >= SENSITIVITY_SEVERE_DB) return 'step-stats__bad';
+
+    return v >= SENSITIVITY_CAUTION_DB ? 'step-stats__warn' : undefined;
+  },
+  phaseMarginDeg: ({ phaseMarginDeg: v }) => {
+    if (v == null) return undefined;
+    if (v < PHASE_MARGIN_SEVERE) return 'step-stats__bad';
+
+    return v < PHASE_MARGIN_CAUTION ? 'step-stats__warn' : undefined;
+  },
+  confidence: ({ confidence: v }) => (v != null && v < LOW_CONFIDENCE ? 'step-stats__warn' : undefined),
+};
+
 function toneFor(key: keyof StepMetrics, m: StepMetrics): string | undefined {
-  if (key === 'sensitivityPeakDb' && m.sensitivityPeakDb != null) {
-    if (m.sensitivityPeakDb >= SENSITIVITY_SEVERE_DB) return 'step-stats__bad';
-    if (m.sensitivityPeakDb >= SENSITIVITY_CAUTION_DB) return 'step-stats__warn';
-  }
-
-  if (key === 'phaseMarginDeg' && m.phaseMarginDeg != null) {
-    if (m.phaseMarginDeg < PHASE_MARGIN_SEVERE) return 'step-stats__bad';
-    if (m.phaseMarginDeg < PHASE_MARGIN_CAUTION) return 'step-stats__warn';
-  }
-
-  if (key === 'confidence' && m.confidence != null && m.confidence < LOW_CONFIDENCE) return 'step-stats__warn';
-
-  return undefined;
+  return TONES[key]?.(m);
 }

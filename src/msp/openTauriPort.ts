@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+
 import type { FcPort, TauriFcPortInfo } from '../types';
 
 /**
@@ -47,6 +48,7 @@ class TauriFcPort implements FcPort {
   async close(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
+
     try {
       await invoke('fc_serial_close', { handle: this.handle });
     } catch {

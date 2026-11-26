@@ -16,6 +16,7 @@ export function balanceEntry(balance: BalanceAnalysis): ScoreEntry | null {
             : 'No dominant axis',
     };
   }
+
   if (balance.singleMotorOutlier != null) {
     return {
       key: 'Motor balance',
@@ -24,5 +25,6 @@ export function balanceEntry(balance: BalanceAnalysis): ScoreEntry | null {
       detail: `${balance.singleMotorOutlier.deltaPct.toFixed(1)}% from neighbors`,
     };
   }
+
   return null;
 }

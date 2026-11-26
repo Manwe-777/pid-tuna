@@ -15,39 +15,50 @@ export function stepResponseMask(log: ParsedLog, opts: StepMaskOptions): Uint8Ar
   const mask = new Uint8Array(n).fill(1);
   const throttle = throttlePercentSeries(log);
 
-  if (opts.flightOnly) {
-    const range = flightRange(throttle, log.setup.sampleRateHz);
-    if (range) {
-      mask.fill(0, 0, range.start);
-      mask.fill(0, range.end + 1);
-    }
+  if (opts.flightOnly) maskOutsideFlight(mask, throttle, log.setup.sampleRateHz);
+  maskOutsideThrottleBand(mask, throttle, opts.minThrottle ?? 0, opts.maxThrottle ?? Infinity);
+  if (opts.excludeSaturation) maskSaturatedMotors(mask, log);
+
+  return mask;
+}
+
+function maskOutsideFlight(mask: Uint8Array, throttle: Float32Array, sampleRateHz: number): void {
+  const range = flightRange(throttle, sampleRateHz);
+  if (!range) return;
+
+  mask.fill(0, 0, range.start);
+  mask.fill(0, range.end + 1);
+}
+
+function maskOutsideThrottleBand(
+  mask: Uint8Array,
+  throttle: Float32Array,
+  minThrottle: number,
+  maxThrottle: number,
+): void {
+  if (!(minThrottle > 0 || maxThrottle < Infinity)) return;
+
+  for (let i = 0; i < mask.length; i++) {
+    const t = throttle[i]!;
+    if (!(t >= minThrottle && t <= maxThrottle)) mask[i] = 0;
   }
+}
 
-  const minThrottle = opts.minThrottle ?? 0;
-  const maxThrottle = opts.maxThrottle ?? Infinity;
-
-  if (minThrottle > 0 || maxThrottle < Infinity) {
-    for (let i = 0; i < n; i++) {
-      const t = throttle[i]!;
-      if (!(t >= minThrottle && t <= maxThrottle)) mask[i] = 0;
-    }
-  }
-
+/** Zero samples where any motor is pinned within SATURATION_MARGIN of either end of its range. */
+function maskSaturatedMotors(mask: Uint8Array, log: ParsedLog): void {
   const range = motorRange(log);
-  if (!opts.excludeSaturation || !range || log.motor.length === 0) return mask;
+  if (!range || log.motor.length === 0) return;
 
   const margin = (range.max - range.min) * SATURATION_MARGIN;
   const lo = range.min + margin;
   const hi = range.max - margin;
 
   for (const motor of log.motor) {
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < mask.length; i++) {
       const v = motor[i]!;
       if (v <= lo || v >= hi) mask[i] = 0;
     }
   }
-
-  return mask;
 }
 
 function motorRange(log: ParsedLog): { min: number; max: number } | null {

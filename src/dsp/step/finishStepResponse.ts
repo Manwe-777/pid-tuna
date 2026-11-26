@@ -1,4 +1,4 @@
-import type { StepDiagnostics, StepResponseResult, StepSpectra } from '../../types';
+import type { FrequencyMetrics, StepDiagnostics, StepResponseResult, StepSpectra } from '../../types';
 import { meanOf } from '../../utils/meanOf';
 import { metricSpread } from './metricSpread';
 import { scaleToLevel } from './scaleToLevel';
@@ -34,14 +34,32 @@ export function finishStepResponse(
     metricSpread: metricSpread(time, segments, steadyFrom),
     metrics: {
       ...timeMetrics(time, mean, steadyFrom),
-      bandwidthHz: freq?.metrics.bandwidthHz ?? null,
-      sensitivityPeakDb: freq?.metrics.sensitivityPeakDb ?? null,
-      sensitivityPeakHz: freq?.metrics.sensitivityPeakHz ?? null,
-      confidence: freq?.metrics.confidence ?? null,
-      crossoverHz: freq?.metrics.crossoverHz ?? null,
-      phaseMarginDeg: freq?.metrics.phaseMarginDeg ?? null,
+      ...frequencyMetricFields(freq?.metrics),
     },
     diagnostics,
     pooled: spectra,
+  };
+}
+
+/** The frequency-domain metrics, all null when there is no frequency response. */
+function frequencyMetricFields(m: FrequencyMetrics | undefined): FrequencyMetrics {
+  if (!m) {
+    return {
+      bandwidthHz: null,
+      sensitivityPeakDb: null,
+      sensitivityPeakHz: null,
+      confidence: null,
+      crossoverHz: null,
+      phaseMarginDeg: null,
+    };
+  }
+
+  return {
+    bandwidthHz: m.bandwidthHz ?? null,
+    sensitivityPeakDb: m.sensitivityPeakDb ?? null,
+    sensitivityPeakHz: m.sensitivityPeakHz ?? null,
+    confidence: m.confidence ?? null,
+    crossoverHz: m.crossoverHz ?? null,
+    phaseMarginDeg: m.phaseMarginDeg ?? null,
   };
 }

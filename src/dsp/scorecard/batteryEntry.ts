@@ -4,6 +4,7 @@ export function batteryEntry(battery: BatteryAnalysis): ScoreEntry | null {
   if (!battery.hasVoltage) return null;
   let status: ScoreStatus = 'na';
   let value = '—';
+
   if (battery.perCellMin != null) {
     status = battery.perCellMin >= 3.5 ? 'good' : battery.perCellMin >= 3.3 ? 'warn' : 'bad';
     value = `${battery.perCellMin.toFixed(2)} V/cell min`;
@@ -11,6 +12,7 @@ export function batteryEntry(battery: BatteryAnalysis): ScoreEntry | null {
     value = `${battery.voltageMin.toFixed(2)} V min`;
     status = 'na';
   }
+
   return {
     key: 'Battery sag',
     status,

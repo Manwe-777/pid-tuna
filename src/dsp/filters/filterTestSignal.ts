@@ -1,6 +1,6 @@
 import type { ChirpOptions, FilterSpec, TestSignalKind, TestSignalResult } from '../../types';
-import { applyFilterChain } from './applyFilterChain';
 import { mulberry32 } from '../mulberry32';
+import { applyFilterChain } from './applyFilterChain';
 
 const STEP_SECONDS = 0.5;
 
