@@ -39,6 +39,7 @@ import { medianMotorHz } from './dsp/medianMotorHz';
 import { filterDelaysForLog } from './dsp/filterDelaysForLog';
 import { type LatencyResult } from './dsp/latency';
 import { latencyForLog } from './dsp/latencyForLog';
+import { stepResponseMask } from './dsp/stepResponseMask';
 import { analyzeBattery, type BatteryAnalysis } from './dsp/battery';
 import { analyzeGps, type GpsAnalysis } from './dsp/gps';
 import { buildValidGpsSamples } from './dsp/gpsPlayback';
@@ -2986,14 +2987,6 @@ function combineAxisPowerDb(psdDbArrays: Float32Array[], outMode: SpectralValueM
   return out;
 }
 
-function concat3(a: Float32Array, b: Float32Array, c: Float32Array): Float32Array {
-  const out = new Float32Array(a.length + b.length + c.length);
-  out.set(a, 0);
-  out.set(b, a.length);
-  out.set(c, a.length + b.length);
-  return out;
-}
-
 function SpectralSection({ entries }: { entries: LogEntry[] }) {
   const log = entries[0]!.log;
   const others = entries.slice(1);
@@ -3032,6 +3025,7 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
   const signalFor = (i: number) =>
     effectiveSource === 'raw' ? log.gyroRaw[i]! : log.gyroFilt[i]!;
   const isAll = axis === ALL_AXIS;
+  const [compensateLag, setCompensateLag] = useState(true);
   const axisName = isAll ? 'All axes' : AXIS_NAMES[axis]!;
   const axisColor = isAll ? '#aab4c4' : AXIS_COLORS[axis]!;
 
@@ -3071,13 +3065,15 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
   // samples into one density over a shared range.
   const density = useMemo(() => {
     if (mode !== 'errorSetpoint') return null;
-    if (isAll) {
-      const sp = concat3(log.setpoint[0]!, log.setpoint[1]!, log.setpoint[2]!);
-      const gy = concat3(log.gyroFilt[0]!, log.gyroFilt[1]!, log.gyroFilt[2]!);
-      return computeErrorSetpointDensity(sp, gy);
-    }
-    return computeErrorSetpointDensity(log.setpoint[axis]!, log.gyroFilt[axis]!);
-  }, [log, mode, axis]);
+    const mask = stepResponseMask(log, { flightOnly: true });
+    const input = (a: number) => ({
+      setpoint: log.setpoint[a]!,
+      gyro: log.gyroFilt[a]!,
+      mask,
+      lagSamples: compensateLag ? (latencyForLog(log, a).lagMs / 1000) * log.setup.sampleRateHz : 0,
+    });
+    return computeErrorSetpointDensity(isAll ? [0, 1, 2].map(input) : input(axis));
+  }, [log, mode, axis, isAll, compensateLag]);
 
   // PSD colour scale: robust auto default, overridable by the dB inputs.
   const autoRange = useMemo(() => {
@@ -3248,9 +3244,28 @@ function SpectralSection({ entries }: { entries: LogEntry[] }) {
       </div>
 
       {mode === 'errorSetpoint' && (
-        <p className="muted">
-          Tracking-error density: error = setpoint − gyro (deg/s) vs commanded setpoint. A tight cloud on the dashed error = 0 line means faithful tracking; spread that grows toward the stick extremes is lag or overshoot.
-        </p>
+        <>
+          <p className="muted">
+            Tracking-error density, takeoff to landing: error = setpoint − gyro (deg/s) against commanded
+            setpoint. The orange line is the mean error at each setpoint. A cloud centred on the dashed
+            error = 0 line means gyro reaches setpoint; a line tilting up to the right means it falls
+            short at high rates. With latency compensated, the stick-to-gyro delay is taken out first, so
+            what remains is tracking, not lag.
+          </p>
+          <div className="controls">
+            <label title="Compare setpoint with gyro shifted back by the measured tracking latency">
+              <input type="checkbox" checked={compensateLag} onChange={(e) => setCompensateLag(e.target.checked)} />
+              Compensate latency
+            </label>
+            {density && density.rmsError != null && (
+              <span className="muted">
+                RMS error {density.rmsError.toFixed(1)} deg/s
+                {density.trackingSlope != null &&
+                  ` · over the whole flight gyro averages ${((1 - density.trackingSlope) * 100).toFixed(0)}% of setpoint (slope ${density.trackingSlope.toFixed(3)}; the Step response "level" is the shorter 200–500 ms view)`}
+              </span>
+            )}
+          </div>
+        </>
       )}
       {binnedMode && !rpmUnavailable && (
         <p className="muted">

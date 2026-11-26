@@ -155,6 +155,25 @@ function draw(
   ctx.stroke();
   ctx.setLineDash([]);
 
+  // Mean error per setpoint bin: where the cloud's centre sits.
+  ctx.strokeStyle = '#ff9f43';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  let drawing = false;
+  for (let xb = 0; xb < data.xBins; xb++) {
+    const e = data.meanError[xb];
+    if (e == null || !Number.isFinite(e)) {
+      drawing = false;
+      continue;
+    }
+    const px = xToPx(data.xCenters[xb]!);
+    const py = yToPx(Math.max(-data.errorRange, Math.min(data.errorRange, e)));
+    if (drawing) ctx.lineTo(px, py);
+    else ctx.moveTo(px, py);
+    drawing = true;
+  }
+  ctx.stroke();
+
   ctx.strokeStyle = '#1d242e';
   ctx.strokeRect(MARGIN.left + 0.5, MARGIN.top + 0.5, plotW - 1, plotH - 1);
 
