@@ -79,5 +79,5 @@ export function SpectrogramPlot({
 
 /** The first and last columns are window centres; each window reaches this far past its centre. */
 function edgeSlack(data: SpectrogramResult): number {
-  return data.times[0] ?? 0;
+  return data.halfWindowSec;
 }

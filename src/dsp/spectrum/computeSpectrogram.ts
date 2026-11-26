@@ -27,6 +27,7 @@ export function computeSpectrogram(
   if (signal.length < windowSize || sampleRateHz <= 0) {
     return {
       times: new Float32Array(0),
+      halfWindowSec: 0,
       frequencies: new Float32Array(0),
       magnitudes: new Float32Array(0),
       freqBins,
@@ -48,7 +49,10 @@ export function computeSpectrogram(
   }
 
   return {
-    times: windowCentreTimes(timeBins, windowSize, hopSize, sampleRateHz),
+    times: options.sampleTimes
+      ? sampledCentreTimes(options.sampleTimes, timeBins, windowSize, hopSize)
+      : windowCentreTimes(timeBins, windowSize, hopSize, sampleRateHz),
+    halfWindowSec: windowSize / (2 * sampleRateHz),
     frequencies: binFrequencies(freqBins, sampleRateHz, windowSize),
     magnitudes,
     freqBins,
@@ -144,6 +148,21 @@ function windowCentreTimes(timeBins: number, windowSize: number, hopSize: number
   const halfWindowSec = windowSize / (2 * sampleRateHz);
   const hopSec = hopSize / sampleRateHz;
   for (let t = 0; t < timeBins; t++) times[t] = halfWindowSec + t * hopSec;
+
+  return times;
+}
+
+/** Each window's centre time read from the signal's own timestamps. */
+function sampledCentreTimes(sampleTimes: Float32Array, timeBins: number, windowSize: number, hopSize: number) {
+  const times = new Float32Array(timeBins);
+  const last = sampleTimes.length - 1;
+
+  for (let t = 0; t < timeBins; t++) {
+    const centre = t * hopSize + windowSize / 2;
+    const i = Math.min(last, Math.floor(centre));
+    const j = Math.min(last, i + 1);
+    times[t] = sampleTimes[i]! + (centre - i) * (sampleTimes[j]! - sampleTimes[i]!);
+  }
 
   return times;
 }

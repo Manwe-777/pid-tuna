@@ -979,11 +979,18 @@ export interface SpectrogramOptions {
   floorDb?: number;
   /** Amplitude (default) vs power-spectral-density scaling. */
   mode?: SpectralValueMode;
+  /**
+   * The signal's timestamps (s). Window times are then read from them, so they match
+   * log time; without them they count samples at `sampleRateHz` from 0.
+   */
+  sampleTimes?: Float32Array;
 }
 
 export interface SpectrogramResult {
   /** Time of each window center, in seconds. */
   times: Float32Array;
+  /** How far each window reaches either side of its centre, in seconds. */
+  halfWindowSec: number;
   /** Frequency of each bin, in Hz. Length = freqBins. */
   frequencies: Float32Array;
   /** Values in dB, indexed [t * freqBins + f]. Magnitude mode: relative to peak,

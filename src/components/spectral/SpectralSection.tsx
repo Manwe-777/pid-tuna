@@ -7,7 +7,6 @@ import { useSpectralSettings } from '../../hooks/useSpectralSettings';
 import { plotEvents } from '../../logs/plotEvents';
 import { shortName } from '../../logs/shortName';
 import type { LogEntry } from '../../types';
-import { sampleClockTime } from '../../utils/sampleClockTime';
 import { spectralAxisLabel } from '../../utils/spectralAxisLabel';
 import { spectralDbRange } from '../../utils/spectralDbRange';
 import { spectrumSliceAt } from '../../utils/spectrumSliceAt';
@@ -25,11 +24,7 @@ export function SpectralSection({ entries }: { entries: LogEntry[] }) {
   const cursor = useSpectralCursor(maps.spec?.times ?? null);
   const slice = useMemo(() => spectrumSliceAt(maps.spec, cursor.cursorTime), [maps.spec, cursor.cursorTime]);
   const axisLabel = spectralAxisLabel(s.axis);
-  // The heatmap counts samples at the nominal rate from the window's first sample.
-  const events = useMemo(
-    () => plotEvents([entries[0]!], (t) => sampleClockTime(log.time, log.setup.sampleRateHz, t)),
-    [entries, log],
-  );
+  const events = useMemo(() => plotEvents([entries[0]!]), [entries]);
 
   return (
     <section className="plot-section">

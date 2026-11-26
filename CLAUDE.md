@@ -21,7 +21,7 @@ A client-side React app that parses Betaflight blackbox logs and runs DSP on the
 - Step response pools cross-spectra (H1), not per-window deconvolutions. The tab and the scorecard share `STEP_DEFAULTS` and `STEP_MASK_DEFAULTS`.
 - Analyses run takeoff to landing (`flightRange`: stick throttle at or above 20% for 0.5 s). Throttle in percent comes from `throttlePercentSeries` (rcCommand[3]).
 - Yaw is shown but never rated: scorecard rows score `RATED_AXES = [0, 1]` only.
-- Log events (`ParsedLog.events`) come from the ARM bit of the slow frames' `flightModeFlags`; the parser's event frames carry no data. Every plot with a time axis takes `events` from `plotEvents`; the Spectral heatmap counts samples at the nominal rate, so its events go through `sampleClockTime`.
+- Log events (`ParsedLog.events`) come from the ARM bit of the slow frames' `flightModeFlags`; the parser's event frames carry no data. Every plot with a time axis takes `events` from `plotEvents`. Time axes use the log's own timestamps, never sample counts at the nominal rate, which drift from log time.
 
 ## UI rules
 
