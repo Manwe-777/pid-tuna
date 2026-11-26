@@ -33,6 +33,7 @@ export function StepFrequencyPlot({ entries }: { entries: StepFrequencyEntry[] }
 
   return (
     <TimeSeriesPlot
+      syncGroup="step-hz"
       time={reference}
       series={series}
       xLabel="Hz"

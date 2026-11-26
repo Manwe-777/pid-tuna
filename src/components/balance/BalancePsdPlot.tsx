@@ -22,6 +22,7 @@ export function BalancePsdPlot({ analysis }: { analysis: BalanceAnalysis }) {
         Motor command PSD — spikes on one motor only = that motor is the source
       </h5>
       <TimeSeriesPlot
+        syncGroup="hz"
         time={freq}
         series={series}
         yLabel="dB"

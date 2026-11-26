@@ -65,6 +65,7 @@ export function StepResponseAxisPanel({
         {!empty ? (
           <div className="step-axis-row__plot">
             <TimeSeriesPlot
+              syncGroup="step-ms"
               time={time}
               series={series}
               yLabel="× setpoint"
