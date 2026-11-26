@@ -1,10 +1,6 @@
-import FFT from 'fft.js';
-
-interface FFTImpl {
-  size: number;
-  createComplexArray(): number[];
-  realTransform(out: number[] | Float64Array, data: ArrayLike<number>): void;
-}
+import { createFft } from '../utils/createFft';
+import { makeHannWindow } from '../utils/hannWindow';
+import { nextPow2 } from '../utils/nextPow2';
 
 /**
  * `magnitude` — amplitude spectrum in dB relative to the spectrogram's peak
@@ -83,7 +79,7 @@ export function computeSpectrogram(
 
   const timeBins = Math.floor((signal.length - windowSize) / hopSize) + 1;
   const hann = makeHannWindow(windowSize);
-  const fft = new (FFT as unknown as new (size: number) => FFTImpl)(windowSize);
+  const fft = createFft(windowSize);
   const fftOut = new Float64Array(windowSize * 2); // [re0, im0, re1, im1, ...]
   const windowed = new Float64Array(windowSize);
 
@@ -166,18 +162,6 @@ function segmentMean(signal: Float32Array, start: number, len: number): number {
   for (let i = 0; i < len; i++) s += signal[start + i]!;
 
   return s / len;
-}
-
-function makeHannWindow(n: number): Float32Array {
-  const w = new Float32Array(n);
-  const k = (2 * Math.PI) / (n - 1);
-  for (let i = 0; i < n; i++) w[i] = 0.5 - 0.5 * Math.cos(k * i);
-  return w;
-}
-
-function nextPow2(n: number): number {
-  if (n <= 1) return 2;
-  return 1 << Math.ceil(Math.log2(n));
 }
 
 /* ------------------------------------------------------------------ */
@@ -281,7 +265,7 @@ export function computeBinnedSpectrogram(
   const psdNorm = 1 / (sampleRateHz * winSqSum);
   const nyquistBin = fftSize >> 1;
 
-  const fft = new (FFT as unknown as new (size: number) => FFTImpl)(fftSize);
+  const fft = createFft(fftSize);
   const fftOut = new Float64Array(fftSize * 2);
   const buf = new Float64Array(fftSize);
 
@@ -419,7 +403,7 @@ export function computePsd(signal: Float32Array, sampleRateHz: number, options: 
   for (let i = 0; i < windowSize; i++) winSqSum += hann[i]! * hann[i]!;
   const psdNorm = 1 / (sampleRateHz * winSqSum);
 
-  const fft = new (FFT as unknown as new (size: number) => FFTImpl)(windowSize);
+  const fft = createFft(windowSize);
   const fftOut = new Float64Array(windowSize * 2);
   const buf = new Float64Array(windowSize);
 

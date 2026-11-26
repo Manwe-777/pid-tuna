@@ -1,5 +1,4 @@
-import type { ParsedLog } from '../types';
-import type { StepResponseResult } from './stepResponse';
+import type { ParsedLog, StepResponseResult } from '../types';
 import { type StepLogOptions, stepResponseForLog } from './stepResponseForLog';
 
 export type StepBandKind = 'stick' | 'throttle';

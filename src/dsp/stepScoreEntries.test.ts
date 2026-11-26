@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'vitest';
-
-import type { StepMetrics, StepResponseResult } from './stepResponse';
+import type { StepMetrics, StepResponseResult } from '../types';
 import { stepScoreEntries } from './stepScoreEntries';
 
 function axis(windows: number, metrics: Partial<StepMetrics>): StepResponseResult {

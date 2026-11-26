@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SpectrogramResult } from '../../dsp/spectrogram';
 import { paintCrosshair, type PlotGeom } from '../common/plotCrosshair';
+import { niceTicks } from '../../utils/niceTicks';
+import { viridis } from '../../utils/viridis';
 
 export interface SpectrogramPlotProps {
   data: SpectrogramResult;
@@ -321,24 +323,6 @@ function drawColorbar(
   }
 }
 
-function niceTicks(min: number, max: number, target: number): number[] {
-  if (!(max > min)) return [min];
-  const span = max - min;
-  const rawStep = span / target;
-  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
-  const norm = rawStep / mag;
-  let step: number;
-  if (norm < 1.5) step = 1 * mag;
-  else if (norm < 3) step = 2 * mag;
-  else if (norm < 7) step = 5 * mag;
-  else step = 10 * mag;
-
-  const out: number[] = [];
-  const first = Math.ceil(min / step) * step;
-  for (let v = first; v <= max + 1e-9; v += step) out.push(v);
-  return out;
-}
-
 function formatNum(n: number): string {
   if (Math.abs(n) >= 100) return n.toFixed(0);
   if (Math.abs(n) >= 10) return n.toFixed(1);
@@ -347,26 +331,3 @@ function formatNum(n: number): string {
 }
 
 // Viridis colormap — 5-stop interpolation (RGB units 0-255).
-const VIRIDIS: ReadonlyArray<readonly [number, number, number]> = [
-  [68, 1, 84],
-  [59, 82, 139],
-  [33, 145, 140],
-  [94, 201, 98],
-  [253, 231, 37],
-];
-
-function viridis(t: number): readonly [number, number, number] {
-  const clamped = t < 0 ? 0 : t > 1 ? 1 : t;
-  const segs = VIRIDIS.length - 1;
-  const pos = clamped * segs;
-  const lo = Math.floor(pos);
-  const hi = Math.min(lo + 1, segs);
-  const frac = pos - lo;
-  const a = VIRIDIS[lo]!;
-  const b = VIRIDIS[hi]!;
-  return [
-    Math.round(a[0] + (b[0] - a[0]) * frac),
-    Math.round(a[1] + (b[1] - a[1]) * frac),
-    Math.round(a[2] + (b[2] - a[2]) * frac),
-  ];
-}

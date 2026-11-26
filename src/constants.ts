@@ -300,3 +300,24 @@ export const PLOT_COLORS: Record<Theme, PlotChrome> = {
     label: '#949ba6',
   },
 };
+
+export const STEP_DEFAULTS = {
+  windowMs: 2000,
+  responseMs: 500,
+  overlap: 0.75,
+  regularization: 0.001,
+  minExcitation: 20,
+  maxExcitation: Infinity,
+  settleMin: 0.5,
+  settleMax: 1.5,
+  outlierK: 3,
+} as const;
+
+/** Viridis colour stops for heatmaps. */
+export const VIRIDIS: ReadonlyArray<readonly [number, number, number]> = [
+  [68, 1, 84],
+  [59, 82, 139],
+  [33, 145, 140],
+  [94, 201, 98],
+  [253, 231, 37],
+];

@@ -1,5 +1,6 @@
-import type { ParsedLog } from '../types';
-import { computeStepResponse, STEP_DEFAULTS, type StepResponseOptions, type StepResponseResult } from './stepResponse';
+import { STEP_DEFAULTS } from '../constants';
+import type { ParsedLog, StepResponseOptions, StepResponseResult } from '../types';
+import { computeStepResponse } from './stepResponse';
 import { type StepMaskOptions, stepResponseMask } from './stepResponseMask';
 
 /** Takeoff to landing, minus moments at idle throttle (motors at idle respond differently) or with a motor pinned. */

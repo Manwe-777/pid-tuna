@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AXIS_COLORS, AXIS_NAMES, BAND_COLORS } from '../../constants';
-import { combineStepResponses } from '../../dsp/stepResponse';
+import { combineStepResponses } from '../../dsp/combineStepResponses';
 import { type StepBandKind, stepResponseBands } from '../../dsp/stepResponseBands';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';

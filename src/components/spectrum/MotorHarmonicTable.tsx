@@ -31,14 +31,14 @@ export function MotorHarmonicTable({ axes }: { axes: AxisHarmonicNoise[] }) {
 
 function AxisRows({ axis, data }: { axis: number; data: AxisHarmonicNoise }) {
   const rows: { label: string; cells: string[]; muted?: boolean }[] = [
-    { label: 'Gyro', cells: data.filtered.map(level) },
+    { label: 'Gyro', cells: data.filtered.map(formatHarmonicLevel) },
   ];
 
   if (data.unfiltered) {
-    rows.push({ label: 'Unfiltered', cells: data.unfiltered.map(level) });
+    rows.push({ label: 'Unfiltered', cells: data.unfiltered.map(formatHarmonicLevel) });
     rows.push({
       label: 'Removed by filters',
-      cells: data.filtered.map((f, i) => removed(data.unfiltered![i], f)),
+      cells: data.filtered.map((f, i) => formatHarmonicReduction(data.unfiltered![i], f)),
       muted: true,
     });
   }
@@ -66,11 +66,11 @@ function AxisRows({ axis, data }: { axis: number; data: AxisHarmonicNoise }) {
   );
 }
 
-function level(h: HarmonicNoise): string {
+function formatHarmonicLevel(h: HarmonicNoise): string {
   return h.meanDb == null ? '—' : `${h.meanDb.toFixed(1)} ± ${h.sdDb!.toFixed(1)} dB`;
 }
 
-function removed(raw: HarmonicNoise | undefined, filt: HarmonicNoise): string {
+function formatHarmonicReduction(raw: HarmonicNoise | undefined, filt: HarmonicNoise): string {
   if (raw?.meanDb == null || filt.meanDb == null) return '—';
 
   return `${(raw.meanDb - filt.meanDb).toFixed(1)} dB`;

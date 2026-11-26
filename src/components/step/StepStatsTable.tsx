@@ -1,6 +1,5 @@
 import { STEP_METRICS } from '../../constants';
-import type { StepMetrics } from '../../dsp/stepResponse';
-import type { StepMetricOption } from '../../types';
+import type { StepMetricOption, StepMetrics } from '../../types';
 import { formatStepMetric } from '../../utils/formatStepMetric';
 
 export interface StepStatsRow {

@@ -1,4 +1,4 @@
-import FFT from 'fft.js';
+import { createFft } from '../utils/createFft';
 
 export interface HarmonicNoise {
   /** 1 = motor fundamental, 2 = second harmonic, … */
@@ -19,12 +19,6 @@ export interface HarmonicNoiseOptions {
   /** Box smoothing of each segment's PSD, in bins. Default 5. */
   smoothBins?: number;
 }
-
-interface FFTImpl {
-  realTransform(out: Float64Array, data: ArrayLike<number>): void;
-}
-
-const FFTCtor = FFT as unknown as new (size: number) => FFTImpl;
 
 /**
  * Noise left at each multiple of motor speed, the way PIDtoolbox's Motor
@@ -57,7 +51,7 @@ export function motorHarmonicNoise(
   let size = 1;
   while (size < segLen) size <<= 1;
 
-  const fft = new FFTCtor(size);
+  const fft = createFft(size);
   const hann = Float64Array.from({ length: segLen }, (_, i) => 0.5 * (1 - Math.cos((2 * Math.PI * i) / (segLen - 1))));
   const winPower = hann.reduce((a, w) => a + w * w, 0);
   const binHz = sampleRateHz / size;

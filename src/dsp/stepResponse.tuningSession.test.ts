@@ -1,12 +1,9 @@
 import '../parser/compat';
-
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-
 import { describe, expect, test } from 'vitest';
-
 import { parseLog } from '../parser/parseLog';
-import type { StepMetrics } from './stepResponse';
+import type { StepMetrics } from '../types';
 import { stepResponseForLog } from './stepResponseForLog';
 
 /**

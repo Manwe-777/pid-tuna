@@ -1,4 +1,5 @@
 import type { ParsedLog, SlowFrameSeries } from '../types';
+import { median } from '../utils/median';
 
 export interface BatteryAnalysis {
   hasVoltage: boolean;
@@ -155,13 +156,6 @@ function medianFilter(x: number[], width: number): number[] {
   const half = width >> 1;
 
   return x.map((_, i) => median(x.slice(Math.max(0, i - half), Math.min(x.length, i + half + 1))));
-}
-
-function median(xs: number[]): number {
-  const s = [...xs].sort((a, b) => a - b);
-  const m = s.length >> 1;
-
-  return s.length % 2 ? s[m]! : 0.5 * (s[m - 1]! + s[m]!);
 }
 
 /** Betaflight's maximum cell voltage from `vbatcellvoltage` (min,warning,max in 0.01 V); 4.30 V by default. */

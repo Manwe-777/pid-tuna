@@ -1,6 +1,6 @@
 import { AXIS_NAMES } from '../constants';
+import type { StepMetrics, StepResponseResult } from '../types';
 import type { ScoreEntry, ScoreStatus } from './scorecard';
-import type { StepMetrics, StepResponseResult } from './stepResponse';
 
 /** Roll and pitch only: yaw on a typical fixed-camera log is too quiet to rate fairly. */
 const RATED_AXES = [0, 1] as const;

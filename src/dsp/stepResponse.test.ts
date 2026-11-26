@@ -1,9 +1,10 @@
 import { describe, expect, test } from 'vitest';
-
-import { combineStepResponses, computeStepResponse, STEP_DEFAULTS } from './stepResponse';
+import { STEP_DEFAULTS } from '../constants';
+import { combineStepResponses } from './combineStepResponses';
+import { computeStepResponse } from './stepResponse';
 import type { ClosedLoopPlant } from './testing/simulateClosedLoop';
 import { stickSetpoint } from './testing/stickSetpoint';
-import { type SyntheticFlightOptions, syntheticFlight } from './testing/syntheticFlight';
+import { syntheticFlight, type SyntheticFlightOptions } from './testing/syntheticFlight';
 import { trueFrequencyMetrics } from './testing/trueFrequencyMetrics';
 import { trueStepMetrics } from './testing/trueStepMetrics';
 

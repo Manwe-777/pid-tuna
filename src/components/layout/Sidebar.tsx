@@ -173,11 +173,11 @@ function LogCard({
                 <span className="log-card__chip" style={{ background: AXIS_COLORS[i] }}>
                   {name.slice(0, 1)}
                 </span>
-                <span className="log-card__num">{fmt(row.p)}</span>
-                <span className="log-card__num">{fmt(row.i)}</span>
-                <span className="log-card__num">{fmt(row.d)}</span>
-                <span className="log-card__num log-card__num--sub">{fmt(row.dMax)}</span>
-                <span className="log-card__num log-card__num--sub">{fmt(row.f)}</span>
+                <span className="log-card__num">{formatGain(row.p)}</span>
+                <span className="log-card__num">{formatGain(row.i)}</span>
+                <span className="log-card__num">{formatGain(row.d)}</span>
+                <span className="log-card__num log-card__num--sub">{formatGain(row.dMax)}</span>
+                <span className="log-card__num log-card__num--sub">{formatGain(row.f)}</span>
               </div>
             );
           })}
@@ -198,7 +198,7 @@ function DashSwatch({ dashIndex }: { dashIndex: number }) {
   );
 }
 
-function fmt(n: number | undefined): string {
+function formatGain(n: number | undefined): string {
   if (n == null || !Number.isFinite(n)) return '—';
   return n.toString();
 }

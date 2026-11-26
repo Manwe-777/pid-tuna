@@ -1,12 +1,12 @@
 import { AXIS_NAMES } from '../constants';
-import type { ParsedLog } from '../types';
+import type { ParsedLog, StepResponseResult } from '../types';
 import { analyzeBattery, type BatteryAnalysis } from './battery';
+import { combineStepResponses } from './combineStepResponses';
 import { filterDelaysForLog } from './filterDelaysForLog';
 import type { LatencyResult } from './latency';
 import { latencyForLog } from './latencyForLog';
 import { analyzeMotorBalance, type BalanceAnalysis, combineMotorBalances } from './motorBalance';
 import { combinePsds, computePsd } from './spectrogram';
-import { combineStepResponses, type StepResponseResult } from './stepResponse';
 import { stepResponseForLog } from './stepResponseForLog';
 import { stepScoreEntries } from './stepScoreEntries';
 

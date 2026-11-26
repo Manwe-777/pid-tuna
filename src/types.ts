@@ -1,6 +1,7 @@
-import { AXIS_NAMES } from './constants';
+import type { AXIS_NAMES } from './constants';
 import type { LatencyResult } from './dsp/latency';
-import type { StepMetrics } from './dsp/stepResponse';
+import type { FrequencyResponse, StepSpectra } from './dsp/stepFrequencyResponse';
+import type { metricSpread } from './dsp/stepMetricSpread';
 import type { computeAxisSteps } from './utils/computeAxisSteps';
 
 export type Axis3 = readonly [Float32Array, Float32Array, Float32Array];
@@ -305,3 +306,128 @@ export interface PlotChrome {
   /** Recessed axis labels (e.g. "log #"). */
   label: string;
 }
+
+/** The parts of fft.js the analyses use (its typings don't ship with the package). */
+export interface FftImpl {
+  size: number;
+  createComplexArray(): number[];
+  realTransform(out: Float64Array | number[], data: ArrayLike<number>): void;
+  completeSpectrum(spectrum: Float64Array | number[]): void;
+  inverseTransform(out: Float64Array | number[], data: ArrayLike<number>): void;
+}
+
+export interface StepResponseResult {
+  /** Per-sample time vector in ms (length = responseSamples + 1). */
+  time: Float32Array;
+  /**
+   * Per-window step responses that passed the screens, each scaled to the
+   * pooled steady state (display only: single windows read low on their own,
+   * so these show how much the shape varies, not the level).
+   */
+  segments: Float32Array[];
+  /** Per-window step responses that were screened out (display only). */
+  rejectedSegments: Float32Array[];
+  /** Step response from the pooled spectra. Empty if no segment was accepted. */
+  mean: Float32Array;
+  /** Standard deviation of the scaled segments around their mean, per sample. */
+  spread: Float32Array;
+  /** Closed-loop frequency response from the pooled spectra, up to 100 Hz. */
+  frequency: FrequencyResponse | null;
+  metrics: StepMetrics;
+  /**
+   * Standard deviation of each time-domain metric across the single windows
+   * (shape only: windows are scaled to the pooled level, so level has none).
+   */
+  metricSpread: Partial<Record<keyof StepMetrics, number>>;
+  diagnostics: StepDiagnostics;
+  /** Pooled spectra, kept so results from several logs can be combined. */
+  pooled: StepSpectra | null;
+}
+
+export interface StepDiagnostics {
+  /** Number of analysis windows the log was sliced into. */
+  windowsTotal: number;
+  /** Windows skipped because mean |setpoint| was below minExcitation. */
+  windowsLowExcitation: number;
+  /** Windows skipped because mean |setpoint| was above maxExcitation. */
+  windowsHighExcitation: number;
+  /** Windows skipped because too many samples were masked out (ground, idle, saturation). */
+  windowsMasked: number;
+  /** Windows whose own step settled outside the band or far from the median. */
+  windowsBadSettle: number;
+  /** Windows pooled into the result. */
+  windowsAccepted: number;
+  /** Peak |setpoint| observed in the analyzed range. */
+  peakSetpoint: number;
+}
+
+export interface StepMetrics {
+  /** Time from 10% → 90% of the steady-state level, in ms. */
+  riseTimeMs: number | null;
+  /** Peak above the steady-state level, in %. 0 if no overshoot. */
+  overshootPct: number | null;
+  /** Time of the highest point of the response, in ms. */
+  peakTimeMs: number | null;
+  /** Time to enter and stay within ±5% of the steady-state level, in ms. */
+  settlingTimeMs: number | null;
+  /** Time to first reach 50% of the steady-state level, in ms. */
+  latencyHalfMs: number | null;
+  /** Absolute peak of the response (setpoint = 1). */
+  peakResponse: number | null;
+  /** Mean level from 200 ms to the end (setpoint = 1). Below 1 means gyro falls short of setpoint. */
+  steadyState: number | null;
+  /** Closed-loop −3 dB bandwidth, Hz. */
+  bandwidthHz: number | null;
+  /** Peak of |1 − T|, dB. ≥ 6 dB means the loop is close to oscillating. */
+  sensitivityPeakDb: number | null;
+  sensitivityPeakHz: number | null;
+  /** Mean coherence across the control band, 0–1: how much of gyro setpoint explains. */
+  confidence: number | null;
+  /** Gain crossover of the implied open loop, Hz. */
+  crossoverHz: number | null;
+  /** Phase margin of the implied open loop, degrees. Below ~30° the loop is close to oscillating. */
+  phaseMarginDeg: number | null;
+}
+
+export interface StepResponseOptions {
+  /** Analysis-window length in ms. Default 2000. */
+  windowMs?: number;
+  /** Step-response display length in ms. Default 500. */
+  responseMs?: number;
+  /** Overlap fraction in [0,1). Default 0.75. */
+  overlap?: number;
+  /** Regularisation λ, as a fraction of mean pooled input power. Default 0.001. */
+  regularization?: number;
+  /** Skip windows whose mean |setpoint| is below this, in deg/s. Default 20. */
+  minExcitation?: number;
+  /** Skip windows whose mean |setpoint| is above this, in deg/s. Default: no limit. */
+  maxExcitation?: number;
+  /** Per-sample usability (1 = usable); windows with under 90% usable samples are skipped. */
+  mask?: Uint8Array;
+  /** Drop windows whose own steady state is below this. Default 0.5. */
+  settleMin?: number;
+  /** Drop windows whose own steady state is above this. Default 1.5. */
+  settleMax?: number;
+  /** Drop windows whose steady state is more than k robust deviations from the median. Default 3. */
+  outlierK?: number;
+}
+
+export interface StepFftContext {
+  fft: FftImpl;
+  fftSize: number;
+  winSamples: number;
+  hann: Float64Array;
+  xPad: Float64Array;
+  yPad: Float64Array;
+  X: Float64Array;
+  Y: Float64Array;
+  H: Float64Array;
+  h: Float64Array;
+}
+
+export type StepResultSpread = Partial<Record<keyof StepMetrics, number>>;
+
+export type TimeMetrics = Pick<
+  StepMetrics,
+  'riseTimeMs' | 'overshootPct' | 'peakTimeMs' | 'settlingTimeMs' | 'latencyHalfMs' | 'peakResponse' | 'steadyState'
+>;

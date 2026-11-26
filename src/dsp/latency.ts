@@ -1,4 +1,4 @@
-import FFT from 'fft.js';
+import { createFft } from '../utils/createFft';
 
 export interface LatencyResult {
   /** Best-fit lag (gyro relative to setpoint) in milliseconds, interpolated between samples. */
@@ -20,13 +20,6 @@ interface LatencyOptions {
   mask?: Uint8Array;
 }
 
-interface FFTImpl {
-  realTransform(out: Float64Array, data: ArrayLike<number>): void;
-  completeSpectrum(spectrum: Float64Array): void;
-  inverseTransform(out: Float64Array, data: Float64Array): void;
-}
-
-const FFTCtor = FFT as unknown as new (size: number) => FFTImpl;
 const UNRELIABLE: LatencyResult = { lagMs: 0, correlation: 0, reliable: false };
 
 /**
@@ -81,7 +74,7 @@ function crossCorrelation(x: Float64Array, y: Float64Array, maxLag: number): Flo
   let size = 1;
   while (size < x.length + maxLag + 1) size <<= 1;
 
-  const fft = new FFTCtor(size);
+  const fft = createFft(size);
   const xp = new Float64Array(size);
   const yp = new Float64Array(size);
   xp.set(x);
