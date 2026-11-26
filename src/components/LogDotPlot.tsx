@@ -23,6 +23,8 @@ export interface LogDotPlotProps {
   yMax?: number;
   width?: number;
   height?: number;
+  /** X-axis caption. Default "log #". */
+  xLabel?: string;
 }
 
 /**
@@ -39,6 +41,7 @@ export function LogDotPlot({
   yMax,
   width = 220,
   height = 160,
+  xLabel = 'log #',
 }: LogDotPlotProps) {
   // Bottom padding fits both the tick labels and the axis title with breathing room.
   const PAD = { top: 24, right: 14, bottom: 42, left: 38 };
@@ -202,7 +205,7 @@ export function LogDotPlot({
         fontSize="10"
         textAnchor="middle"
       >
-        log #
+        {xLabel}
       </text>
     </svg>
   );

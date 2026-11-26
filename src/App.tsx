@@ -58,6 +58,7 @@ import {
 import { computeErrorSetpointDensity } from './dsp/errorSetpoint';
 import { motorRpmSeries, rpmAxisMax, throttlePercentSeries } from './dsp/spectralDomains';
 import { combineStepResponses } from './dsp/stepResponse';
+import { type StepBandKind, stepResponseBands } from './dsp/stepResponseBands';
 import { type StepLogOptions, stepResponseForLog } from './dsp/stepResponseForLog';
 import { StepControls, type StepSettings, STEP_SETTINGS_DEFAULTS } from './components/step/StepControls';
 import { StepFrequencyPlot } from './components/step/StepFrequencyPlot';
@@ -3511,20 +3512,35 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
     ],
   );
 
-  const computed = useMemo(() => {
+  const computed = useMemo<StepCurveSet[]>(() => {
+    if (settings.splitBy !== 'none' && entries[0]) {
+      const { log } = entries[0];
+      const perAxis = AXIS_NAMES.map((_n, i) => stepResponseBands(log, i, settings.splitBy as StepBandKind, analysisOptions));
+      return perAxis[0]!.map((band, b) => ({
+        id: `band-${b}`,
+        label: band.label,
+        color: BAND_COLORS[b % BAND_COLORS.length]!,
+        dash: [],
+        axes: AXIS_NAMES.map((name, i) => ({ name, color: AXIS_COLORS[i]!, ...perAxis[i]![b]!.result })),
+      }));
+    }
+
     const perLog = entries.map(({ slot, log, dash }) => ({
-      slot,
+      id: slot.id,
+      label: shortName(slot),
+      color: colorFor(slot),
       dash,
       axes: computeAxisSteps(log, analysisOptions),
     }));
     if (!effectiveMerge) return perLog;
+    const merged = makeMergedSlot(entries);
     const mergedAxes = AXIS_NAMES.map((name, i) => ({
       name,
       color: AXIS_COLORS[i]!,
       ...combineStepResponses(perLog.map((p) => p.axes[i]!)),
     }));
-    return [{ slot: makeMergedSlot(entries), dash: [], axes: mergedAxes }];
-  }, [entries, analysisOptions, effectiveMerge]);
+    return [{ id: merged.id, label: shortName(merged), color: colorFor(merged), dash: [], axes: mergedAxes }];
+  }, [entries, analysisOptions, effectiveMerge, settings.splitBy]);
   const multi = computed.length > 1;
 
   const anyDetected = computed.some(({ axes }) => axes.some((d) => d.segments.length > 0));
@@ -3558,8 +3574,9 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
     <section className="plot-section">
       <h2>Step response</h2>
       <p className="muted">
-        {effectiveMerge && `Pooling windows from ${entries.length} logs into one estimate. `}
-        {multi && 'Each log uses its own dash pattern. '}
+        {settings.splitBy !== 'none' && entries[0] && `Bands from ${shortName(entries[0].slot)}, by ${settings.splitBy === 'stick' ? 'average stick input per window' : 'stick throttle'}. `}
+        {settings.splitBy === 'none' && effectiveMerge && `Pooling windows from ${entries.length} logs into one estimate. `}
+        {multi && settings.splitBy === 'none' && 'Each log uses its own dash pattern. '}
         How gyro follows a 1 deg/s step in setpoint, estimated from the whole flight by pooling the
         setpoint → gyro spectra of overlapping windows. The bold line is the estimate; a level below
         1 means gyro falls short of setpoint. Faint lines are single windows scaled to the same level,
@@ -3614,11 +3631,22 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
         </p>
       )}
 
+      {settings.splitBy !== 'none' && (
+        <div className="step-legend">
+          {computed.map((c, b) => (
+            <span key={c.id} className="step-legend__item">
+              <span className="step-stats__dot" style={{ background: c.color }} />
+              {b + 1}: {c.label}
+            </span>
+          ))}
+        </div>
+      )}
+
       {AXIS_NAMES.map((_name, i) => (
         <StepResponseAxisPanel
           key={AXIS_NAMES[i]}
           axisIndex={i}
-          perLog={computed.map((c) => ({ slot: c.slot, dash: c.dash, data: c.axes[i]! }))}
+          perLog={computed.map((c) => ({ id: c.id, label: c.label, color: c.color, dash: c.dash, data: c.axes[i]! }))}
           settings={settings}
         />
       ))}
@@ -3628,11 +3656,24 @@ function StepResponseSection({ entries }: { entries: LogEntry[] }) {
 
 type AxisStepData = ReturnType<typeof computeAxisSteps>[number];
 
+/** One curve per log, per merged pool, or per band. */
+interface StepCurveSet {
+  id: string;
+  label: string;
+  color: string;
+  dash: number[];
+  axes: AxisStepData[];
+}
+
 interface AxisStepWithSlot {
-  slot: LogSlot;
+  id: string;
+  label: string;
+  color: string;
   dash: number[];
   data: AxisStepData;
 }
+
+const BAND_COLORS = ['#5db4ff', '#5dff8f', '#ffb45d', '#ff5d8f'] as const;
 
 function StepResponseAxisPanel({
   axisIndex,
@@ -3652,9 +3693,9 @@ function StepResponseAxisPanel({
 
   const series = useMemo<PlotSeries[]>(() => {
     const out: PlotSeries[] = [];
-    for (const { slot, dash, data } of perLog) {
+    for (const { label, color: entryColor, dash, data } of perLog) {
       if (data.mean.length === 0) continue;
-      const color = multi ? colorFor(slot) : axisColor;
+      const color = multi ? entryColor : axisColor;
       const mean = align(data.mean, time.length);
       if (!multi && showSegments) {
         const segColor = hexWithAlpha(axisColor, 0.18);
@@ -3667,7 +3708,7 @@ function StepResponseAxisPanel({
         out.push({ label: '', values: lo, stroke: bandColor, width: 1, dash: [3, 3] });
         out.push({ label: '', values: hi, stroke: bandColor, width: 1, dash: [3, 3] });
       }
-      out.push({ label: multi ? `${shortName(slot)}` : 'Estimate', values: mean, stroke: color, width: 2, dash: multi ? dash : undefined });
+      out.push({ label: multi ? label : 'Estimate', values: mean, stroke: color, width: 2, dash: multi && dash.length ? dash : undefined });
     }
     return out;
   }, [perLog, time.length, axisColor, multi, showSegments, showSpread]);
@@ -3677,8 +3718,8 @@ function StepResponseAxisPanel({
   const dotPlots = dotMetrics.map((key) => {
     const option = stepMetricOption(key);
     const dots: LogDot[] = perLog.map((p) => ({
-      label: shortName(p.slot),
-      color: colorFor(p.slot),
+      label: p.label,
+      color: p.color,
       value: p.data.metrics[key],
       spread: p.data.metricSpread[key] ?? null,
     }));
@@ -3686,16 +3727,16 @@ function StepResponseAxisPanel({
   });
 
   const statsRows = perLog.map((p) => ({
-    id: p.slot.id,
-    label: shortName(p.slot),
-    color: multi ? colorFor(p.slot) : axisColor,
+    id: p.id,
+    label: p.label,
+    color: multi ? p.color : axisColor,
     windows: p.data.segments.length,
     metrics: p.data.metrics,
   }));
 
   const frequencyEntries = perLog
     .filter((p) => p.data.frequency != null)
-    .map((p) => ({ label: shortName(p.slot), color: multi ? colorFor(p.slot) : axisColor, response: p.data.frequency! }));
+    .map((p) => ({ label: p.label, color: multi ? p.color : axisColor, response: p.data.frequency! }));
 
   return (
     <div className="axis-plot">
@@ -3730,6 +3771,7 @@ function StepResponseAxisPanel({
               referenceY={option.reference}
               yMin={option.axis?.[0]}
               yMax={option.axis?.[1]}
+              xLabel={settings.splitBy !== 'none' ? 'band' : 'log #'}
               height={220}
             />
           ))}

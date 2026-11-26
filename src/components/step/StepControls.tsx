@@ -20,6 +20,7 @@ export interface StepSettings {
   showSpread: boolean;
   showFrequency: boolean;
   dotMetrics: [keyof StepMetrics, keyof StepMetrics];
+  splitBy: 'none' | 'stick' | 'throttle';
 }
 
 export const STEP_SETTINGS_DEFAULTS: StepSettings = {
@@ -36,6 +37,7 @@ export const STEP_SETTINGS_DEFAULTS: StepSettings = {
   showSpread: false,
   showFrequency: true,
   dotMetrics: ['peakResponse', 'latencyHalfMs'],
+  splitBy: 'none',
 };
 
 const Y_MAX_CHOICES = [1.25, 1.5, 2];
@@ -99,6 +101,14 @@ export function StepControls({ settings, onChange, mergeToggle }: Props) {
         >
           Defaults
         </button>
+        <label title="Compare how the drone responds to small and large stick moves, or at low and high throttle. Uses the first log.">
+          Split by
+          <select value={settings.splitBy} onChange={(e) => set('splitBy', e.target.value as StepSettings['splitBy'])}>
+            <option value="none">Nothing</option>
+            <option value="stick">Stick input</option>
+            <option value="throttle">Throttle</option>
+          </select>
+        </label>
         {mergeToggle}
       </div>
 
@@ -245,5 +255,6 @@ function displayOnly(s: StepSettings): Partial<StepSettings> {
     showSpread: s.showSpread,
     showFrequency: s.showFrequency,
     dotMetrics: s.dotMetrics,
+    splitBy: s.splitBy,
   };
 }

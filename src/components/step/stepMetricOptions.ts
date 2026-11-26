@@ -22,6 +22,8 @@ export const STEP_METRICS: readonly StepMetricOption[] = [
   { key: 'steadyState', label: 'Level', unit: '', digits: 2, help: 'Settled level relative to setpoint; below 1 means gyro falls short', reference: 1, axis: [0, 1.5] },
   { key: 'bandwidthHz', label: 'Bandwidth', unit: 'Hz', digits: 1, help: 'Frequency where tracking drops 3 dB; higher rejects propwash better', axis: [0, 40] },
   { key: 'sensitivityPeakDb', label: 'Sensitivity', unit: 'dB', digits: 1, help: 'Peak disturbance amplification |1 − T|; 4 dB caution, 6 dB close to oscillating', axis: [0, 8] },
+  { key: 'phaseMarginDeg', label: 'Phase margin', unit: '°', digits: 0, help: 'How far the implied open loop is from oscillating; below about 30° it is close', axis: [0, 90] },
+  { key: 'crossoverHz', label: 'Crossover', unit: 'Hz', digits: 1, help: 'Where the implied open loop crosses 0 dB: roughly how fast the loop reacts', axis: [0, 40] },
   { key: 'confidence', label: 'Confidence', unit: '', digits: 2, help: 'Coherence in the control band: how much of gyro the setpoint explains (1 = all)', axis: [0, 1] },
 ];
 

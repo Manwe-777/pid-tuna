@@ -12,6 +12,8 @@ export interface StepStatsRow {
 const SENSITIVITY_CAUTION_DB = 4;
 const SENSITIVITY_SEVERE_DB = 6;
 const LOW_CONFIDENCE = 0.6;
+const PHASE_MARGIN_CAUTION = 45;
+const PHASE_MARGIN_SEVERE = 30;
 
 /** One cell per metric, each listing every log's value; wraps to fit any width. */
 export function StepStatsTable({ rows }: { rows: StepStatsRow[] }) {
@@ -54,6 +56,11 @@ function toneFor(key: keyof StepMetrics, m: StepMetrics): string | undefined {
   if (key === 'sensitivityPeakDb' && m.sensitivityPeakDb != null) {
     if (m.sensitivityPeakDb >= SENSITIVITY_SEVERE_DB) return 'step-stats__bad';
     if (m.sensitivityPeakDb >= SENSITIVITY_CAUTION_DB) return 'step-stats__warn';
+  }
+
+  if (key === 'phaseMarginDeg' && m.phaseMarginDeg != null) {
+    if (m.phaseMarginDeg < PHASE_MARGIN_SEVERE) return 'step-stats__bad';
+    if (m.phaseMarginDeg < PHASE_MARGIN_CAUTION) return 'step-stats__warn';
   }
 
   if (key === 'confidence' && m.confidence != null && m.confidence < LOW_CONFIDENCE) return 'step-stats__warn';
