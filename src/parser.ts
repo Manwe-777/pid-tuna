@@ -238,6 +238,9 @@ export async function parseLog(
     rcCommand: quad('rcCommand'),
     motor,
     eRpm,
+    debug: Array.from({ length: 8 }, (_, i) => `debug[${i}]`)
+      .filter((c) => cols.has(c))
+      .map((c) => toF32(cols.get(c), rowCount)),
     slow,
     gps,
     presence,

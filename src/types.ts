@@ -43,6 +43,8 @@ export interface ParsedLog {
   rcCommand: Axis4;
   /** Motor outputs (variable count). PWM command values. */
   motor: Float32Array[];
+  /** Debug channels debug[0..7] as logged; their meaning depends on `setup.debugMode`. */
+  debug: Float32Array[];
   /** Electrical RPM per motor (Betaflight logs eRPM/100). Empty if no RPM telemetry. */
   eRpm: Float32Array[];
   /** Slow-frame telemetry (battery / current / failsafe). May be empty if not logged. */

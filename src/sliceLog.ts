@@ -37,6 +37,7 @@ export function sliceLog(log: ParsedLog, range: TimeRangeSec): ParsedLog {
     rcCommand: quad(log.rcCommand),
     motor: log.motor.map(slice),
     eRpm: log.eRpm.map(slice),
+    debug: log.debug.map(slice),
     slow: sliceSlow(log.slow, range),
     gps: sliceGps(log.gps, range),
   };
