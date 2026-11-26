@@ -516,3 +516,128 @@ export const MAP_TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/
 export const MAP_TILE_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
   '&copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+/** Betaflight CLI names for header values logged as numbers. */
+const LPF_TYPE_NAMES = ['PT1', 'BIQUAD', 'PT2', 'PT3'];
+const OFF_ON = ['OFF', 'ON'];
+export const BF_CLI_ENUMS: Record<string, readonly string[]> = {
+  gyro_lpf1_type: LPF_TYPE_NAMES,
+  gyro_lpf2_type: LPF_TYPE_NAMES,
+  dterm_lpf1_type: LPF_TYPE_NAMES,
+  dterm_lpf2_type: LPF_TYPE_NAMES,
+  iterm_relax: ['OFF', 'RP', 'RPY', 'RP_INC', 'RPY_INC'],
+  iterm_relax_type: ['GYRO', 'SETPOINT'],
+  rates_type: ['BETAFLIGHT', 'RACEFLIGHT', 'KISS', 'ACTUAL', 'QUICK'],
+  tpa_mode: ['PD', 'D'],
+  simplified_pids_mode: ['OFF', 'RP', 'RPY'],
+  simplified_gyro_filter: OFF_ON,
+  simplified_dterm_filter: OFF_ON,
+  use_integrated_yaw: OFF_ON,
+};
+
+/** Per-axis headers (roll, pitch, yaw) and the CLI setting each axis value goes to. */
+export const BF_CLI_AXIS_HEADERS: ReadonlyArray<{ header: string; cli: (axis: string) => string }> = [
+  { header: 'd_max', cli: (a) => `d_max_${a}` },
+  { header: 'd_min', cli: (a) => `d_min_${a}` },
+  { header: 'ff_weight', cli: (a) => `f_${a}` },
+  { header: 'rc_rates', cli: (a) => `${a}_rc_rate` },
+  { header: 'rc_expo', cli: (a) => `${a}_expo` },
+  { header: 'rates', cli: (a) => `${a}_srate` },
+  { header: 'rate_limits', cli: (a) => `${a}_rate_limit` },
+];
+
+/** Tune headers copied as-is (name = CLI setting), grouped for the CLI dump. */
+export const BF_CLI_GROUPS: ReadonlyArray<{ title: string; settings: readonly string[] }> = [
+  {
+    title: 'PID controller',
+    settings: [
+      'd_max_gain',
+      'd_max_advance',
+      'iterm_windup',
+      'iterm_relax',
+      'iterm_relax_type',
+      'iterm_relax_cutoff',
+      'anti_gravity_gain',
+      'anti_gravity_cutoff_hz',
+      'anti_gravity_p_gain',
+      'abs_control_gain',
+      'use_integrated_yaw',
+      'pidsum_limit',
+      'pidsum_limit_yaw',
+      'tpa_mode',
+      'tpa_rate',
+      'tpa_breakpoint',
+      'tpa_low_rate',
+      'tpa_low_breakpoint',
+      'tpa_low_always',
+      'throttle_boost',
+      'throttle_boost_cutoff',
+      'thrust_linear',
+      'vbat_sag_compensation',
+    ],
+  },
+  {
+    title: 'Feedforward',
+    settings: [
+      'feedforward_transition',
+      'feedforward_averaging',
+      'feedforward_smooth_factor',
+      'feedforward_jitter_factor',
+      'feedforward_boost',
+      'feedforward_max_rate_limit',
+      'feedforward_yaw_hold_gain',
+      'feedforward_yaw_hold_time',
+    ],
+  },
+  {
+    title: 'Simplified tuning',
+    settings: [
+      'simplified_pids_mode',
+      'simplified_master_multiplier',
+      'simplified_i_gain',
+      'simplified_d_gain',
+      'simplified_pi_gain',
+      'simplified_d_max_gain',
+      'simplified_feedforward_gain',
+      'simplified_pitch_d_gain',
+      'simplified_pitch_pi_gain',
+      'simplified_dterm_filter',
+      'simplified_dterm_filter_multiplier',
+      'simplified_gyro_filter',
+      'simplified_gyro_filter_multiplier',
+    ],
+  },
+  {
+    title: 'Filters',
+    settings: [
+      'gyro_lpf1_type',
+      'gyro_lpf1_static_hz',
+      'gyro_lpf1_dyn_expo',
+      'gyro_lpf2_type',
+      'gyro_lpf2_static_hz',
+      'dterm_lpf1_type',
+      'dterm_lpf1_static_hz',
+      'dterm_lpf1_dyn_expo',
+      'dterm_lpf2_type',
+      'dterm_lpf2_static_hz',
+      'yaw_lowpass_hz',
+      'dyn_notch_count',
+      'dyn_notch_q',
+      'dyn_notch_min_hz',
+      'dyn_notch_max_hz',
+      'rpm_filter_harmonics',
+      'rpm_filter_weights',
+      'rpm_filter_q',
+      'rpm_filter_min_hz',
+      'rpm_filter_fade_range_hz',
+      'rpm_filter_lpf_hz',
+    ],
+  },
+  {
+    title: 'Dynamic idle',
+    settings: ['dyn_idle_min_rpm', 'dyn_idle_p_gain', 'dyn_idle_i_gain', 'dyn_idle_d_gain', 'dyn_idle_max_increase'],
+  },
+];
+
+/** How long a copy button says "Copied", in ms. */
+export const COPIED_FEEDBACK_MS = 1500;

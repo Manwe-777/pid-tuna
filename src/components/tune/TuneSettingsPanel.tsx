@@ -7,6 +7,7 @@ import { dynNotchItems } from '../../tune/dynNotchItems';
 import { hardwareItems } from '../../tune/hardwareItems';
 import { rpmFilterItems } from '../../tune/rpmFilterItems';
 import type { LogEntry, TuneView } from '../../types';
+import { CopyCliButtons } from './CopyCliButtons';
 import { FilterLine } from './FilterLine';
 import { TuneCompareTable } from './TuneCompareTable';
 import { TuneValueList } from './TuneValueList';
@@ -40,6 +41,8 @@ export function TuneSettingsPanel({ entries }: TuneSettingsPanelProps) {
           </span>
         )}
       </h2>
+
+      <CopyCliButtons entries={entries} />
 
       <div className="tune-row">
         {/* PIDF table */}
