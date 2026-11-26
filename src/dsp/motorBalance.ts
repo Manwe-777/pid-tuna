@@ -1,9 +1,11 @@
 import type { ParsedLog } from '../types';
+import { flightRange } from './flightRange';
 import { computePsd } from './spectrogram';
+import { throttlePercentSeries } from './spectralDomains';
 
 export interface MotorStats {
   motorIndex: number;
-  /** Mean of the raw motor command values (PWM µs or DSHOT). */
+  /** Mean motor command above the output's zero point (motorOutput low end), in flight. */
   pwmMean: number;
   /** Standard deviation of the motor command. Indicates how hard the motor is fighting. */
   pwmStd: number;
@@ -61,13 +63,18 @@ export function analyzeMotorBalance(
   log: ParsedLog,
   options: { psdWindow?: number } = {},
 ): BalanceAnalysis {
-  const motors = log.motor;
   const sampleRate = log.setup.sampleRateHz;
   const psdWindow = options.psdWindow ?? 1024;
+  const range = flightRange(throttlePercentSeries(log), sampleRate) ?? { start: 0, end: log.time.length - 1 };
+  const cut = (a: Float32Array) => a.subarray(range.start, range.end + 1);
+  const zero = motorZero(log);
+  const motors = log.motor.map(cut);
+  const yawReversed = log.setup.rawHeaders.yaw_motors_reversed === '1';
 
   const stats: MotorStats[] = motors.map((m, i) => {
-    const { mean, std } = meanStd(m);
-    const eRpm = log.eRpm[i];
+    const { mean: rawMean, std } = meanStd(m);
+    const mean = rawMean - zero;
+    const eRpm = log.eRpm[i] ? cut(log.eRpm[i]!) : undefined;
     let meanERpm: number | null = null;
     let erpmCv: number | null = null;
     if (eRpm && eRpm.length > 0) {
@@ -93,7 +100,7 @@ export function analyzeMotorBalance(
     for (const s of stats) s.relativeLoad = (s.pwmMean / maxMean) * 100;
   }
 
-  const { axes, dominantAxis, singleMotorOutlier } = analyzeImbalance(stats);
+  const { axes, dominantAxis, singleMotorOutlier } = analyzeImbalance(stats, yawReversed);
 
   const motorPsds: MotorPsd[] = motors.map((m) => {
     const { frequencies, psdDb } = computePsd(m, sampleRate, { windowSize: psdWindow });
@@ -195,7 +202,7 @@ const SINGLE_OUTLIER_THRESHOLD_PCT = 3;
  * For non-4-motor frames we skip axis projection and only attempt single-motor
  * outlier detection.
  */
-function analyzeImbalance(motors: MotorStats[]): {
+function analyzeImbalance(motors: MotorStats[], yawReversed = false): {
   axes: AxisImbalance[];
   dominantAxis: AxisKind | null;
   singleMotorOutlier: { motorIndex: number; deltaPct: number } | null;
@@ -221,7 +228,7 @@ function analyzeImbalance(motors: MotorStats[]): {
   const axes: AxisImbalance[] = [
     { axis: 'pitch', deltaPct: pct((m1 + m3) - (m2 + m4)) / 2 },
     { axis: 'roll',  deltaPct: pct((m1 + m2) - (m3 + m4)) / 2 },
-    { axis: 'yaw',   deltaPct: pct((m2 + m3) - (m1 + m4)) / 2 },
+    { axis: 'yaw',   deltaPct: (yawReversed ? -1 : 1) * pct((m2 + m3) - (m1 + m4)) / 2 },
   ];
 
   let dominantAxis: AxisKind | null = null;
@@ -252,6 +259,13 @@ function detectSingleOutlier(motors: MotorStats[]): { motorIndex: number; deltaP
     return { motorIndex: sorted[0]!.motorIndex, deltaPct: -botPct };
   }
   return null;
+}
+
+/** The motor command that means zero output: the low end of `motorOutput`. */
+function motorZero(log: ParsedLog): number {
+  const low = Number.parseFloat((log.setup.rawHeaders.motorOutput ?? '').split(',')[0] ?? '');
+
+  return Number.isFinite(low) ? low : 0;
 }
 
 function meanStd(x: Float32Array): { mean: number; std: number } {

@@ -183,11 +183,14 @@ export async function parseLog(
   // GPS altitude/speed: blackbox-log often surfaces raw ints; coerce to SI for the UI:
   //   altitude → meters (cm/decimeters/int meters vary by FW / receiver),
   //   speed → m/s (Betaflight frequently logs cm/s).
-  const slow: SlowFrameSeries = {
-    time: slowTimeArr,
-    vbat: sawSlowVbat ? floatsFromNums(slowVbat) : new Float32Array(),
-    amperage: sawSlowAmperage ? floatsFromNums(slowAmperage) : new Float32Array(),
-  };
+  const slow: SlowFrameSeries =
+    !sawSlowVbat && !sawSlowAmperage && (cols.has('vbatLatest') || cols.has('amperageLatest'))
+      ? batteryFromMainFrames(timeArr, cols.get('vbatLatest'), cols.get('amperageLatest'))
+      : {
+          time: slowTimeArr,
+          vbat: sawSlowVbat ? floatsFromNums(slowVbat) : new Float32Array(),
+          amperage: sawSlowAmperage ? floatsFromNums(slowAmperage) : new Float32Array(),
+        };
   const gps: GpsFrameSeries = sawGps
     ? {
         time: gpsTimeArr,
@@ -214,8 +217,8 @@ export async function parseLog(
     iTerm: cols.has('axisI[0]'),
     motors: motor.length > 0,
     eRpm: eRpm.length > 0,
-    vbat: sawSlowVbat,
-    amperage: sawSlowAmperage,
+    vbat: slow.vbat.length > 0,
+    amperage: slow.amperage.length > 0,
     gps: sawGps,
   };
 
@@ -556,3 +559,26 @@ function medianStride(time: Float32Array): number {
   samples.sort((a, b) => a - b);
   return samples[Math.floor(samples.length / 2)] ?? 0;
 }
+
+/** Battery samples per second kept when voltage and current come from main frames. */
+const MAIN_FRAME_BATTERY_HZ = 10;
+
+/**
+ * Betaflight 4.x logs vbatLatest and amperageLatest in every main frame rather
+ * than in slow frames, in 0.01 V and 0.01 A. Thin them to about 10 Hz and
+ * convert to volts and amps so battery analyses see the same data either way.
+ */
+function batteryFromMainFrames(time: Float32Array, vbat: number[] | undefined, amperage: number[] | undefined): SlowFrameSeries {
+  const n = time.length;
+  const span = n > 1 ? time[n - 1]! - time[0]! : 0;
+  const step = span > 0 ? Math.max(1, Math.round(n / (span * MAIN_FRAME_BATTERY_HZ))) : 1;
+  const idx: number[] = [];
+  for (let i = 0; i < n; i += step) idx.push(i);
+
+  return {
+    time: Float32Array.from(idx, (i) => time[i]!),
+    vbat: vbat ? Float32Array.from(idx, (i) => (vbat[i] ?? Number.NaN) / 100) : new Float32Array(),
+    amperage: amperage ? Float32Array.from(idx, (i) => (amperage[i] ?? Number.NaN) / 100) : new Float32Array(),
+  };
+}
+

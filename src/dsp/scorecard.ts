@@ -255,7 +255,7 @@ function batteryEntry(battery: BatteryAnalysis): ScoreEntry | null {
     value,
     detail:
       battery.sagUnderLoadV != null
-        ? `Mean sag under load ${battery.sagUnderLoadV.toFixed(2)} V` +
+        ? `Sag under load ${battery.sagUnderLoadV.toFixed(2)} V (${battery.internalResistanceMohm!.toFixed(0)} mΩ)` +
           (battery.mAhUsed != null ? ` · ${battery.mAhUsed.toFixed(0)} mAh used` : '')
         : undefined,
   };
@@ -280,6 +280,8 @@ function averageBatteries(batteries: BatteryAnalysis[]): BatteryAnalysis {
     voltageMin: mean((b) => b.voltageMin),
     voltageMax: mean((b) => b.voltageMax),
     sagUnderLoadV: mean((b) => b.sagUnderLoadV),
+    sagAtPeakV: mean((b) => b.sagAtPeakV),
+    internalResistanceMohm: mean((b) => b.internalResistanceMohm),
     perCellMin: mean((b) => b.perCellMin),
     perCellEnd: mean((b) => b.perCellEnd),
     meanCurrentA: mean((b) => b.meanCurrentA),

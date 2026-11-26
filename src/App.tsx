@@ -1812,9 +1812,14 @@ function SaturationLogCard({
   analysis: SaturationAnalysis;
   multi: boolean;
 }) {
-  const limitNote = analysis.itermLimit != null
-    ? `limit ${analysis.itermLimit}`
-    : `limit default 400 (not in headers)`;
+  const yaw = analysis.axes[2]?.limit;
+  const limits = yaw != null && yaw !== analysis.itermLimit ? `${analysis.itermLimit.toFixed(0)} (yaw ${yaw.toFixed(0)})` : analysis.itermLimit.toFixed(0);
+  const limitNote =
+    analysis.limitSource === 'windup'
+      ? `limit ${limits} = iterm_windup × pidsum_limit · takeoff to landing`
+      : analysis.limitSource === 'header'
+        ? `limit ${limits} · takeoff to landing`
+        : `limit ${limits} (Betaflight default; this firmware doesn't log it) · takeoff to landing`;
   return (
     <div className="diff-log">
       <h4 className="diff-log__head">
@@ -1912,8 +1917,9 @@ function BalanceSection({ entries }: { entries: LogEntry[] }) {
       <h2>Motor balance</h2>
       <p className="muted">
         {effectiveMerge && `Pooling ${entries.length} logs into one combined view. `}
-        Per-motor command stats and noise PSD. A motor whose mean PWM is meaningfully above the
-        others is fighting harder — often a bent prop, weak motor, or lopsided mounting. Spikes on
+        Per-motor command stats and noise PSD, takeoff to landing. Output is measured above the
+        motor&apos;s zero point, so DShot and PWM read alike. A motor whose mean output is meaningfully
+        above the others is fighting harder — often a bent prop, weak motor, or off-centre weight. Spikes on
         one motor&apos;s PSD that aren&apos;t on the others point to that motor specifically.
       </p>
 
@@ -1939,8 +1945,9 @@ function BalanceSection({ entries }: { entries: LogEntry[] }) {
 
       <p className="muted" style={{ fontSize: '0.78rem', marginTop: '0.5rem' }}>
         Axes are projections of the per-motor mean onto pitch / roll / yaw using the default
-        Quad-X mixer (M1=RR/CW, M2=FR/CCW, M3=RL/CCW, M4=FL/CW). Sign tells you which diagonal
-        pair is higher — interpret against your own motor mapping.
+        Quad-X mixer (M1=RR/CW, M2=FR/CCW, M3=RL/CCW, M4=FL/CW): pitch is rear minus front, roll is
+        right minus left, yaw is CCW minus CW motors (flipped for reversed props). Interpret against
+        your own motor mapping.
       </p>
     </section>
   );
@@ -1994,9 +2001,9 @@ function BalanceStatsTable({ analysis }: { analysis: BalanceAnalysis }) {
       <thead>
         <tr>
           <th>Motor</th>
-          <th>Mean PWM</th>
+          <th title="Mean motor command above zero output, takeoff to landing">Mean output</th>
           <th>Load</th>
-          <th>PWM σ</th>
+          <th title="How much the command moves around its mean">Output σ</th>
           <th>Mean eRPM</th>
           <th>eRPM CV</th>
         </tr>
@@ -2101,9 +2108,11 @@ function BatterySection({ entries }: { entries: LogEntry[] }) {
     <section className="plot-section">
       <h2>Battery</h2>
       <p className="muted">
-        Pack health under load. Sag is the mean voltage drop during high-current periods (top 25%
-        of current readings) versus the resting peak. Per-cell numbers assume cell count = round(max
-        voltage / 4.15V).
+        Pack health under load. Internal resistance comes from voltage against current, with the slow
+        discharge over the flight removed; sag is that resistance times the high-load current (mean of
+        the top 25% of readings) and the peak current. Cell count follows Betaflight: resting voltage
+        divided by the maximum cell voltage, rounded down, plus one. Min and max voltage ignore
+        glitches shorter than half a second.
       </p>
 
       {analyses.map(({ slot, log, analysis }) => (
@@ -2187,7 +2196,11 @@ function BatteryStats({ analysis }: { analysis: BatteryAnalysis }) {
       rows.push({ label: 'V/cell min', value: `${analysis.perCellMin.toFixed(2)} V`, cls });
     }
     if (analysis.sagUnderLoadV != null) {
-      rows.push({ label: 'Mean sag', value: `${analysis.sagUnderLoadV.toFixed(2)} V` });
+      rows.push({ label: 'Sag under load', value: `${analysis.sagUnderLoadV.toFixed(2)} V` });
+      if (analysis.sagAtPeakV != null) rows.push({ label: 'Sag at peak current', value: `${analysis.sagAtPeakV.toFixed(2)} V` });
+      if (analysis.internalResistanceMohm != null) {
+        rows.push({ label: 'Internal resistance', value: `${analysis.internalResistanceMohm.toFixed(0)} mΩ` });
+      }
     }
   }
   if (analysis.hasCurrent) {
