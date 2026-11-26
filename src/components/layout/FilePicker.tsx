@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 
-export interface FilePickerProps {
+interface FilePickerProps {
   onFile: (file: File) => void;
   disabled?: boolean;
 }

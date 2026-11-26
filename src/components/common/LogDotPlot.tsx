@@ -1,17 +1,9 @@
 import { useMemo } from 'react';
 import { PLOT_COLORS } from '../../constants';
 import { useTheme } from '../../hooks/useTheme';
+import type { LogDot } from '../../types';
 
-export interface LogDot {
-  label: string;
-  color: string;
-  /** Null = "no data" — shown as a muted hollow ring on the baseline. */
-  value: number | null;
-  /** ±1σ whisker around the value, when known. */
-  spread?: number | null;
-}
-
-export interface LogDotPlotProps {
+interface LogDotPlotProps {
   dots: LogDot[];
   /** Title shown above the plot, e.g. "Roll Peak". */
   title: string;

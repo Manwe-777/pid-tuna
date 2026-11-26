@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { analyzeGps } from '../../dsp/gps';
-import { gpsViewerEffectiveRange } from '../../dsp/gpsWindow';
+import { analyzeGps } from '../../dsp/gps/analyzeGps';
+import { gpsViewerEffectiveRange } from '../../dsp/gps/gpsViewerEffectiveRange';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
 import { sliceLog } from '../../logs/sliceLog';

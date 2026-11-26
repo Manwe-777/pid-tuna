@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { analyzeSaturation } from '../../dsp/saturation';
+import { analyzeSaturation } from '../../dsp/analyzeSaturation';
 import type { LogEntry } from '../../types';
 import { SaturationLogCard } from './SaturationLogCard';
 

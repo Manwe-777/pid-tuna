@@ -1,42 +1,11 @@
+import 'uplot/dist/uPlot.min.css';
 import { useEffect, useRef } from 'react';
 import uPlot, { type AlignedData, type Options } from 'uplot';
-import 'uplot/dist/uPlot.min.css';
 import { PLOT_COLORS } from '../../constants';
 import { useTheme } from '../../hooks/useTheme';
+import type { PlotBand, PlotMarker, PlotSeries } from '../../types';
 
-export interface PlotSeries {
-  label: string;
-  /** Sample values; length must equal `time.length`. */
-  values: Float32Array;
-  /** CSS color. */
-  stroke: string;
-  /** Optional dash pattern, e.g. [4, 4]. */
-  dash?: number[];
-  /** Line width in px (default 1). */
-  width?: number;
-}
-
-export interface PlotMarker {
-  /** X position in data units (same scale as `time`). */
-  x: number;
-  /** CSS color. */
-  stroke: string;
-  /** Line width in px (default 1). */
-  width?: number;
-  /** Dash pattern (default solid). */
-  dash?: number[];
-}
-
-export interface PlotBand {
-  /** Start of band in data units. */
-  x0: number;
-  /** End of band in data units. */
-  x1: number;
-  /** CSS fill color (typically with alpha). */
-  fill: string;
-}
-
-export interface TimeSeriesPlotProps {
+interface TimeSeriesPlotProps {
   /** X-axis values. */
   time: Float32Array;
   series: PlotSeries[];

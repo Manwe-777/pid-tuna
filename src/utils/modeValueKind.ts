@@ -1,4 +1,3 @@
-import type { SpectralValueMode } from '../dsp/spectrogram';
-import type { SpectralMode } from '../types';
+import type { SpectralMode, SpectralValueMode } from '../types';
 
 export const modeValueKind = (m: SpectralMode): SpectralValueMode => (m.startsWith('psd') ? 'psd' : 'magnitude');

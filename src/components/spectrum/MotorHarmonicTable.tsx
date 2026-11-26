@@ -1,6 +1,5 @@
-import { AXIS_COLORS, AXIS_NAMES } from '../../constants';
-import type { AxisHarmonicNoise } from '../../dsp/harmonicNoiseForLog';
-import type { HarmonicNoise } from '../../dsp/motorHarmonicNoise';
+import type { AxisHarmonicNoise } from '../../types';
+import { AxisRows } from './AxisRows';
 
 /**
  * Noise left at each multiple of motor speed, per axis: filtered gyro,
@@ -27,51 +26,4 @@ export function MotorHarmonicTable({ axes }: { axes: AxisHarmonicNoise[] }) {
       </tbody>
     </table>
   );
-}
-
-function AxisRows({ axis, data }: { axis: number; data: AxisHarmonicNoise }) {
-  const rows: { label: string; cells: string[]; muted?: boolean }[] = [
-    { label: 'Gyro', cells: data.filtered.map(formatHarmonicLevel) },
-  ];
-
-  if (data.unfiltered) {
-    rows.push({ label: 'Unfiltered', cells: data.unfiltered.map(formatHarmonicLevel) });
-    rows.push({
-      label: 'Removed by filters',
-      cells: data.filtered.map((f, i) => formatHarmonicReduction(data.unfiltered![i], f)),
-      muted: true,
-    });
-  }
-
-  return (
-    <>
-      {rows.map((row, r) => (
-        <tr key={row.label}>
-          {r === 0 && (
-            <th rowSpan={rows.length}>
-              <span className="axis-chip" style={{ background: AXIS_COLORS[axis] }}>
-                {AXIS_NAMES[axis]!.toUpperCase()}
-              </span>
-            </th>
-          )}
-          <td className={row.muted ? 'muted' : undefined}>{row.label}</td>
-          {row.cells.map((c, i) => (
-            <td key={i} className={row.muted ? 'muted' : undefined}>
-              {c}
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
-}
-
-function formatHarmonicLevel(h: HarmonicNoise): string {
-  return h.meanDb == null ? '—' : `${h.meanDb.toFixed(1)} ± ${h.sdDb!.toFixed(1)} dB`;
-}
-
-function formatHarmonicReduction(raw: HarmonicNoise | undefined, filt: HarmonicNoise): string {
-  if (raw?.meanDb == null || filt.meanDb == null) return '—';
-
-  return `${(raw.meanDb - filt.meanDb).toFixed(1)} dB`;
 }

@@ -1,5 +1,4 @@
-import type { StepSettings } from '../components/step/StepControls';
-import type { StepLogOptions } from '../dsp/stepResponseForLog';
+import type { StepLogOptions, StepSettings } from '../types';
 
 export function stepOptionsFrom(settings: StepSettings): StepLogOptions {
   return {

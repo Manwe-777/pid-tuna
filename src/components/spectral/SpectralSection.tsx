@@ -1,22 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ALL_AXIS, AXIS_COLORS, AXIS_NAMES, HEATMAP_HEIGHT, SPECTRAL_MODES, WINDOW_SIZES } from '../../constants';
-import { computeErrorSetpointDensity } from '../../dsp/errorSetpoint';
+import { computeBinnedSpectrogram } from '../../dsp/spectrum/computeBinnedSpectrogram';
+import { computeErrorSetpointDensity } from '../../dsp/computeErrorSetpointDensity';
+import { computeSpectrogram } from '../../dsp/spectrum/computeSpectrogram';
 import { latencyForLog } from '../../dsp/latencyForLog';
-import { motorRpmSeries, rpmAxisMax, throttlePercentSeries } from '../../dsp/spectralDomains';
-import { computeBinnedSpectrogram, computeSpectrogram } from '../../dsp/spectrogram';
-import { stepResponseMask } from '../../dsp/stepResponseMask';
+import { motorRpmSeries } from '../../dsp/spectrum/motorRpmSeries';
+import { rpmAxisMax } from '../../dsp/spectrum/rpmAxisMax';
+import { stepResponseMask } from '../../dsp/step/stepResponseMask';
+import { throttlePercentSeries } from '../../dsp/throttlePercentSeries';
 import { shortName } from '../../logs/shortName';
-import type { LogEntry, SpectralMode, SpectrogramSource } from '../../types';
+import type { LogEntry, PlotSeries, SpectralMode, SpectrogramSource } from '../../types';
 import { combineAxisPowerDb } from '../../utils/combineAxisPowerDb';
 import { isBinnedMode } from '../../utils/isBinnedMode';
 import { isRpmMode } from '../../utils/isRpmMode';
 import { isTimeMode } from '../../utils/isTimeMode';
 import { modeValueKind } from '../../utils/modeValueKind';
 import { robustPsdRange } from '../../utils/robustPsdRange';
+import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 import { BinnedSpecPlot } from './BinnedSpecPlot';
 import { DensityPlot } from './DensityPlot';
 import { SpectrogramPlot } from './SpectrogramPlot';
-import { type PlotSeries, TimeSeriesPlot } from '../common/TimeSeriesPlot';
 
 export function SpectralSection({ entries }: { entries: LogEntry[] }) {
   const log = entries[0]!.log;

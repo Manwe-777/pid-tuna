@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ErrorSetpointResult } from '../../dsp/errorSetpoint';
-import { paintCrosshair, type PlotGeom } from '../common/plotCrosshair';
+import type { ErrorSetpointResult, PlotGeom } from '../../types';
 import { niceTicks } from '../../utils/niceTicks';
 import { viridis } from '../../utils/viridis';
+import { paintCrosshair } from '../common/paintCrosshair';
 
-export interface DensityPlotProps {
+interface DensityPlotProps {
   data: ErrorSetpointResult;
   title?: string;
   xLabel?: string;

@@ -1,4 +1,4 @@
-import type { AxisImbalance } from '../../dsp/motorBalance';
+import type { AxisImbalance } from '../../types';
 
 export function BalanceAxisStrip({
   axes,

@@ -1,29 +1,34 @@
-import { Parser, ParserEventKind, getWasm, FirmwareKind, type LogHeaders } from 'blackbox-log';
-import { MAX_PARSER_DEBUG_MODE, resolveDebugMode } from './debugModes';
+import { FirmwareKind, getWasm, type LogHeaders, Parser, ParserEventKind } from 'blackbox-log';
+import { MAX_PARSER_DEBUG_MODE } from '../constants';
+import type {
+  Axis3,
+  Axis4,
+  DataPresence,
+  GpsFrameSeries,
+  ParsedLog,
+  ProgressCallback,
+  SetupInfo,
+  SlowFrameSeries,
+} from '../types';
 import { rawGyroSource } from './rawGyroSource';
-import type { Axis3, Axis4, DataPresence, GpsFrameSeries, ParsedLog, SetupInfo, SlowFrameSeries } from '../types';
-
-let parserPromise: Promise<Parser> | null = null;
+import { resolveDebugMode } from './resolveDebugMode';
+import { parserState } from './state';
 
 function getParser(): Promise<Parser> {
-  if (!parserPromise) {
-    parserPromise = Parser.init(getWasm());
+  if (!parserState.parser) {
+    parserState.parser = Parser.init(getWasm());
   }
-  return parserPromise;
+  return parserState.parser;
 }
 
 /** Per-axis index. */
 const ROLL = 0;
+
 const PITCH = 1;
+
 const YAW = 2;
+
 const THROTTLE = 3;
-
-interface ParseProgress {
-  progress: number;
-  rows: number;
-}
-
-export type ProgressCallback = (p: ParseProgress) => void;
 
 /**
  * Parse a single log (logIndex) out of a Betaflight/INAV blackbox file.
@@ -422,8 +427,11 @@ function patchHeaders(input: Uint8Array): HeaderPatchResult {
 }
 
 const FIRMWARE_HEADER_PREFIX = 'H Firmware revision:';
+
 const DEBUG_MODE_HEADER_PREFIX = 'H debug_mode:';
+
 const HEADER_SCAN_BYTES = 16_384;
+
 // The bundled blackbox-log Rust crate (v0.3.1, pinned by blackbox-log-ts 0.2.2)
 // accepts Betaflight [4.2.0, 4.5.0) and INAV [5.0.0, 5.2.0) ∪ [6.0.0, 6.1.0).
 // 4.4.0 is well inside the BF range. For INAV logs we'd need 5.1.x or 6.0.x.

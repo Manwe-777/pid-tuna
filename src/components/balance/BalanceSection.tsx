@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { analyzeMotorBalance, type BalanceAnalysis, combineMotorBalances } from '../../dsp/motorBalance';
+import { analyzeMotorBalance } from '../../dsp/balance/analyzeMotorBalance';
+import { combineMotorBalances } from '../../dsp/balance/combineMotorBalances';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
-import type { LogEntry, LogSlot } from '../../types';
+import type { BalanceAnalysis, LogEntry, LogSlot } from '../../types';
 import { makeMergedSlot } from '../../utils/makeMergedSlot';
 import { MergeLogsToggle } from '../common/MergeLogsToggle';
 import { BalanceAxisStrip } from './BalanceAxisStrip';

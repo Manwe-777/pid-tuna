@@ -1,4 +1,4 @@
-import type { ScoreEntry, ScoreStatus } from '../../dsp/scorecard';
+import type { ScoreEntry, ScoreStatus } from '../../types';
 
 export function ScorecardSummary({ entries }: { entries: ScoreEntry[] }) {
   const counts: Record<ScoreStatus, number> = { good: 0, warn: 0, bad: 0, na: 0 };

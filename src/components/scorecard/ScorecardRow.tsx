@@ -1,6 +1,5 @@
 import { SCORECARD_JUMP } from '../../constants';
-import type { ScoreEntry } from '../../dsp/scorecard';
-import type { TabId } from '../../types';
+import type { ScoreEntry, TabId } from '../../types';
 
 export function ScorecardRow({ entry, onJump }: { entry: ScoreEntry; onJump: (tab: TabId) => void }) {
   const target = SCORECARD_JUMP[entry.key];

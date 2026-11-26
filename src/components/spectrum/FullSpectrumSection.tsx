@@ -1,17 +1,18 @@
 import { useMemo, useState } from 'react';
 import { AXIS_COLORS, AXIS_NAMES, DYN_NOTCH_COLOR, MOTOR_COLORS, PSD_WINDOW_SIZES, SIGNAL_DEFS } from '../../constants';
-import { dynNotchMedians } from '../../dsp/dynNotchMedians';
-import { harmonicNoiseForLog } from '../../dsp/harmonicNoiseForLog';
-import { combinePsds, computePsd, type PsdResult } from '../../dsp/spectrogram';
+import { combinePsds } from '../../dsp/spectrum/combinePsds';
+import { computePsd } from '../../dsp/spectrum/computePsd';
+import { dynNotchMedians } from '../../dsp/spectrum/dynNotchMedians';
+import { harmonicNoiseForLog } from '../../dsp/spectrum/harmonicNoiseForLog';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
-import type { LogEntry, LogSlot, SignalDef, SignalKey } from '../../types';
+import type { LogEntry, LogSlot, PlotMarker, PlotSeries, PsdResult, SignalDef, SignalKey } from '../../types';
 import { computeRpmMarkers } from '../../utils/computeRpmMarkers';
 import { extractSignal } from '../../utils/extractSignal';
 import { makeMergedSlot } from '../../utils/makeMergedSlot';
 import { resampleY } from '../../utils/resampleY';
-import { type PlotMarker, type PlotSeries, TimeSeriesPlot } from '../common/TimeSeriesPlot';
 import { MergeLogsToggle } from '../common/MergeLogsToggle';
+import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 import { MotorHarmonicTable } from './MotorHarmonicTable';
 
 export function FullSpectrumSection({ entries }: { entries: LogEntry[] }) {

@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { AXIS_COLORS, AXIS_NAMES, PID_TERM_DEFS } from '../../constants';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
-import type { LogEntry, PidTermKey } from '../../types';
+import type { LogEntry, PidTermKey, PlotSeries } from '../../types';
 import { align } from '../../utils/align';
 import { extractSignal } from '../../utils/extractSignal';
-import { type PlotSeries, TimeSeriesPlot } from '../common/TimeSeriesPlot';
+import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 
 export function PidTermsSection({ entries }: { entries: LogEntry[] }) {
   const primary = entries[0]!;

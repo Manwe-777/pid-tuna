@@ -1,4 +1,4 @@
-import type { BatteryAnalysis } from '../../dsp/battery';
+import type { BatteryAnalysis } from '../../types';
 import { fmtA } from '../../utils/fmtA';
 import { fmtV } from '../../utils/fmtV';
 

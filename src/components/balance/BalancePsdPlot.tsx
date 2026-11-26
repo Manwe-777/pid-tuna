@@ -1,6 +1,6 @@
 import { MOTOR_COLORS } from '../../constants';
-import type { BalanceAnalysis } from '../../dsp/motorBalance';
-import { type PlotSeries, TimeSeriesPlot } from '../common/TimeSeriesPlot';
+import type { BalanceAnalysis, PlotSeries } from '../../types';
+import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 
 export function BalancePsdPlot({ analysis }: { analysis: BalanceAnalysis }) {
   const psds = analysis.motorPsds;

@@ -1,42 +1,8 @@
 import type { ReactNode } from 'react';
-import { STEP_DEFAULTS, STEP_METRICS } from '../../constants';
-import { STEP_MASK_DEFAULTS } from '../../dsp/stepResponseForLog';
-import type { StepMetrics } from '../../types';
-
-export interface StepSettings {
-  windowMs: number;
-  minExcitation: number;
-  /** 0 = no ceiling. */
-  maxExcitation: number;
-  minThrottle: number;
-  excludeSaturation: boolean;
-  outlierK: number;
-  settleMin: number;
-  settleMax: number;
-  yMax: number;
-  showSegments: boolean;
-  showSpread: boolean;
-  showFrequency: boolean;
-  dotMetrics: [keyof StepMetrics, keyof StepMetrics];
-  splitBy: 'none' | 'stick' | 'throttle';
-}
-
-export const STEP_SETTINGS_DEFAULTS: StepSettings = {
-  windowMs: STEP_DEFAULTS.windowMs,
-  minExcitation: STEP_DEFAULTS.minExcitation,
-  maxExcitation: 0,
-  minThrottle: STEP_MASK_DEFAULTS.minThrottle,
-  excludeSaturation: STEP_MASK_DEFAULTS.excludeSaturation,
-  outlierK: STEP_DEFAULTS.outlierK,
-  settleMin: STEP_DEFAULTS.settleMin,
-  settleMax: STEP_DEFAULTS.settleMax,
-  yMax: 1.5,
-  showSegments: true,
-  showSpread: false,
-  showFrequency: true,
-  dotMetrics: ['peakResponse', 'latencyHalfMs'],
-  splitBy: 'none',
-};
+import { STEP_SETTINGS_DEFAULTS } from '../../constants';
+import type { StepSettings } from '../../types';
+import { MetricSelect } from './MetricSelect';
+import { NumberField } from './NumberField';
 
 const Y_MAX_CHOICES = [1.25, 1.5, 2];
 
@@ -200,60 +166,6 @@ export function StepControls({ settings, onChange, mergeToggle }: Props) {
         </div>
       </details>
     </div>
-  );
-}
-
-function NumberField({
-  label,
-  unit,
-  value,
-  min,
-  max,
-  step,
-  title,
-  placeholder,
-  onChange,
-}: {
-  label: string;
-  unit?: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  title?: string;
-  placeholder?: string;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <label title={title}>
-      {label}
-      <input
-        type="number"
-        className="step-controls__number"
-        value={placeholder && value === 0 ? '' : value}
-        placeholder={placeholder}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(e) => {
-          const v = Number.parseFloat(e.target.value);
-          onChange(Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : 0);
-        }}
-      />
-      {unit && <span className="muted">{unit}</span>}
-    </label>
-  );
-}
-
-function MetricSelect({ value, onChange }: { value: keyof StepMetrics; onChange: (k: keyof StepMetrics) => void }) {
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value as keyof StepMetrics)}>
-      {STEP_METRICS.map((m) => (
-        <option key={m.key} value={m.key}>
-          {m.label}
-        </option>
-      ))}
-    </select>
   );
 }
 

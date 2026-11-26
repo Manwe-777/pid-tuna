@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 import { AXIS_COLORS, AXIS_NAMES } from '../../constants';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
-import type { LogEntry } from '../../types';
+import type { LogEntry, PlotSeries } from '../../types';
 import { align } from '../../utils/align';
-import { type PlotSeries, TimeSeriesPlot } from '../common/TimeSeriesPlot';
+import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 
 export function FilteringSection({ entries }: { entries: LogEntry[] }) {
   const primary = entries[0]!;

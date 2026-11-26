@@ -1,17 +1,21 @@
 import 'leaflet/dist/leaflet.css';
-import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, useMap } from 'react-leaflet';
-import L from 'leaflet';
 import { useEffect, useMemo, useRef } from 'react';
-import { buildValidGpsSamples, gpsCoordValid, headingAlongTrack, interpolateGps } from '../../dsp/gpsPlayback';
-import {
-  denseLonLatChord,
-  gpsDisplayProjection,
-  gpsDefaultMapSmoothSettings,
-  smoothLonLatForMap,
-} from '../../dsp/gpsSmooth';
-import { GPS_VIRIDIS_STOPS, gpsViridisColor } from '../../dsp/gpsViridis';
+import { CircleMarker, MapContainer, Polyline, TileLayer } from 'react-leaflet';
+import { GPS_VIRIDIS_STOPS } from '../../constants';
+import { buildValidGpsSamples } from '../../dsp/gps/buildValidGpsSamples';
+import { denseLonLatChord } from '../../dsp/gps/denseLonLatChord';
+import { gpsCoordValid } from '../../dsp/gps/gpsCoordValid';
+import { gpsDefaultMapSmoothSettings } from '../../dsp/gps/gpsDefaultMapSmoothSettings';
+import { gpsDisplayProjection } from '../../dsp/gps/gpsDisplayProjection';
+import { gpsViridisColor } from '../../dsp/gps/gpsViridisColor';
+import { headingAlongTrack } from '../../dsp/gps/headingAlongTrack';
+import { interpolateGps } from '../../dsp/gps/interpolateGps';
+import { smoothLonLatForMap } from '../../dsp/gps/smoothLonLatForMap';
+import { FitTrackBounds } from './FitTrackBounds';
+import { InvalidateSizeOnResize } from './InvalidateSizeOnResize';
+import { PlaybackDroneMarker } from './PlaybackDroneMarker';
 
-export interface GpsMapTrackProps {
+interface GpsMapTrackProps {
   gpsTime: Float32Array;
   lat: Float32Array;
   lon: Float32Array;
@@ -29,15 +33,10 @@ export interface GpsMapTrackProps {
 }
 
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
 const TILE_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
   '&copy; <a href="https://carto.com/attributions">CARTO</a>';
-
-const DRONE_SVG =
-  '<svg width="26" height="26" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-  '<path d="M12 2.5 L19 17.5 H14.8 L12 13.9 L9.2 17.5 H5 L12 2.5 Z" ' +
-  'fill="#5fa8ff" stroke="#e8eef8" stroke-width="1.25" stroke-linejoin="round"/>' +
-  '</svg>';
 
 function fmtPlaybackClock(secFromStart: number): string {
   const s = Math.max(0, secFromStart);
@@ -45,89 +44,6 @@ function fmtPlaybackClock(secFromStart: number): string {
   const r = s - m * 60;
   const rs = r < 10 ? `0${r.toFixed(1)}` : r.toFixed(1);
   return `${m}:${rs}`;
-}
-
-function InvalidateSizeOnResize() {
-  const map = useMap();
-  useEffect(() => {
-    const c = map.getContainer();
-    const ro = new ResizeObserver(() => {
-      map.invalidateSize();
-    });
-    ro.observe(c);
-    return () => ro.disconnect();
-  }, [map]);
-  return null;
-}
-
-/**
- * Fits the viewport only when the underlying raw GPS buffers change (new log slice),
- * so replays/UI that don't swap the log anchors don't reset user pan/zoom.
- */
-function FitTrackBounds({
-  boundsPoints,
-  anchorLat,
-  anchorLon,
-  anchorGpsTime,
-}: {
-  boundsPoints: [number, number][];
-  anchorLat: Float32Array;
-  anchorLon: Float32Array;
-  anchorGpsTime: Float32Array;
-}) {
-  const map = useMap();
-  const pointsRef = useRef(boundsPoints);
-  pointsRef.current = boundsPoints;
-
-  useEffect(() => {
-    const points = pointsRef.current;
-    if (points.length === 0) return;
-    if (points.length === 1) {
-      map.setView(points[0]!, 15);
-      return;
-    }
-    map.fitBounds(L.latLngBounds(points), { padding: [28, 28], maxZoom: 17 });
-    // Denser draw paths change boundsPoints without changing anchors — avoids zoom reset.
-  }, [map, anchorLat, anchorLon, anchorGpsTime]);
-  return null;
-}
-
-function PlaybackDroneMarker({
-  position,
-  headingDeg,
-  followWhilePlaying,
-  playing,
-}: {
-  position: [number, number] | null;
-  headingDeg: number;
-  followWhilePlaying: boolean;
-  playing: boolean;
-}) {
-  const map = useMap();
-  const lastPanMs = useRef(0);
-
-  const icon = useMemo(
-    () =>
-      L.divIcon({
-        className: 'gps-drone-marker',
-        html:
-          `<div class="gps-drone-marker__rotate" style="transform:rotate(${headingDeg}deg)">` + DRONE_SVG + '</div>',
-        iconSize: [34, 34],
-        iconAnchor: [17, 17],
-      }),
-    [headingDeg],
-  );
-
-  useEffect(() => {
-    if (!playing || !followWhilePlaying || !position) return;
-    const now = performance.now();
-    if (now - lastPanMs.current < 140) return;
-    lastPanMs.current = now;
-    map.panTo(position, { animate: false });
-  }, [playing, followWhilePlaying, position, map]);
-
-  if (!position) return null;
-  return <Marker position={position} icon={icon} zIndexOffset={700} />;
 }
 
 /** Map + GPS track with scrubber playback and direction-of-travel arrow (from the GPS path, not gyro). */

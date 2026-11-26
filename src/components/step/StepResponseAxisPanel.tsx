@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
 import { AXIS_COLORS, AXIS_NAMES } from '../../constants';
-import type { AxisStepWithSlot } from '../../types';
+import type { AxisStepWithSlot, LogDot, PlotSeries, StepSettings } from '../../types';
 import { align } from '../../utils/align';
 import { hexWithAlpha } from '../../utils/hexWithAlpha';
 import { stepMetricOption } from '../../utils/stepMetricOption';
-import { type LogDot, LogDotPlot } from '../common/LogDotPlot';
-import { type PlotSeries, TimeSeriesPlot } from '../common/TimeSeriesPlot';
-import type { StepSettings } from './StepControls';
+import { LogDotPlot } from '../common/LogDotPlot';
+import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 import { StepFrequencyPlot } from './StepFrequencyPlot';
 import { StepStatsTable } from './StepStatsTable';
 

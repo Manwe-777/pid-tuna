@@ -1,9 +1,8 @@
 import { AXIS_COLORS, SAT_BAND_COLOR } from '../../constants';
-import type { SaturationAnalysis } from '../../dsp/saturation';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
-import type { LogSlot, ParsedLog } from '../../types';
-import { type PlotBand, type PlotSeries, TimeSeriesPlot } from '../common/TimeSeriesPlot';
+import type { LogSlot, ParsedLog, PlotBand, PlotSeries, SaturationAnalysis } from '../../types';
+import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 
 export function SaturationLogCard({
   slot,

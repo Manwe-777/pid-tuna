@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { AXIS_NAMES } from '../../constants';
-import { computePsd } from '../../dsp/spectrogram';
+import { computePsd } from '../../dsp/spectrum/computePsd';
 import type { LogEntry } from '../../types';
 import { computeAxisSteps } from '../../utils/computeAxisSteps';
 import { parseLogStartMs } from '../../utils/parseLogStartMs';

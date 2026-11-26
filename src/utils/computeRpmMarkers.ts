@@ -1,6 +1,5 @@
-import type { PlotMarker } from '../components/common/TimeSeriesPlot';
 import { MOTOR_COLORS } from '../constants';
-import type { ParsedLog } from '../types';
+import type { ParsedLog, PlotMarker } from '../types';
 
 /**
  * Build harmonic-frequency markers for each enabled motor. Betaflight logs

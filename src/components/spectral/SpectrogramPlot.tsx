@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import type { SpectrogramResult } from '../../dsp/spectrogram';
-import { paintCrosshair, type PlotGeom } from '../common/plotCrosshair';
+import type { PlotGeom, SpectrogramResult } from '../../types';
 import { niceTicks } from '../../utils/niceTicks';
 import { viridis } from '../../utils/viridis';
+import { paintCrosshair } from '../common/paintCrosshair';
 
-export interface SpectrogramPlotProps {
+interface SpectrogramPlotProps {
   data: SpectrogramResult;
   title?: string;
   /** dB floor used to scale the colormap. Default -80. */

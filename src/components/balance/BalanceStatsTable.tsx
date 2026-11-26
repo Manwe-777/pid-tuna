@@ -1,5 +1,5 @@
 import { MOTOR_COLORS } from '../../constants';
-import type { BalanceAnalysis } from '../../dsp/motorBalance';
+import type { BalanceAnalysis } from '../../types';
 
 export function BalanceStatsTable({ analysis }: { analysis: BalanceAnalysis }) {
   const { motors, singleMotorOutlier } = analysis;

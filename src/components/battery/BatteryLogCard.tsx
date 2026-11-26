@@ -1,9 +1,8 @@
 import { CURRENT_COLOR, VOLT_COLOR } from '../../constants';
-import type { BatteryAnalysis } from '../../dsp/battery';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
-import type { LogSlot, ParsedLog } from '../../types';
-import { type PlotSeries, TimeSeriesPlot } from '../common/TimeSeriesPlot';
+import type { BatteryAnalysis, LogSlot, ParsedLog, PlotSeries } from '../../types';
+import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 import { BatteryStats } from './BatteryStats';
 
 export function BatteryLogCard({

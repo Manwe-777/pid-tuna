@@ -1,19 +1,15 @@
 import { STEP_METRICS } from '../../constants';
-import type { StepMetricOption, StepMetrics } from '../../types';
+import type { StepMetricOption, StepMetrics, StepStatsRow } from '../../types';
 import { formatStepMetric } from '../../utils/formatStepMetric';
 
-export interface StepStatsRow {
-  id: string;
-  label: string;
-  color: string;
-  windows: number;
-  metrics: StepMetrics;
-}
-
 const SENSITIVITY_CAUTION_DB = 4;
+
 const SENSITIVITY_SEVERE_DB = 6;
+
 const LOW_CONFIDENCE = 0.6;
+
 const PHASE_MARGIN_CAUTION = 45;
+
 const PHASE_MARGIN_SEVERE = 30;
 
 /** One cell per metric, each listing every log's value; wraps to fit any width. */

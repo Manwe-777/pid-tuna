@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
+import { Analyses } from './components/layout/Analyses';
 import { FcMscButton } from './components/layout/FcMscButton';
 import { Sidebar } from './components/layout/Sidebar';
 import { ThemeToggle } from './components/layout/ThemeToggle';
-import { Analyses } from './components/layout/Analyses';
 import { enabledLogs } from './logs/enabledLogs';
 import { newSlotId } from './logs/newSlotId';
 import { parseLog } from './parser/parseLog';

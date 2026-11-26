@@ -1,4 +1,4 @@
-import type { LatencyResult } from '../../dsp/latency';
+import type { LatencyResult } from '../../types';
 
 export function LatencyCell({ result }: { result: LatencyResult }) {
   if (!result.reliable) {

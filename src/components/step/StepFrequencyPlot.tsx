@@ -1,13 +1,6 @@
 import { useMemo } from 'react';
-
-import type { FrequencyResponse } from '../../dsp/stepFrequencyResponse';
-import { type PlotSeries, TimeSeriesPlot } from '../common/TimeSeriesPlot';
-
-export interface StepFrequencyEntry {
-  label: string;
-  color: string;
-  response: FrequencyResponse;
-}
+import type { PlotSeries, StepFrequencyEntry } from '../../types';
+import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 
 const SENSITIVITY_DASH = [6, 4];
 

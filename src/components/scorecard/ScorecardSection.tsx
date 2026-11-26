@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { buildMergedScorecard, buildScorecard } from '../../dsp/scorecard';
+import { buildMergedScorecard } from '../../dsp/scorecard/buildMergedScorecard';
+import { buildScorecard } from '../../dsp/scorecard/buildScorecard';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
 import type { LogEntry, TabId } from '../../types';

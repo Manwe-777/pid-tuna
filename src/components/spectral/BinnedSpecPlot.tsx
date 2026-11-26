@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import type { BinnedSpectrogramResult } from '../../dsp/spectrogram';
-import { paintCrosshair, type PlotGeom } from '../common/plotCrosshair';
+import type { BinnedSpectrogramResult, PlotGeom } from '../../types';
 import { niceTicks } from '../../utils/niceTicks';
 import { viridis } from '../../utils/viridis';
+import { paintCrosshair } from '../common/paintCrosshair';
 
-export interface BinnedSpecPlotProps {
+interface BinnedSpecPlotProps {
   data: BinnedSpectrogramResult;
   /** Y-axis (domain) label, e.g. "throttle %" or "motor freq (Hz)". */
   yLabel: string;

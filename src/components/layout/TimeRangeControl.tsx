@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { TimeRangeSec } from '../../types';
 
-export interface TimeRangeControlProps {
+interface TimeRangeControlProps {
   /** Maximum end time (seconds) — typically log duration. */
   max: number;
   value: TimeRangeSec;

@@ -1,6 +1,6 @@
-import type { ParsedLog } from '../types';
-import { computeXcorrLatency, type LatencyResult } from './latency';
-import { stepResponseMask } from './stepResponseMask';
+import type { LatencyResult, ParsedLog } from '../types';
+import { computeXcorrLatency } from './computeXcorrLatency';
+import { stepResponseMask } from './step/stepResponseMask';
 
 /** Tracking latency for one axis of a log, from takeoff to landing. */
 export function latencyForLog(log: ParsedLog, axis: number): LatencyResult {

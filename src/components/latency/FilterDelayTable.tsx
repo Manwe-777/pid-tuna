@@ -1,4 +1,4 @@
-import type { FilterDelayEntry } from '../../dsp/filterDelays';
+import type { FilterDelayEntry } from '../../types';
 
 export function FilterDelayTable({ entries }: { entries: FilterDelayEntry[] }) {
   return (

@@ -1,4 +1,19 @@
-import type { PidTermDef, PlotChrome, SignalDef, SpectralMode, StepMetricOption, TabId, Theme } from './types';
+import type {
+  FilterSpec,
+  FilterType,
+  PidTermDef,
+  PlotChrome,
+  SignalDef,
+  SpectralMode,
+  StepBandKind,
+  StepMetricOption,
+  StepSettings,
+  TabId,
+  Theme,
+} from './types';
+
+/** Takeoff to landing, minus moments at idle throttle (motors at idle respond differently) or with a motor pinned. */
+export const STEP_MASK_DEFAULTS = { flightOnly: true, minThrottle: 5, maxThrottle: Infinity, excludeSaturation: true };
 
 export const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: 'scorecard', label: 'Scorecard' },
@@ -321,3 +336,158 @@ export const VIRIDIS: ReadonlyArray<readonly [number, number, number]> = [
   [94, 201, 98],
   [253, 231, 37],
 ];
+
+export const DRONE_SVG =
+  '<svg width="26" height="26" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+  '<path d="M12 2.5 L19 17.5 H14.8 L12 13.9 L9.2 17.5 H5 L12 2.5 Z" ' +
+  'fill="#5fa8ff" stroke="#e8eef8" stroke-width="1.25" stroke-linejoin="round"/>' +
+  '</svg>';
+
+export const STEP_SETTINGS_DEFAULTS: StepSettings = {
+  windowMs: STEP_DEFAULTS.windowMs,
+  minExcitation: STEP_DEFAULTS.minExcitation,
+  maxExcitation: 0,
+  minThrottle: STEP_MASK_DEFAULTS.minThrottle,
+  excludeSaturation: STEP_MASK_DEFAULTS.excludeSaturation,
+  outlierK: STEP_DEFAULTS.outlierK,
+  settleMin: STEP_DEFAULTS.settleMin,
+  settleMax: STEP_DEFAULTS.settleMax,
+  yMax: 1.5,
+  showSegments: true,
+  showSpread: false,
+  showFrequency: true,
+  dotMetrics: ['peakResponse', 'latencyHalfMs'],
+  splitBy: 'none',
+};
+
+export const NOTCH_TYPE: Record<string, string> = {
+  '0': 'BIQUAD',
+  '1': 'PT1',
+};
+
+export const MERGE_RATE_TOLERANCE = 0.02;
+
+/** Default frequency delay is reported at: inside the control band, and PIDtoolbox's default. */
+export const DELAY_REFERENCE_HZ = 25;
+
+export const DEFAULT_FILTER_SPECS: Record<FilterType, FilterSpec> = {
+  pt1: { id: '', enabled: true, type: 'pt1', cutoffHz: 150, bandwidth: 40 },
+  pt2: { id: '', enabled: true, type: 'pt2', cutoffHz: 150, bandwidth: 40 },
+  pt3: { id: '', enabled: true, type: 'pt3', cutoffHz: 150, bandwidth: 40 },
+  biquad: { id: '', enabled: true, type: 'biquad', cutoffHz: 150, bandwidth: 40 },
+  notch: { id: '', enabled: true, type: 'notch', cutoffHz: 200, bandwidth: 40 },
+  rpm: {
+    id: '',
+    enabled: true,
+    type: 'rpm',
+    cutoffHz: 150,
+    bandwidth: 0,
+    bfQ: 500,
+    count: 3,
+    minHz: 100,
+    fadeHz: 50,
+    weights: [100, 100, 100],
+    motors: 4,
+  },
+  dynNotch: { id: '', enabled: true, type: 'dynNotch', cutoffHz: 150, bandwidth: 0, bfQ: 300, count: 1 },
+};
+
+export const M_PER_DEG_LAT = 111320;
+
+/**
+ * Position on the internal `[0,1]` smoothing scale (~8%). Used only by {@link gpsDefaultMapSmoothSettings}.
+ */
+export const GPS_MAP_DEFAULT_LIGHT_KNOB = 0.08;
+
+/** Discrete viridis-ish stops aligned with leaflet track segments (GPS map + charts). */
+export const GPS_VIRIDIS_STOPS = [
+  '#440154',
+  '#482878',
+  '#3e4989',
+  '#31688e',
+  '#26828e',
+  '#1f9e89',
+  '#35b779',
+  '#6ece58',
+  '#b5de2b',
+  '#fde725',
+] as const;
+
+export const DOMINANT_THRESHOLD_PCT = 2;
+
+export const SINGLE_OUTLIER_THRESHOLD_PCT = 3;
+
+/**
+ * Roll-up of every metric we already compute, with a green/yellow/red status
+ * per row based on practical thresholds. Designed as a triage view — open this
+ * tab first, then dive into the specific tab for any row that's not green.
+ */
+// Yaw is excluded from the latency / step rating: most pilots don't actively
+// tune yaw and quiet yaw on a fixed-camera log gives noisy values that would
+// unfairly drag the score down.
+export const RATED_AXES = [0, 1] as const;
+
+/** Default electrical pole pairs (14-pole motor). Matches the RPM-markers UI. */
+export const DEFAULT_POLE_PAIRS = 7;
+
+export const SPREAD_KEYS = [
+  'riseTimeMs',
+  'overshootPct',
+  'peakTimeMs',
+  'settlingTimeMs',
+  'latencyHalfMs',
+  'peakResponse',
+] as const;
+
+/** Default band edges: stick input in deg/s (window mean |setpoint|), throttle in %. */
+export const STEP_BAND_EDGES: Record<StepBandKind, number[]> = {
+  stick: [20, 100, 250, Infinity],
+  throttle: [15, 35, 55, 100],
+};
+
+export const MIN_USABLE_FRACTION = 0.9;
+
+/** Per-window traces are only for screening and display, so they use a steadier, stronger λ. */
+export const SEGMENT_REGULARIZATION = 0.01;
+
+export const STEADY_FROM_MS = 200;
+
+export const MSP_SET_REBOOT = 68;
+
+/** REBOOT_TYPE values. Mirrors REBOOT_TYPES in betaflight-configurator/MSPHelper.js. */
+export const REBOOT_TYPE_FIRMWARE = 0;
+
+export const REBOOT_TYPE_BOOTLOADER = 1;
+
+export const REBOOT_TYPE_MSC = 2;
+
+export const REBOOT_TYPE_MSC_UTC = 3;
+
+export const MAGIC_DOLLAR = 0x24; // '$'
+
+export const MAGIC_M = 0x4d; // 'M'
+
+/**
+ * USB VID/PID pairs known to be Betaflight-compatible flight controllers and
+ * the USB-CDC bridges flight controllers commonly expose. Copied from the
+ * `serialDevices` array in betaflight-configurator/src/js/protocols/devices.js.
+ */
+export const FC_USB_FILTERS: ReadonlyArray<{ vendorId: number; productId: number; name: string }> = [
+  { vendorId: 0x0403, productId: 0x6001, name: 'FT232R USB UART' },
+  { vendorId: 0x0483, productId: 0x3256, name: 'STM32 HID' },
+  { vendorId: 0x0483, productId: 0x374e, name: 'STM32 STLink VCP' },
+  { vendorId: 0x0483, productId: 0x5740, name: 'STM32 Virtual COM Port' },
+  { vendorId: 0x10c4, productId: 0xea60, name: 'Silicon Labs CP210x' },
+  { vendorId: 0x10c4, productId: 0xea61, name: 'Silicon Labs CP210x' },
+  { vendorId: 0x10c4, productId: 0xea62, name: 'Silicon Labs CP210x' },
+  { vendorId: 0x28e9, productId: 0x018a, name: 'GD32 VCP' },
+  { vendorId: 0x2e3c, productId: 0x5740, name: 'AT32 VCP' },
+  { vendorId: 0x314b, productId: 0x5740, name: 'APM32 VCP' },
+  { vendorId: 0x2e8a, productId: 0x0009, name: 'Raspberry Pi Pico VCP' },
+];
+
+/**
+ * Highest `debug_mode` the bundled parser accepts. BF 4.4's enum ends at 78
+ * (`FAILSAFE`); 79 and up are rejected — confirmed by probing the WASM directly.
+ */
+export const MAX_PARSER_DEBUG_MODE = 78;

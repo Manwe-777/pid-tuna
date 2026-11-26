@@ -1,20 +1,22 @@
 import { useMemo, useState } from 'react';
-import { AXIS_COLORS, AXIS_NAMES, PSD_WINDOW_SIZES, SIM_FILTERED_COLOR, SIM_ORIGINAL_COLOR } from '../../constants';
-import { DELAY_REFERENCE_HZ } from '../../dsp/filterDelays';
 import {
-  applyFilterChain,
-  computeFilterChainResponse,
+  AXIS_COLORS,
+  AXIS_NAMES,
   DEFAULT_FILTER_SPECS,
-  type FilterSpec,
-  type FilterType,
-  newFilterId,
-} from '../../dsp/filters';
-import { gyroChainFromTune } from '../../dsp/gyroChainFromTune';
-import { medianMotorHz } from '../../dsp/medianMotorHz';
-import { computePsd } from '../../dsp/spectrogram';
+  DELAY_REFERENCE_HZ,
+  PSD_WINDOW_SIZES,
+  SIM_FILTERED_COLOR,
+  SIM_ORIGINAL_COLOR,
+} from '../../constants';
+import { applyFilterChain } from '../../dsp/filters/applyFilterChain';
+import { computeFilterChainResponse } from '../../dsp/filters/computeFilterChainResponse';
+import { computePsd } from '../../dsp/spectrum/computePsd';
+import { gyroChainFromTune } from '../../dsp/filters/gyroChainFromTune';
+import { medianMotorHz } from '../../dsp/spectrum/medianMotorHz';
+import { newFilterId } from '../../dsp/filters/newFilterId';
 import { buildTuneView } from '../../tune/buildTuneView';
-import type { LogEntry } from '../../types';
-import { type PlotSeries, TimeSeriesPlot } from '../common/TimeSeriesPlot';
+import type { FilterSpec, FilterType, LogEntry, PlotSeries } from '../../types';
+import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 import { FilterRow } from './FilterRow';
 import { TestSignalPlot } from './TestSignalPlot';
 

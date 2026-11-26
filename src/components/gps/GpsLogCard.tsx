@@ -1,12 +1,11 @@
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
-import type { GpsAnalysis } from '../../dsp/gps';
-import { buildValidGpsSamples } from '../../dsp/gpsPlayback';
-import { gpsAltitudeViridisSegments } from '../../dsp/gpsViridis';
+import { buildValidGpsSamples } from '../../dsp/gps/buildValidGpsSamples';
+import { gpsAltitudeViridisSegments } from '../../dsp/gps/gpsAltitudeViridisSegments';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
-import type { LogSlot, ParsedLog } from '../../types';
+import type { GpsAnalysis, LogSlot, ParsedLog, PlotMarker, PlotSeries } from '../../types';
+import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
 import { GpsMapTrack } from './GpsMapTrack';
-import { type PlotMarker, type PlotSeries, TimeSeriesPlot } from '../common/TimeSeriesPlot';
 import { GpsStat } from './GpsStat';
 
 export function GpsLogCard({

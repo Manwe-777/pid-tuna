@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-
-import { filterTestSignal, type TestSignalKind } from '../../dsp/filterTestSignal';
-import type { FilterSpec } from '../../dsp/filters';
+import { filterTestSignal } from '../../dsp/filters/filterTestSignal';
+import type { FilterSpec, TestSignalKind } from '../../types';
 import { TimeSeriesPlot } from '../common/TimeSeriesPlot';
+import { Field } from './Field';
 
 const NOISE_LEVELS = [
   { label: 'none', value: 0 },
@@ -85,36 +85,5 @@ export function TestSignalPlot({
         height={200}
       />
     </div>
-  );
-}
-
-function Field({
-  label,
-  unit,
-  value,
-  step = 1,
-  onChange,
-}: {
-  label: string;
-  unit: string;
-  value: number;
-  step?: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <label>
-      {label}
-      <input
-        type="number"
-        step={step}
-        value={value}
-        onChange={(e) => {
-          const v = Number.parseFloat(e.target.value);
-          if (Number.isFinite(v)) onChange(v);
-        }}
-        style={{ width: '4.5rem' }}
-      />
-      <span className="muted">{unit}</span>
-    </label>
   );
 }

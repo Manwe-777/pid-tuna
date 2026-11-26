@@ -1,4 +1,4 @@
-import type { SpectralValueMode } from '../dsp/spectrogram';
+import type { SpectralValueMode } from '../types';
 
 /**
  * Combine per-axis spectra into one "All axes" view. Each input is an absolute

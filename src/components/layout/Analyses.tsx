@@ -3,8 +3,6 @@ import { DASH_PATTERNS, TABS } from '../../constants';
 import { sliceLog } from '../../logs/sliceLog';
 import type { LogEntry, LogSlot, ParsedLog, TabId, TimeRangeSec } from '../../types';
 import { tabHasData } from '../../utils/tabHasData';
-import { TimeRangeControl } from './TimeRangeControl';
-import { TuneSettingsPanel } from '../tune/TuneSettingsPanel';
 import { BalanceSection } from '../balance/BalanceSection';
 import { BatterySection } from '../battery/BatterySection';
 import { DiffSummarySection } from '../diff/DiffSummarySection';
@@ -20,7 +18,9 @@ import { FullSpectrumSection } from '../spectrum/FullSpectrumSection';
 import { StepResponseSection } from '../step/StepResponseSection';
 import { FilteringSection } from '../tracking/FilteringSection';
 import { TrackingSection } from '../tracking/TrackingSection';
+import { TuneSettingsPanel } from '../tune/TuneSettingsPanel';
 import { TabBar } from './TabBar';
+import { TimeRangeControl } from './TimeRangeControl';
 
 export function Analyses({ enabled }: { enabled: Array<{ slot: LogSlot; log: ParsedLog }> }) {
   const duration = useMemo(

@@ -1,15 +1,15 @@
 import { useMemo, useState } from 'react';
-import { AXIS_COLORS, AXIS_NAMES, BAND_COLORS } from '../../constants';
-import { combineStepResponses } from '../../dsp/combineStepResponses';
-import { type StepBandKind, stepResponseBands } from '../../dsp/stepResponseBands';
+import { AXIS_COLORS, AXIS_NAMES, BAND_COLORS, STEP_SETTINGS_DEFAULTS } from '../../constants';
+import { combineStepResponses } from '../../dsp/step/combineStepResponses';
+import { stepResponseBands } from '../../dsp/step/stepResponseBands';
 import { colorFor } from '../../logs/colorFor';
 import { shortName } from '../../logs/shortName';
-import type { LogEntry, StepCurveSet } from '../../types';
+import type { LogEntry, StepBandKind, StepCurveSet, StepSettings } from '../../types';
 import { computeAxisSteps } from '../../utils/computeAxisSteps';
 import { makeMergedSlot } from '../../utils/makeMergedSlot';
 import { stepOptionsFrom } from '../../utils/stepOptionsFrom';
 import { MergeLogsToggle } from '../common/MergeLogsToggle';
-import { STEP_SETTINGS_DEFAULTS, StepControls, type StepSettings } from './StepControls';
+import { StepControls } from './StepControls';
 import { StepResponseAxisPanel } from './StepResponseAxisPanel';
 
 export function StepResponseSection({ entries }: { entries: LogEntry[] }) {
