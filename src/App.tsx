@@ -33,6 +33,8 @@ import { gyroChainFromTune } from './dsp/gyroChainFromTune';
 import { dynNotchMedians } from './dsp/dynNotchMedians';
 import { harmonicNoiseForLog } from './dsp/harmonicNoiseForLog';
 import { MotorHarmonicTable } from './components/spectrum/MotorHarmonicTable';
+import { FilterRow } from './components/filters/FilterRow';
+import { TestSignalPlot } from './components/filters/TestSignalPlot';
 import { medianMotorHz } from './dsp/medianMotorHz';
 import { filterDelaysForLog } from './dsp/filterDelaysForLog';
 import { type LatencyResult } from './dsp/latency';
@@ -397,6 +399,7 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
   const [windowSize, setWindowSize] = useState<number>(1024);
   const [yMin, setYMin] = useState<number>(-50);
   const [yMax, setYMax] = useState<number>(20);
+  const [delayHz, setDelayHz] = useState<number>(DELAY_REFERENCE_HZ);
 
   const addFilter = (type: FilterType) => {
     setChain((prev) => [...prev, { ...DEFAULT_FILTER_SPECS[type], id: newFilterId() }]);
@@ -423,8 +426,8 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
   }, [chain, gyroRateHz, nyquist]);
 
   const controlDelayMs = useMemo(
-    () => computeFilterChainResponse(chain, gyroRateHz, Float32Array.of(DELAY_REFERENCE_HZ)).phaseDelayMs[0] ?? null,
-    [chain, gyroRateHz],
+    () => computeFilterChainResponse(chain, gyroRateHz, Float32Array.of(delayHz)).phaseDelayMs[0] ?? null,
+    [chain, gyroRateHz, delayHz],
   );
 
   const psdByAxis = useMemo(() => {
@@ -468,7 +471,7 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
           <FilterRow
             key={f.id}
             filter={f}
-            nyquist={nyquist}
+            maxHz={Math.floor(gyroRateHz / 2)}
             onChange={(patch) => updateFilter(f.id, patch)}
             onRemove={() => removeFilter(f.id)}
           />
@@ -479,6 +482,8 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
           <button type="button" onClick={() => addFilter('pt3')}>+ PT3</button>
           <button type="button" onClick={() => addFilter('biquad')}>+ Biquad</button>
           <button type="button" onClick={() => addFilter('notch')}>+ Notch</button>
+          <button type="button" onClick={() => addFilter('rpm')}>+ RPM filter</button>
+          <button type="button" onClick={() => addFilter('dynNotch')}>+ Dynamic notch</button>
           <button
             type="button"
             onClick={() => setChain(gyroChainFromTune(tune, { motorHz: medianMotorHz(log), motorCount: log.motor.length || undefined }))}
@@ -521,6 +526,19 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
             style={{ width: '4.5rem' }}
           />
         </label>
+        <label title="Frequency the chain's delay is reported at">
+          Delay at:
+          <input
+            type="number"
+            min={1}
+            max={200}
+            step="1"
+            value={delayHz}
+            onChange={(e) => setDelayHz(Math.min(200, Math.max(1, Number.parseFloat(e.target.value) || DELAY_REFERENCE_HZ)))}
+            style={{ width: '4rem' }}
+          />
+          <span className="muted">Hz</span>
+        </label>
       </div>
 
       {bode.hasFilters && (
@@ -530,8 +548,8 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
             {controlDelayMs != null && (
               <span className="step-metrics">
                 <span className="step-metrics__item">
-                  <span className="step-metrics__k">delay @{DELAY_REFERENCE_HZ} Hz</span>
-                  {controlDelayMs.toFixed(2)} ms
+                  <span className="step-metrics__k">delay @{delayHz} Hz</span>
+                  {controlDelayMs.toFixed(2)} ms · {((controlDelayMs / 1000) * 360 * delayHz).toFixed(1)}° lag
                 </span>
               </span>
             )}
@@ -575,6 +593,10 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
             />
           </div>
         </div>
+      )}
+
+      {bode.hasFilters && (
+        <TestSignalPlot chain={chain} loopHz={gyroRateHz} inputColor={SIM_ORIGINAL_COLOR} outputColor={SIM_FILTERED_COLOR} />
       )}
 
       {AXIS_NAMES.map((name, axis) => {
@@ -621,70 +643,6 @@ function FilterSimulatorSection({ entries }: { entries: LogEntry[] }) {
         );
       })}
     </section>
-  );
-}
-
-const FILTER_TYPE_LABEL: Record<FilterType, string> = {
-  pt1: 'PT1 LPF',
-  pt2: 'PT2 LPF',
-  pt3: 'PT3 LPF',
-  biquad: 'Biquad LPF',
-  notch: 'Notch',
-  rpm: 'RPM filter',
-  dynNotch: 'Dynamic notch',
-};
-
-function FilterRow({
-  filter,
-  nyquist,
-  onChange,
-  onRemove,
-}: {
-  filter: FilterSpec;
-  nyquist: number;
-  onChange: (patch: Partial<FilterSpec>) => void;
-  onRemove: () => void;
-}) {
-  return (
-    <div className="filter-row">
-      <input
-        type="checkbox"
-        checked={filter.enabled}
-        onChange={(e) => onChange({ enabled: e.target.checked })}
-        title="Enable / disable"
-      />
-      <span className="filter-row__type">{FILTER_TYPE_LABEL[filter.type]}</span>
-      <label>
-        {filter.type === 'notch' ? 'Center' : 'Cutoff'}:
-        <input
-          type="number"
-          min={1}
-          max={nyquist - 1}
-          step="5"
-          value={filter.cutoffHz}
-          onChange={(e) => onChange({ cutoffHz: Number.parseFloat(e.target.value) })}
-          style={{ width: '5rem' }}
-        />
-        <span className="filter-row__unit">Hz</span>
-      </label>
-      {filter.type === 'notch' && (
-        <label>
-          BW:
-          <input
-            type="number"
-            min={1}
-            step="5"
-            value={filter.bandwidth}
-            onChange={(e) => onChange({ bandwidth: Number.parseFloat(e.target.value) })}
-            style={{ width: '4rem' }}
-          />
-          <span className="filter-row__unit">Hz</span>
-        </label>
-      )}
-      <button type="button" className="filter-row__remove" onClick={onRemove} title="Remove">
-        ✕
-      </button>
-    </div>
   );
 }
 
@@ -3404,16 +3362,17 @@ interface AxisLatency extends LatencyResult {
 
 function LatencySection({ entries }: { entries: LogEntry[] }) {
   const multi = entries.length > 1;
+  const [delayHz, setDelayHz] = useState<number>(DELAY_REFERENCE_HZ);
 
   const perLog = useMemo(() => {
     return entries.map(({ slot, log }) => {
       const axes: AxisLatency[] = AXIS_NAMES.map((_n, axis) => {
         return { axis, ...latencyForLog(log, axis) };
       });
-      const delays = filterDelaysForLog(log);
+      const delays = filterDelaysForLog(log, delayHz);
       return { slot, log, axes, delays };
     });
-  }, [entries]);
+  }, [entries, delayHz]);
 
   return (
     <section className="plot-section">
@@ -3465,7 +3424,20 @@ function LatencySection({ entries }: { entries: LogEntry[] }) {
       </div>
 
       <div className="diff-section">
-        <h3>Filter delay at {perLog[0]?.delays.referenceHz ?? 30} Hz</h3>
+        <h3>
+          Filter delay at{' '}
+          <input
+            type="number"
+            min={1}
+            max={200}
+            step="1"
+            value={delayHz}
+            onChange={(e) => setDelayHz(Math.min(200, Math.max(1, Number.parseFloat(e.target.value) || DELAY_REFERENCE_HZ)))}
+            style={{ width: '4rem' }}
+            aria-label="Frequency the delay is reported at"
+          />{' '}
+          Hz
+        </h3>
         {perLog.map(({ slot, delays }) => (
           <div key={slot.id} className="diff-log">
             <h4 className="diff-log__head">
@@ -3518,6 +3490,7 @@ function FilterDelayTable({ entries }: { entries: FilterDelayEntry[] }) {
           <th>Cutoff / centre</th>
           <th>Type</th>
           <th>Delay</th>
+          <th>Lag</th>
         </tr>
       </thead>
       <tbody>
@@ -3531,6 +3504,7 @@ function FilterDelayTable({ entries }: { entries: FilterDelayEntry[] }) {
             </td>
             <td className="muted">{e.type}</td>
             <td>{e.delayMs >= 0.005 ? `${e.delayMs.toFixed(2)} ms` : <span className="muted">~0</span>}</td>
+            <td className="muted">{e.delayMs >= 0.005 ? `${(-e.phaseDeg).toFixed(1)}°` : '—'}</td>
           </tr>
         ))}
       </tbody>

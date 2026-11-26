@@ -34,7 +34,7 @@ export function gyroChainFromTune(view: TuneView, ctx: FilterDelayContext = {}):
     push({
       ...base,
       type: 'rpm',
-      cutoffHz: ctx.motorHz && ctx.motorHz > 0 ? ctx.motorHz : view.rpmMinHz + fadeHz,
+      cutoffHz: ctx.motorHz && ctx.motorHz > 0 ? Math.round(ctx.motorHz * 10) / 10 : view.rpmMinHz + fadeHz,
       bfQ: view.rpmQ ?? 500,
       count: view.rpmHarmonics,
       minHz: view.rpmMinHz,
